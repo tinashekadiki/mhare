@@ -280,11 +280,11 @@ The new eMhare shall be organised into these product modules:
 
 **FR-ADM-001:** Academic Setup intakes shall be the only administrator-managed and applicant-visible admissions windows. The system shall not require a separate admission cycle.
 
-**FR-ADM-002:** Every intake shall belong to an academic year and shall directly scope applications, requirements, quotas, selection rounds, and offers.
+**FR-ADM-002:** Every intake shall belong to an academic year and shall directly scope applications, requirements, quotas, and offers. Per ADR-0014, admissions processing (verification, eligibility, academic review, admission decision) is scoped directly to the application and programme choice, not to an intake-scoped selection round.
 
 **FR-ADM-003:** Intake start and end dates shall define the application window.
 
-**FR-ADM-004:** Intakes shall support draft, open, closed, and archived statuses. Selection and offer lifecycle states shall belong to selection rounds, offer batches, and offers.
+**FR-ADM-004:** Intakes shall support draft, open, closed, and archived statuses. Per ADR-0014, selection and offer lifecycle states shall belong to academic reviews, academic recommendations, programme choice decisions, and offers — not to selection rounds or offer batches, which are retired and preserved only as historical records.
 
 **FR-ADM-005:** The system shall prevent application creation and submission outside an open intake unless an authorised override is recorded.
 
@@ -924,7 +924,7 @@ Release 1 shall be accepted only when:
 - What official institution name, branding, and document header data should the first eMhare profile use?
 - How many programme choices should be the default per intake?
 - Which payment providers must be supported in Release 1?
-- Which staff roles approve offer batches in the first implementation?
+- *(Resolved by ADR-0014: offer batches are retired; there is no batch approval step.)*
 - Should offer acceptance require payment, document verification, or both?
 - Which legacy reports are mandatory for the first admissions go-live?
 - What criteria determine whether an applicant is classified as local for admissions purposes? National ID alone may not be sufficient (raised by Admissions & Registration, still to be confirmed).
