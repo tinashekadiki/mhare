@@ -447,7 +447,7 @@ Constraint: `user_id` is required because applicants must sign up or log in befo
 - `payment_confirmed_at` nullable
 - `payment_override_by_user_id` nullable
 - `payment_override_reason` nullable
-- `status` enum: `DRAFT`, `SUBMITTED`, `PAYMENT_PENDING`, `UNDER_REVIEW`, `INCOMPLETE`, `ELIGIBLE`, `NOT_ELIGIBLE`, `SHORTLISTED`, `SELECTED`, `OFFERED`, `ACCEPTED`, `DECLINED`, `WITHDRAWN`, `CONVERTED`
+- `status` enum: `DRAFT`, `SUBMITTED`, `PAYMENT_PENDING`, `UNDER_REVIEW`, `INCOMPLETE`, `NOT_ELIGIBLE`, `UNDER_ACADEMIC_REVIEW`, `ADMITTED`, `REJECTED`, `OFFERED`, `ACCEPTED`, `DECLINED`, `WITHDRAWN`, `CONVERTED` (per ADR-0014: `SHORTLISTED` and `SELECTED` are retired; `UNDER_ACADEMIC_REVIEW` and `ADMITTED` replace them)
 - `status_reason`
 - `verified_by_user_id`
 - `verified_at`
@@ -471,7 +471,7 @@ Constraint: fee-required applications cannot move to `UNDER_REVIEW`, evaluation,
 - `application_id`
 - `programme_id`
 - `choice_rank`
-- `choice_status` enum: `PENDING`, `ELIGIBLE`, `INELIGIBLE`, `SHORTLISTED`, `SELECTED`, `OFFERED`, `REJECTED`
+- `choice_status` enum: `PENDING`, `ELIGIBLE`, `INELIGIBLE`, `REQUIRES_REVIEW`, `UNDER_ACADEMIC_REVIEW`, `ADMITTED`, `REJECTED`, `OFFERED` (per ADR-0014: `SHORTLISTED` and `SELECTED` are retired; `REQUIRES_REVIEW` and `UNDER_ACADEMIC_REVIEW` are new, `ADMITTED` replaces `SELECTED`)
 - `evaluation_summary`
 - `decision_reason`
 - unique `application_id`, `choice_rank`
