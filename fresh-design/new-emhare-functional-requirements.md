@@ -764,6 +764,16 @@ These requirements are in scope for the product architecture and future phases. 
 
 **FR-NOTIF-003:** Failed notification delivery shall not silently change business state.
 
+**FR-NOTIF-004:** Offer dispatch shall email the generated offer-letter PDF as an attachment to the applicant's primary registered email only.
+
+**FR-NOTIF-005:** Email delivery status shall be tracked as Queued, Sent, Failed, or Bounced, and shall be visible to Admissions staff on the offer.
+
+**FR-NOTIF-006:** A failed or bounced offer email shall not remove or hide the applicant's portal-published offer letter; the portal copy shall remain available regardless of email delivery outcome.
+
+**FR-NOTIF-007:** Admissions staff shall be able to retry a failed or bounced offer email through a controlled retry action, and the retry shall be recorded as separate delivery evidence.
+
+**FR-NOTIF-008:** Publishing and sending an offer shall be idempotent: retrying the publish-and-send action after a partial failure shall not create a duplicate publication, a duplicate email, or a duplicate audit record for a delivery that already succeeded.
+
 ## 30. Migration Requirements
 
 **FR-MIG-001:** The system shall preserve legacy identifiers in dedicated legacy mapping fields or mapping tables.
