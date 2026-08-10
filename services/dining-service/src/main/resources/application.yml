@@ -1,0 +1,12 @@
+server:
+  port: ${SERVER_PORT:8089}
+
+spring:
+  config:
+    import: classpath:emhare-service-common.yml
+  application:
+    name: dining-service
+  datasource:
+    url: ${DINING_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_dining}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}

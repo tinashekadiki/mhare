@@ -1,0 +1,20 @@
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  config:
+    import: classpath:emhare-service-common.yml
+  application:
+    name: admissions-service
+  datasource:
+    url: ${ADMISSIONS_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_admissions}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}
+
+emhare:
+  messaging:
+    integration-enabled: true
+  applicant-portal:
+    public-url: ${APPLICANT_PORTAL_PUBLIC_URL:http://localhost:3001}
+  documents-reporting:
+    url: ${DOCUMENTS_REPORTING_SERVICE_URL:http://localhost:8090}

@@ -1,0 +1,6049 @@
+[
+  {
+    "controller": "AcademicRegistrationDatesController",
+    "file": "sparse-emhare/app/Controller/AcademicRegistrationDatesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AcademicRegistrationSemestersController",
+    "file": "sparse-emhare/app/Controller/AcademicRegistrationSemestersController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationCheckOutResetsController",
+    "file": "sparse-emhare/app/Controller/AccommodationCheckOutResetsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationFacilitiesController",
+    "file": "sparse-emhare/app/Controller/AccommodationFacilitiesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationLandlordsController",
+    "file": "sparse-emhare/app/Controller/AccommodationLandlordsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationModificationReasonsController",
+    "file": "sparse-emhare/app/Controller/AccommodationModificationReasonsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationModificationTrailsController",
+    "file": "sparse-emhare/app/Controller/AccommodationModificationTrailsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationPremiseFacilitiesController",
+    "file": "sparse-emhare/app/Controller/AccommodationPremiseFacilitiesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationPremisesController",
+    "file": "sparse-emhare/app/Controller/AccommodationPremisesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationRatingsController",
+    "file": "sparse-emhare/app/Controller/AccommodationRatingsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationRentalPeriodsController",
+    "file": "sparse-emhare/app/Controller/AccommodationRentalPeriodsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationRevokingFacultyExceptionsController",
+    "file": "sparse-emhare/app/Controller/AccommodationRevokingFacultyExceptionsController.php",
+    "actions": [
+      "beforeFilter",
+      "index_links",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationRevokingLevelSemExceptionsController",
+    "file": "sparse-emhare/app/Controller/AccommodationRevokingLevelSemExceptionsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationRevokingProgrammeExceptionsController",
+    "file": "sparse-emhare/app/Controller/AccommodationRevokingProgrammeExceptionsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationRevokingSponsorExceptionsController",
+    "file": "sparse-emhare/app/Controller/AccommodationRevokingSponsorExceptionsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationSuburbsController",
+    "file": "sparse-emhare/app/Controller/AccommodationSuburbsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationTenantGendersController",
+    "file": "sparse-emhare/app/Controller/AccommodationTenantGendersController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationTypesController",
+    "file": "sparse-emhare/app/Controller/AccommodationTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccommodationWithdrawalsController",
+    "file": "sparse-emhare/app/Controller/AccommodationWithdrawalsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationAllocationTypesController",
+    "file": "sparse-emhare/app/Controller/AccomodationAllocationTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationBlacklistsController",
+    "file": "sparse-emhare/app/Controller/AccomodationBlacklistsController.php",
+    "actions": [
+      "beforeFilter",
+      "search",
+      "accomodation_suspension",
+      "acc_suspension_reason",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationConfigurationsController",
+    "file": "sparse-emhare/app/Controller/AccomodationConfigurationsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationCutOffDatesController",
+    "file": "sparse-emhare/app/Controller/AccomodationCutOffDatesController.php",
+    "actions": [
+      "beforeFilter",
+      "initDB",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationDamagesController",
+    "file": "sparse-emhare/app/Controller/AccomodationDamagesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationFacilityNamesController",
+    "file": "sparse-emhare/app/Controller/AccomodationFacilityNamesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationGroupAttributesBySponsorsController",
+    "file": "sparse-emhare/app/Controller/AccomodationGroupAttributesBySponsorsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationGroupAttributesController",
+    "file": "sparse-emhare/app/Controller/AccomodationGroupAttributesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationGroupsApplicationPeriodsController",
+    "file": "sparse-emhare/app/Controller/AccomodationGroupsApplicationPeriodsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationGroupsAttributesByDisabilityCodesController",
+    "file": "sparse-emhare/app/Controller/AccomodationGroupsAttributesByDisabilityCodesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationGroupsAttributesByProgrammesController",
+    "file": "sparse-emhare/app/Controller/AccomodationGroupsAttributesByProgrammesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationGroupsAttributesByStudentTypesController",
+    "file": "sparse-emhare/app/Controller/AccomodationGroupsAttributesByStudentTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationGroupsController",
+    "file": "sparse-emhare/app/Controller/AccomodationGroupsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationPeriodOfStaysController",
+    "file": "sparse-emhare/app/Controller/AccomodationPeriodOfStaysController.php",
+    "actions": [
+      "beforeFilter",
+      "pro_rata_accomodation",
+      "pro_rata_accomodation_excel",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationPoolStudentsController",
+    "file": "sparse-emhare/app/Controller/AccomodationPoolStudentsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationRatesController",
+    "file": "sparse-emhare/app/Controller/AccomodationRatesController.php",
+    "actions": [
+      "beforeFilter",
+      "acc_payments",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationSemesterPeriodsController",
+    "file": "sparse-emhare/app/Controller/AccomodationSemesterPeriodsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationSwapsController",
+    "file": "sparse-emhare/app/Controller/AccomodationSwapsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccomodationWaitingListsController",
+    "file": "sparse-emhare/app/Controller/AccomodationWaitingListsController.php",
+    "actions": [
+      "beforeFilter",
+      "waiting_list_allocation",
+      "apply_waiting_list",
+      "waiting_list",
+      "remove_unpaid_applicants",
+      "unpaid_accomodation_students_warden",
+      "unpaid_accomodation_students",
+      "alloc_acc",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccountGroupsController",
+    "file": "sparse-emhare/app/Controller/AccountGroupsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccountTypesController",
+    "file": "sparse-emhare/app/Controller/AccountTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view_gl",
+      "view_gl_excel",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AccountsController",
+    "file": "sparse-emhare/app/Controller/AccountsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AllocationPrecedencesController",
+    "file": "sparse-emhare/app/Controller/AllocationPrecedencesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AllocationPrioritiesController",
+    "file": "sparse-emhare/app/Controller/AllocationPrioritiesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AntiplagiarismsController",
+    "file": "sparse-emhare/app/Controller/AntiplagiarismsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "dissertation_plagiarism_update",
+      "dissertation_plagiarism",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AppController",
+    "file": "sparse-emhare/app/Controller/AppController.php",
+    "actions": [
+      "beforeFilter",
+      "handleSecurityBlackhole",
+      "isAuthorized"
+    ]
+  },
+  {
+    "controller": "ApplicantAcademicRecordsController",
+    "file": "sparse-emhare/app/Controller/ApplicantAcademicRecordsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "delete_by_uuid",
+      "edit",
+      "delete",
+      "add_mba"
+    ]
+  },
+  {
+    "controller": "ApplicantAlevelQualificationsController",
+    "file": "sparse-emhare/app/Controller/ApplicantAlevelQualificationsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "add_resume",
+      "edit",
+      "alevel",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ApplicantEducationalQualificationsController",
+    "file": "sparse-emhare/app/Controller/ApplicantEducationalQualificationsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "delete_by_uuid",
+      "edit",
+      "delete",
+      "add_post_resume"
+    ]
+  },
+  {
+    "controller": "ApplicantEmploymentHistoriesController",
+    "file": "sparse-emhare/app/Controller/ApplicantEmploymentHistoriesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "add_mba",
+      "add_post_resume",
+      "delete_by_uuid"
+    ]
+  },
+  {
+    "controller": "ApplicantOlevelQualificationsController",
+    "file": "sparse-emhare/app/Controller/ApplicantOlevelQualificationsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "delete_file",
+      "add_resume",
+      "edit",
+      "olevel",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ApplicantPaymentsController",
+    "file": "sparse-emhare/app/Controller/ApplicantPaymentsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ApplicantPresentEmployersController",
+    "file": "sparse-emhare/app/Controller/ApplicantPresentEmployersController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ApplicantProffessionalAchievementsController",
+    "file": "sparse-emhare/app/Controller/ApplicantProffessionalAchievementsController.php",
+    "actions": [
+      "beforeFilter",
+      "add_mba",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ApplicantRefereesController",
+    "file": "sparse-emhare/app/Controller/ApplicantRefereesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "add_mba"
+    ]
+  },
+  {
+    "controller": "ApplicantReferencesController",
+    "file": "sparse-emhare/app/Controller/ApplicantReferencesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "delete_by_uuid"
+    ]
+  },
+  {
+    "controller": "ApplicantWorkExperiencesController",
+    "file": "sparse-emhare/app/Controller/ApplicantWorkExperiencesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ApplicantsDetailsController",
+    "file": "sparse-emhare/app/Controller/ApplicantsDetailsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "post_grad_supplement_admissions_sar_excel",
+      "post_grad_supplement_admissions_sar",
+      "not_yet_selected_applicants_excel",
+      "not_yet_selected_applicants",
+      "accepted_vs_registered_by_faculty_excel",
+      "accepted_vs_registered_by_faculty",
+      "accepted_vs_registered_by_prog_excel",
+      "accepted_vs_registered_by_prog",
+      "applicants_offered_places_by_prog_excel",
+      "applicants_offered_places_by_prog",
+      "applicants_accepted_stats",
+      "applicants_accepted_stats_xls",
+      "unconfirmed_applicants",
+      "unconfirmed_applicants_xls",
+      "programme_application_report_bargraph",
+      "faculty_programme_statistics_bargraph",
+      "program_application_report_pdf",
+      "final_offerprog_mphil",
+      "offer_applicants_mphil",
+      "confirm_phil_applicant",
+      "program_application_report",
+      "faculty_programme_statistics",
+      "offered_applicants22",
+      "applicant_education_selected",
+      "applicant_education_selected_excel",
+      "generate_letters_print_transfers_pdf",
+      "generate_letters_print_transfers",
+      "applicant_education",
+      "applicant_education_pdf",
+      "view_dis_not_accepted_applicants",
+      "view_dis_not_accepted_applicants_excel",
+      "february_acceptedrep_excel",
+      "february_acceptedrep",
+      "february_accepted_excel",
+      "february_accepted",
+      "edit_applicant_prog_choice",
+      "edit_applicant_prog_choice2",
+      "final_august",
+      "february_august",
+      "moved_undecided_students_report_xls",
+      "moved_undecided_students_report",
+      "move_undecided_stud_intake",
+      "move_undecided_stud_to_august_intake",
+      "move_undecided_stud_to_feb_intake",
+      "move_accepted_stud_intake",
+      "move_accepted_stud_to_august_intake",
+      "moved_accepted_students_report",
+      "moved_accepted_students_report_xls",
+      "list_applicants_not_selected_xls",
+      "list_applicants_not_selected",
+      "vc_first_year_first_sem_summary_xls",
+      "vc_first_year_first_sem_summary",
+      "batch_single",
+      "batch_all",
+      "batch_approve",
+      "final_approve",
+      "deselect_approve",
+      "final_accept",
+      "final_deselect",
+      "accept_applicants",
+      "deselect_applicants",
+      "generate_letters_print1_pdf",
+      "generate_letters_print1_pdf_post_grad",
+      "selected_accepted_rejected",
+      "save_offered_mphil",
+      "save_offered",
+      "final_offerprog",
+      "offer_applicants",
+      "view_dis_accepted_applicants",
+      "view_dis_accepted_applicants_xls",
+      "view_staff_accepted_applicants",
+      "view_staff_accepted_applicants_xls",
+      "view_accepted_applicants_xls",
+      "view_accepted_applicants",
+      "applying_students",
+      "applying_students_excel",
+      "considered_points",
+      "faculty_select_applicants_save",
+      "faculty_select_applicants",
+      "list_selected_applicants2",
+      "list_selected_applicants_xls2",
+      "list_selected_applicants",
+      "list_accepted_applicants_xls",
+      "list_accepted_applicants",
+      "list_selected_applicants_xls",
+      "edit_prev_data_admissions",
+      "edit_prev_data_admissions_edit",
+      "supplement_admissions_sar",
+      "supplement_admissions_sar_excel",
+      "supplement_admissions",
+      "applicants_by_prog_trimmed",
+      "applicants_by_prog_trimmed_excel",
+      "supplement_admissions_disability",
+      "supplement_admissions_staff",
+      "sortByOrder",
+      "supplement_admissions_excel",
+      "supplement_admissions_disability_excel",
+      "supplement_admissions_staff_excel",
+      "final_confirm",
+      "reject_applicant",
+      "update_reject_applicant",
+      "applicants_totals_pdf",
+      "confirm_applicant",
+      "confirm_applicant_edit",
+      "new_student_search",
+      "selected_by_faculty",
+      "prev_which_form",
+      "prev_resume",
+      "edit_prev_data",
+      "not_selected_students_by_programme",
+      "selected_by_cutoff",
+      "applicants_summary",
+      "select_students_by_programme",
+      "schools_analysis",
+      "which_form",
+      "accept_documents",
+      "mba_intro",
+      "points",
+      "view2",
+      "view3",
+      "generate_letters",
+      "generate_letters_print",
+      "generate_letters_print_post_grad",
+      "generate_letters_print_pdf",
+      "generate_letters_print_pdf_international",
+      "forgotauth",
+      "status",
+      "index",
+      "indexreports",
+      "view_elligible_students",
+      "list_rejected_applicants",
+      "list_rejected_applicants_xls",
+      "elligible",
+      "elligible_two",
+      "elligible_three",
+      "elligible_students_by_programme",
+      "second_choice_elligible_students",
+      "third_choice_elligible_students",
+      "select_batch",
+      "select",
+      "selected_students_by_programme",
+      "select_two",
+      "selected_students_by_second_choice_programme",
+      "approve",
+      "approved_students_by_programme",
+      "approve_two",
+      "second_choice_approve_students",
+      "accepted_students_by_programme",
+      "view_by_first_choice",
+      "view_by_second_choice",
+      "view",
+      "view_selected",
+      "add",
+      "edit_details",
+      "edit",
+      "edit2",
+      "edit3",
+      "vcdeny",
+      "approve_students_by_programme",
+      "vc_view",
+      "delete",
+      "programme_report_first_choice",
+      "programme_report_second_choice",
+      "edit_applicant",
+      "download",
+      "download1",
+      "admissions_trend_analysis_prog",
+      "admissions_trend_analysis_prog2",
+      "admissions_trend_analysis_prog_per_intake",
+      "applicants_totals",
+      "admin_search_applicant",
+      "comfirm_applicant",
+      "admin_search_applicant2",
+      "view_applicant",
+      "view_applied_applicants",
+      "view_applied_applicants_excel",
+      "admissions_trend_analysis_prog_pdf",
+      "applicant_intakes",
+      "edit_intake",
+      "batch_approve_intake",
+      "app_search_by_id",
+      "generateRegNumber",
+      "applicants_to_students",
+      "individual_applicant_reg",
+      "accept_previous_students",
+      "accept_previous_students_verify",
+      "accept_previous_students_update",
+      "accept_previous_students_verify_surname",
+      "accept_previous_students_verify_surname_update",
+      "offered_applicants",
+      "mba_intro_resume",
+      "mba_resume",
+      "edit_prev_data_mba",
+      "final_reverse_confirm",
+      "reverse_confirm_applicant",
+      "applicants_to_students_dphil",
+      "individual_applicant_reg_dphil"
+    ]
+  },
+  {
+    "controller": "ApplicantsPointsController",
+    "file": "sparse-emhare/app/Controller/ApplicantsPointsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ApplicationFeesController",
+    "file": "sparse-emhare/app/Controller/ApplicationFeesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ApplicationPaymentsController",
+    "file": "sparse-emhare/app/Controller/ApplicationPaymentsController.php",
+    "actions": [
+      "beforeFilter",
+      "ecocash",
+      "findApplicant"
+    ]
+  },
+  {
+    "controller": "ApplicationProgrammeChangePeriodsController",
+    "file": "sparse-emhare/app/Controller/ApplicationProgrammeChangePeriodsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ApplicationTypesController",
+    "file": "sparse-emhare/app/Controller/ApplicationTypesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ApplicationsController",
+    "file": "sparse-emhare/app/Controller/ApplicationsController.php",
+    "actions": [
+      "beforeFilter",
+      "resume",
+      "welcome",
+      "personal_details",
+      "create_personal_draft",
+      "upload_personal_document",
+      "upload_qualification_document",
+      "olevel_qualifications",
+      "alevel_qualifications",
+      "programme_choices",
+      "schools_attended",
+      "delete_school",
+      "sponsor_information",
+      "upload_documents",
+      "view_file",
+      "delete_file",
+      "payment",
+      "review",
+      "submit"
+    ]
+  },
+  {
+    "controller": "ArchAccommodationPeriodOfStaysController",
+    "file": "sparse-emhare/app/Controller/ArchAccommodationPeriodOfStaysController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ArchCurrentRepeatStudentsController",
+    "file": "sparse-emhare/app/Controller/ArchCurrentRepeatStudentsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ArchInvoiceLineItemsController",
+    "file": "sparse-emhare/app/Controller/ArchInvoiceLineItemsController.php",
+    "actions": []
+  },
+  {
+    "controller": "ArchRoomAllocationsController",
+    "file": "sparse-emhare/app/Controller/ArchRoomAllocationsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AssignmentTotalsController",
+    "file": "sparse-emhare/app/Controller/AssignmentTotalsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeFilter",
+      "beforeRender",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "enter_ass_totals",
+      "ass_totals"
+    ]
+  },
+  {
+    "controller": "AuditTrailAccountGroupsController",
+    "file": "sparse-emhare/app/Controller/AuditTrailAccountGroupsController.php",
+    "actions": [
+      "beforeFilter",
+      "account_groups_audit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AuditTrailBankAccountsController",
+    "file": "sparse-emhare/app/Controller/AuditTrailBankAccountsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AuditTrailCoursesController",
+    "file": "sparse-emhare/app/Controller/AuditTrailCoursesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "courses_audit"
+    ]
+  },
+  {
+    "controller": "AuditTrailFeesController",
+    "file": "sparse-emhare/app/Controller/AuditTrailFeesController.php",
+    "actions": [
+      "beforeFilter",
+      "fees_audit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AuditTrailGeneralLedgersController",
+    "file": "sparse-emhare/app/Controller/AuditTrailGeneralLedgersController.php",
+    "actions": [
+      "beforeFilter",
+      "gl_audit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AuditTrailProgrammeFeesController",
+    "file": "sparse-emhare/app/Controller/AuditTrailProgrammeFeesController.php",
+    "actions": [
+      "beforeFilter",
+      "prog_fees_audit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AuditTrailProgrammesController",
+    "file": "sparse-emhare/app/Controller/AuditTrailProgrammesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "programmes_audit"
+    ]
+  },
+  {
+    "controller": "AuditTrailReceiptsController",
+    "file": "sparse-emhare/app/Controller/AuditTrailReceiptsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "receipts_audit"
+    ]
+  },
+  {
+    "controller": "AuditTrailStudentAssignmentsController",
+    "file": "sparse-emhare/app/Controller/AuditTrailStudentAssignmentsController.php",
+    "actions": [
+      "beforeFilter",
+      "student_assignments_audit",
+      "assignments_audit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AuditTrailStudentExamResultsController",
+    "file": "sparse-emhare/app/Controller/AuditTrailStudentExamResultsController.php",
+    "actions": [
+      "beforeFilter",
+      "exams_audit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AuditTrailStudentInvoicesController",
+    "file": "sparse-emhare/app/Controller/AuditTrailStudentInvoicesController.php",
+    "actions": [
+      "beforeFilter",
+      "invoices_audit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AuditTrailStudentPaymentsController",
+    "file": "sparse-emhare/app/Controller/AuditTrailStudentPaymentsController.php",
+    "actions": [
+      "beforeFilter",
+      "payments_audit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AuditTrailTransactionsAuditsController",
+    "file": "sparse-emhare/app/Controller/AuditTrailTransactionsAuditsController.php",
+    "actions": [
+      "beforeFilter",
+      "txn_audits_audit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AwardNomineesController",
+    "file": "sparse-emhare/app/Controller/AwardNomineesController.php",
+    "actions": [
+      "beforeFilter",
+      "vcawards_index",
+      "nominee_drill_down",
+      "load_comments",
+      "search_nominee",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AwardSponsorsController",
+    "file": "sparse-emhare/app/Controller/AwardSponsorsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "AwardsController",
+    "file": "sparse-emhare/app/Controller/AwardsController.php",
+    "actions": [
+      "beforeFilter",
+      "getByCategory",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "BankAccountsController",
+    "file": "sparse-emhare/app/Controller/BankAccountsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "BillingModesController",
+    "file": "sparse-emhare/app/Controller/BillingModesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "CampusIndicatorsController",
+    "file": "sparse-emhare/app/Controller/CampusIndicatorsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "CashbookRecordsController",
+    "file": "sparse-emhare/app/Controller/CashbookRecordsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "import"
+    ]
+  },
+  {
+    "controller": "CategoriesController",
+    "file": "sparse-emhare/app/Controller/CategoriesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "CbzDepositsController",
+    "file": "sparse-emhare/app/Controller/CbzDepositsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "CommentKeysController",
+    "file": "sparse-emhare/app/Controller/CommentKeysController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ConditionTypesController",
+    "file": "sparse-emhare/app/Controller/ConditionTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "add1",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "CountriesController",
+    "file": "sparse-emhare/app/Controller/CountriesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "CourseAmmendmentsController",
+    "file": "sparse-emhare/app/Controller/CourseAmmendmentsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "chairperson_approve_cosi_amend",
+      "chairperson_disapprove_cosi_amend",
+      "dean_approve_cosi_amend",
+      "dean_disapprove_cosi_amend",
+      "academic_registry_approve_cosi_amend",
+      "academic_registry_disapprove_cosi_amend",
+      "academic_registry_disapprove_cosi_am",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "CourseAssignmentsController",
+    "file": "sparse-emhare/app/Controller/CourseAssignmentsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeFilter",
+      "beforeRender",
+      "index",
+      "enter_course_weightings",
+      "add_course",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "enter_practical_weights",
+      "individual_enter_course_weightings"
+    ]
+  },
+  {
+    "controller": "CourseCapacitiesController",
+    "file": "sparse-emhare/app/Controller/CourseCapacitiesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "CourseExamRequirementsController",
+    "file": "sparse-emhare/app/Controller/CourseExamRequirementsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "sar_edit",
+      "index",
+      "exam_requirements",
+      "add_course_requirement_chair",
+      "add_course_requirement",
+      "add_course_requirement",
+      "view",
+      "view_exam_requirements",
+      "view_exam_requirements_lecturer",
+      "exam_pdf_report_lecturer",
+      "exam_pdf_report",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "CourseFeesController",
+    "file": "sparse-emhare/app/Controller/CourseFeesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "CourseInstructorsController",
+    "file": "sparse-emhare/app/Controller/CourseInstructorsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeFilter",
+      "beforeRender",
+      "index",
+      "view_number_courses",
+      "number_of_assignments",
+      "view_instructors",
+      "view_instructors_pdf",
+      "view",
+      "add_instructor",
+      "add",
+      "edit",
+      "delete",
+      "search_instructor",
+      "search_instructor_change",
+      "new_instructor",
+      "number_courses",
+      "edit_number",
+      "edit_instructor",
+      "search_edit_instructor"
+    ]
+  },
+  {
+    "controller": "CourseResultsController",
+    "file": "sparse-emhare/app/Controller/CourseResultsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeFilter",
+      "beforeRender",
+      "index",
+      "exams_sar_search_results",
+      "delete",
+      "search_results",
+      "add"
+    ]
+  },
+  {
+    "controller": "CourseWeightsController",
+    "file": "sparse-emhare/app/Controller/CourseWeightsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "CoursesController",
+    "file": "sparse-emhare/app/Controller/CoursesController.php",
+    "actions": [
+      "beforeFilter",
+      "findByDept",
+      "upload_courses",
+      "examination_schedule_excel",
+      "examination_schedule_pdf",
+      "examination_schedule",
+      "clashes_report_excel",
+      "clashes_report",
+      "update_expected",
+      "copy_course_to_prog",
+      "search_course_edit",
+      "edit_course_narration",
+      "copy_courses",
+      "search_cosi_of_reg_studs",
+      "save_cosi_of_reg_studs",
+      "courses_report2",
+      "getByDept1",
+      "getByProg",
+      "course_exam_type",
+      "course_exam_type_excel",
+      "define_cosi_exam_type",
+      "define_cosi_exam_type_duration",
+      "save_define_cosi_exam_type_duration",
+      "multi_course",
+      "multi_course_update",
+      "courses_report",
+      "courses_report_pdf",
+      "edit_course_sar",
+      "courses_report_xls",
+      "getByProgr",
+      "getByDept",
+      "getByCourse",
+      "getByYear",
+      "cosis_report",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "save_edit_course",
+      "course_setup_report",
+      "course_setup_report_pdf",
+      "course_setup_report_sar",
+      "course_setup_report_sar_pdf",
+      "courses_dept",
+      "list_courses",
+      "programme_list_courses",
+      "list_courses_per_programme",
+      "edit_course_per_prog",
+      "edit_course",
+      "edit_course_registry",
+      "index_academic_registry",
+      "add_course_registry"
+    ]
+  },
+  {
+    "controller": "CurrentRepeatStudentsController",
+    "file": "sparse-emhare/app/Controller/CurrentRepeatStudentsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "search",
+      "update_action",
+      "upload_repeat_file",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "repeat_students_billing_audit",
+      "repeat_students_billing_audit_excel",
+      "view_repeat_students",
+      "view_repeat_students_excel"
+    ]
+  },
+  {
+    "controller": "CurrentResultsController",
+    "file": "sparse-emhare/app/Controller/CurrentResultsController.php",
+    "actions": [
+      "beforeFilter",
+      "check_stud_results_status",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DamageCategoriesController",
+    "file": "sparse-emhare/app/Controller/DamageCategoriesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DateDegreeOfferedsController",
+    "file": "sparse-emhare/app/Controller/DateDegreeOfferedsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DecisionsCompulsoryCoursesController",
+    "file": "sparse-emhare/app/Controller/DecisionsCompulsoryCoursesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DecisonsController",
+    "file": "sparse-emhare/app/Controller/DecisonsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DegreeClassRequirementsController",
+    "file": "sparse-emhare/app/Controller/DegreeClassRequirementsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DegreeSubjectsController",
+    "file": "sparse-emhare/app/Controller/DegreeSubjectsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DeletedCourseResultsController",
+    "file": "sparse-emhare/app/Controller/DeletedCourseResultsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DeletedStudentExamResultsController",
+    "file": "sparse-emhare/app/Controller/DeletedStudentExamResultsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DenialReasonsController",
+    "file": "sparse-emhare/app/Controller/DenialReasonsController.php",
+    "actions": []
+  },
+  {
+    "controller": "DepartmentChairpersonNominationPeriodsController",
+    "file": "sparse-emhare/app/Controller/DepartmentChairpersonNominationPeriodsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DepartmentChairpersonNominationsController",
+    "file": "sparse-emhare/app/Controller/DepartmentChairpersonNominationsController.php",
+    "actions": [
+      "beforeFilter",
+      "nominations_pdf",
+      "nominations",
+      "index_pdf",
+      "view_reasons",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DepartmentDeadlinesController",
+    "file": "sparse-emhare/app/Controller/DepartmentDeadlinesController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "edit_deadline",
+      "delete",
+      "dept_deadlines",
+      "alter_deadline"
+    ]
+  },
+  {
+    "controller": "DepartmentsController",
+    "file": "sparse-emhare/app/Controller/DepartmentsController.php",
+    "actions": [
+      "beforeFilter",
+      "getByFaculty7",
+      "getByFaculty6",
+      "getByFaculty",
+      "getByTime",
+      "getByFacultyt",
+      "getByFacultytanSoft",
+      "getByFaculty3",
+      "getByFaculty4",
+      "selectByFac3",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DiningHallAttendantsController",
+    "file": "sparse-emhare/app/Controller/DiningHallAttendantsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DiningHallSurnameFiltersController",
+    "file": "sparse-emhare/app/Controller/DiningHallSurnameFiltersController.php",
+    "actions": [
+      "beforeFilter",
+      "select_filter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DiningHallsController",
+    "file": "sparse-emhare/app/Controller/DiningHallsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DiningMealChecksController",
+    "file": "sparse-emhare/app/Controller/DiningMealChecksController.php",
+    "actions": [
+      "beforeFilter",
+      "dh_stats",
+      "dh_stats_pdf",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DisabilitiesController",
+    "file": "sparse-emhare/app/Controller/DisabilitiesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DisapprovedCoursesController",
+    "file": "sparse-emhare/app/Controller/DisapprovedCoursesController.php",
+    "actions": []
+  },
+  {
+    "controller": "DissertationProgressesController",
+    "file": "sparse-emhare/app/Controller/DissertationProgressesController.php",
+    "actions": [
+      "beforeFilter",
+      "add_student_progress",
+      "student_progress",
+      "manage_dissertations",
+      "add_dissertation_progress",
+      "dissertation_progress",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DissertationStagesController",
+    "file": "sparse-emhare/app/Controller/DissertationStagesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DissertationSubmissionDatesController",
+    "file": "sparse-emhare/app/Controller/DissertationSubmissionDatesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "DissertationTitleController",
+    "file": "sparse-emhare/app/Controller/DissertationTitleController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit"
+    ]
+  },
+  {
+    "controller": "EcocashClientCorrelatorsController",
+    "file": "sparse-emhare/app/Controller/EcocashClientCorrelatorsController.php",
+    "actions": [
+      "beforeFilter",
+      "mobile_payments",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "EmhareFirstYearsController",
+    "file": "sparse-emhare/app/Controller/EmhareFirstYearsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "EvotingDepartmentsController",
+    "file": "sparse-emhare/app/Controller/EvotingDepartmentsController.php",
+    "actions": [
+      "beforeFilter",
+      "getByFaculty8",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "EvotingFacultiesController",
+    "file": "sparse-emhare/app/Controller/EvotingFacultiesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "EvotingStaffDetailsController",
+    "file": "sparse-emhare/app/Controller/EvotingStaffDetailsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamBoardPapersController",
+    "file": "sparse-emhare/app/Controller/ExamBoardPapersController.php",
+    "actions": [
+      "beforeFilter",
+      "results_sheet",
+      "results_sheet_pdf",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamBodyAresultsController",
+    "file": "sparse-emhare/app/Controller/ExamBodyAresultsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "upload_aresults",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamBodyOresultsController",
+    "file": "sparse-emhare/app/Controller/ExamBodyOresultsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "upload_oresults",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamBodysController",
+    "file": "sparse-emhare/app/Controller/ExamBodysController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamCaseRecordsController",
+    "file": "sparse-emhare/app/Controller/ExamCaseRecordsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamCasesController",
+    "file": "sparse-emhare/app/Controller/ExamCasesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamCourseMaterialsController",
+    "file": "sparse-emhare/app/Controller/ExamCourseMaterialsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamCourseTestRegistersController",
+    "file": "sparse-emhare/app/Controller/ExamCourseTestRegistersController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "unplaced_courses",
+      "exam_class_register",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamCourseTestTypesController",
+    "file": "sparse-emhare/app/Controller/ExamCourseTestTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "add_course_schedules",
+      "view_course_schedules",
+      "view_course_schedules_pdf"
+    ]
+  },
+  {
+    "controller": "ExamDurationVenuesController",
+    "file": "sparse-emhare/app/Controller/ExamDurationVenuesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "exam_duration_venue",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamDurationsController",
+    "file": "sparse-emhare/app/Controller/ExamDurationsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamFacultyTestVenuesController",
+    "file": "sparse-emhare/app/Controller/ExamFacultyTestVenuesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamManualAlterationsController",
+    "file": "sparse-emhare/app/Controller/ExamManualAlterationsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamMasterTimetablesController",
+    "file": "sparse-emhare/app/Controller/ExamMasterTimetablesController.php",
+    "actions": [
+      "beforeFilter",
+      "all_timetable_excel",
+      "all_timetable",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "view_timetable_dept",
+      "view_timetable_exceldept",
+      "view_timetable_excel",
+      "view_timetable"
+    ]
+  },
+  {
+    "controller": "ExamMaterialsController",
+    "file": "sparse-emhare/app/Controller/ExamMaterialsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamMulticoursePaperCoursesController",
+    "file": "sparse-emhare/app/Controller/ExamMulticoursePaperCoursesController.php",
+    "actions": [
+      "beforeFilter",
+      "activate",
+      "deactivate",
+      "index",
+      "index_xls",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "index_filtered2",
+      "index_filtered",
+      "add_new"
+    ]
+  },
+  {
+    "controller": "ExamMulticoursePapersController",
+    "file": "sparse-emhare/app/Controller/ExamMulticoursePapersController.php",
+    "actions": [
+      "beforeFilter",
+      "add_multicourse",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamProgrammeSlotTrackersController",
+    "file": "sparse-emhare/app/Controller/ExamProgrammeSlotTrackersController.php",
+    "actions": [
+      "beforeFilter",
+      "final_grouped",
+      "change_grouped",
+      "final_change",
+      "change_venue",
+      "amend_select_single",
+      "amend_clashes_single",
+      "final_remove",
+      "remove_course",
+      "confirm_clash",
+      "amend_select",
+      "amend_clashes",
+      "amend_grouped_courses_clash",
+      "amend_group_clashes",
+      "save_amendment",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "remove_grouped_course",
+      "final_remove_grouped_course"
+    ]
+  },
+  {
+    "controller": "ExamRegisteredStudentsOverridesController",
+    "file": "sparse-emhare/app/Controller/ExamRegisteredStudentsOverridesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamRegisteredStudentsOverridesHistoriesController",
+    "file": "sparse-emhare/app/Controller/ExamRegisteredStudentsOverridesHistoriesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamResultsController",
+    "file": "sparse-emhare/app/Controller/ExamResultsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamSchedulingReversalsController",
+    "file": "sparse-emhare/app/Controller/ExamSchedulingReversalsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamSessionDatetimePatternsController",
+    "file": "sparse-emhare/app/Controller/ExamSessionDatetimePatternsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamSessionProgrammeTypesController",
+    "file": "sparse-emhare/app/Controller/ExamSessionProgrammeTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamSessionSlotsController",
+    "file": "sparse-emhare/app/Controller/ExamSessionSlotsController.php",
+    "actions": [
+      "beforeFilter",
+      "generate_slots",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamSessionsController",
+    "file": "sparse-emhare/app/Controller/ExamSessionsController.php",
+    "actions": [
+      "beforeFilter",
+      "view_all_occupancy",
+      "view_all_occupancy_excel",
+      "venue_occupancy_exception_report",
+      "venue_occupancy_exception_report_excel",
+      "unallocated_slots_per_programme_excell",
+      "unallocated_slots_per_programme",
+      "admin_view_student_timetable",
+      "student_timetable_pdf",
+      "student_timetable",
+      "individual_stud_time_tbl",
+      "reset_timetable",
+      "arrayRecursiveDiff",
+      "generate_timetable",
+      "view_occupancy",
+      "view_occupancy_excel",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "venue_to_allocate_exam"
+    ]
+  },
+  {
+    "controller": "ExamSpecificTimeDurationsController",
+    "file": "sparse-emhare/app/Controller/ExamSpecificTimeDurationsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "specific_exam_time",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamStartTimesController",
+    "file": "sparse-emhare/app/Controller/ExamStartTimesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamStudentTimetablesController",
+    "file": "sparse-emhare/app/Controller/ExamStudentTimetablesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamTestTypeVenuesController",
+    "file": "sparse-emhare/app/Controller/ExamTestTypeVenuesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamTestTypesController",
+    "file": "sparse-emhare/app/Controller/ExamTestTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamTestVenueOccupanciesController",
+    "file": "sparse-emhare/app/Controller/ExamTestVenueOccupanciesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamVenueStartTimesController",
+    "file": "sparse-emhare/app/Controller/ExamVenueStartTimesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamVenueTypesController",
+    "file": "sparse-emhare/app/Controller/ExamVenueTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ExamVenuesController",
+    "file": "sparse-emhare/app/Controller/ExamVenuesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FacultiesController",
+    "file": "sparse-emhare/app/Controller/FacultiesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FacultyBillingTrackersController",
+    "file": "sparse-emhare/app/Controller/FacultyBillingTrackersController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FacultyCategoriesController",
+    "file": "sparse-emhare/app/Controller/FacultyCategoriesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FacultyCourseFeesController",
+    "file": "sparse-emhare/app/Controller/FacultyCourseFeesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FacultyOverallDecisionsController",
+    "file": "sparse-emhare/app/Controller/FacultyOverallDecisionsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "choose_overal_decision",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FacultyRegulationsController",
+    "file": "sparse-emhare/app/Controller/FacultyRegulationsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FacultySubCategoriesController",
+    "file": "sparse-emhare/app/Controller/FacultySubCategoriesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FacultyWeightsController",
+    "file": "sparse-emhare/app/Controller/FacultyWeightsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FeesController",
+    "file": "sparse-emhare/app/Controller/FeesController.php",
+    "actions": [
+      "beforeFilter",
+      "fac_fees_excel",
+      "fac_fees_pdf",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FeesParametersController",
+    "file": "sparse-emhare/app/Controller/FeesParametersController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FinanceRegistrationPeriodsController",
+    "file": "sparse-emhare/app/Controller/FinanceRegistrationPeriodsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "FreedUpRoomsController",
+    "file": "sparse-emhare/app/Controller/FreedUpRoomsController.php",
+    "actions": [
+      "beforeFilter",
+      "remove_student",
+      "search_room",
+      "free_up_hostel",
+      "free_up_room",
+      "search_room_excel",
+      "single_room_excel",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "GeneralLedgersController",
+    "file": "sparse-emhare/app/Controller/GeneralLedgersController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "GlAccountsController",
+    "file": "sparse-emhare/app/Controller/GlAccountsController.php",
+    "actions": []
+  },
+  {
+    "controller": "GlRecordsController",
+    "file": "sparse-emhare/app/Controller/GlRecordsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "total"
+    ]
+  },
+  {
+    "controller": "GlobalRollforwardTypesController",
+    "file": "sparse-emhare/app/Controller/GlobalRollforwardTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "select_rollforward_type",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "GraduantsRegistersController",
+    "file": "sparse-emhare/app/Controller/GraduantsRegistersController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "graduants",
+      "edit_graduants_list_save",
+      "edit_graduants_list"
+    ]
+  },
+  {
+    "controller": "GraduateTracersController",
+    "file": "sparse-emhare/app/Controller/GraduateTracersController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "GraduationFeesController",
+    "file": "sparse-emhare/app/Controller/GraduationFeesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "HallsOfResidencesController",
+    "file": "sparse-emhare/app/Controller/HallsOfResidencesController.php",
+    "actions": [
+      "beforeFilter",
+      "getByLocation",
+      "getByLoc",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "HostelCleaningsController",
+    "file": "sparse-emhare/app/Controller/HostelCleaningsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "HostelDiningHallsController",
+    "file": "sparse-emhare/app/Controller/HostelDiningHallsController.php",
+    "actions": [
+      "beforeFilter",
+      "hostel_to_dh",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "HostelJanitorsController",
+    "file": "sparse-emhare/app/Controller/HostelJanitorsController.php",
+    "actions": [
+      "beforeFilter",
+      "janitors_pdf",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "IncorrectRoomsController",
+    "file": "sparse-emhare/app/Controller/IncorrectRoomsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "IntakeCorrectionsController",
+    "file": "sparse-emhare/app/Controller/IntakeCorrectionsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "InterbankRatesController",
+    "file": "sparse-emhare/app/Controller/InterbankRatesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "InvoiceLineItemsController",
+    "file": "sparse-emhare/app/Controller/InvoiceLineItemsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "individual_billing",
+      "individual_billing_excel",
+      "reg_history_excel",
+      "reg_history",
+      "unbilled_accounts_receivable",
+      "unbilled_accounts_receivable_excel",
+      "accomodation_invoice",
+      "accomodation_invoice_excel",
+      "accomodation_invoice1",
+      "accomodation_invoice_excel1",
+      "latereg_invoice",
+      "latereg_invoice_excel",
+      "late_reg_accounts_receivable",
+      "late_reg_accounts_receivable_excel",
+      "unpaid",
+      "unpaid_excel",
+      "student_billing_summary",
+      "student_billing_summary_excel",
+      "student_billing_summary_faculty",
+      "student_billing_summary_faculty_excel",
+      "accounts_receivable",
+      "accounts_receivable_excel",
+      "accounts_receivable_faculty",
+      "accounts_receivable_excel_faculty",
+      "accounts_rec_by_prog",
+      "accounts_rec_by_prog_excel",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "InvoiceQuotationsController",
+    "file": "sparse-emhare/app/Controller/InvoiceQuotationsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "LateRegistrationDatesController",
+    "file": "sparse-emhare/app/Controller/LateRegistrationDatesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "LevelFeesParametersController",
+    "file": "sparse-emhare/app/Controller/LevelFeesParametersController.php",
+    "actions": [
+      "beforeFilter",
+      "endorse_level_parameters",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "LocationsController",
+    "file": "sparse-emhare/app/Controller/LocationsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "LoginHistoriesController",
+    "file": "sparse-emhare/app/Controller/LoginHistoriesController.php",
+    "actions": [
+      "beforeFilter",
+      "login_audit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "MailerController",
+    "file": "sparse-emhare/app/Controller/MailerController.php",
+    "actions": []
+  },
+  {
+    "controller": "MarkingSchemesController",
+    "file": "sparse-emhare/app/Controller/MarkingSchemesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "MealOptionsController",
+    "file": "sparse-emhare/app/Controller/MealOptionsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "MealTypeTimesController",
+    "file": "sparse-emhare/app/Controller/MealTypeTimesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ModulesController",
+    "file": "sparse-emhare/app/Controller/ModulesController.php",
+    "actions": [
+      "beforeFilter",
+      "flag_timetable",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "MovedAcceptedStudentsController",
+    "file": "sparse-emhare/app/Controller/MovedAcceptedStudentsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "MovedUndecidedApplicantsController",
+    "file": "sparse-emhare/app/Controller/MovedUndecidedApplicantsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "NotInStudDetailsController",
+    "file": "sparse-emhare/app/Controller/NotInStudDetailsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "OfferLettersController",
+    "file": "sparse-emhare/app/Controller/OfferLettersController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "OlevelSubjectsController",
+    "file": "sparse-emhare/app/Controller/OlevelSubjectsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "OnlinePaymentsController",
+    "file": "sparse-emhare/app/Controller/OnlinePaymentsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "start",
+      "back",
+      "iveri",
+      "success",
+      "error",
+      "fail"
+    ]
+  },
+  {
+    "controller": "OverallDecisionsController",
+    "file": "sparse-emhare/app/Controller/OverallDecisionsController.php",
+    "actions": [
+      "beforeFilter",
+      "compute_class",
+      "view_decisions",
+      "add_decisions",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "compute_decisions"
+    ]
+  },
+  {
+    "controller": "OverrideRegistrationDatesController",
+    "file": "sparse-emhare/app/Controller/OverrideRegistrationDatesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "add_update",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PagesController",
+    "file": "sparse-emhare/app/Controller/PagesController.php",
+    "actions": [
+      "display"
+    ]
+  },
+  {
+    "controller": "PasswordManagementsController",
+    "file": "sparse-emhare/app/Controller/PasswordManagementsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PaymentCutoffUnitsController",
+    "file": "sparse-emhare/app/Controller/PaymentCutoffUnitsController.php",
+    "actions": [
+      "beforeFilter",
+      "initDB",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PaymentSuspensesController",
+    "file": "sparse-emhare/app/Controller/PaymentSuspensesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PeriodsController",
+    "file": "sparse-emhare/app/Controller/PeriodsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PointsController",
+    "file": "sparse-emhare/app/Controller/PointsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PreviousStudentsController",
+    "file": "sparse-emhare/app/Controller/PreviousStudentsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "add_post_resume"
+    ]
+  },
+  {
+    "controller": "PrioritiesController",
+    "file": "sparse-emhare/app/Controller/PrioritiesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PriorityByDisabilitiesController",
+    "file": "sparse-emhare/app/Controller/PriorityByDisabilitiesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PriorityByLocationsController",
+    "file": "sparse-emhare/app/Controller/PriorityByLocationsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PriorityByProgrammeLevelsController",
+    "file": "sparse-emhare/app/Controller/PriorityByProgrammeLevelsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PriorityByProgrammesController",
+    "file": "sparse-emhare/app/Controller/PriorityByProgrammesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PriorityByStudentTypesController",
+    "file": "sparse-emhare/app/Controller/PriorityByStudentTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeCapacitiesController",
+    "file": "sparse-emhare/app/Controller/ProgrammeCapacitiesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeChoiceSubjectsController",
+    "file": "sparse-emhare/app/Controller/ProgrammeChoiceSubjectsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeChoicesController",
+    "file": "sparse-emhare/app/Controller/ProgrammeChoicesController.php",
+    "actions": [
+      "beforeFilter",
+      "finish_changing",
+      "change_programme",
+      "applied_programmes",
+      "edit_choice",
+      "edit_mba",
+      "index",
+      "index",
+      "view",
+      "add",
+      "add_education",
+      "add_post",
+      "add_mba",
+      "edit",
+      "choice",
+      "delete",
+      "add_post_resume"
+    ]
+  },
+  {
+    "controller": "ProgrammeCourseLimitsController",
+    "file": "sparse-emhare/app/Controller/ProgrammeCourseLimitsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "search",
+      "course_limits_exceptions_pdf",
+      "limits_exceptions_pdf",
+      "limits_exceptions",
+      "view_cosi_max_carried_excel",
+      "view_prog_cosi_limits_excel",
+      "index",
+      "view",
+      "add_records",
+      "add",
+      "edit",
+      "view_prog_cosi_limits",
+      "view_cosi_max_carried",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeFeesController",
+    "file": "sparse-emhare/app/Controller/ProgrammeFeesController.php",
+    "actions": [
+      "beforeFilter",
+      "index3",
+      "programme_fees_excel",
+      "programme_fees_pdf",
+      "index",
+      "index44",
+      "index2",
+      "add_programme",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeFeesParametersController",
+    "file": "sparse-emhare/app/Controller/ProgrammeFeesParametersController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeHostelsController",
+    "file": "sparse-emhare/app/Controller/ProgrammeHostelsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeOfferLettersController",
+    "file": "sparse-emhare/app/Controller/ProgrammeOfferLettersController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeOverallDecisionsController",
+    "file": "sparse-emhare/app/Controller/ProgrammeOverallDecisionsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "index_pdf",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeRegistrationDatesController",
+    "file": "sparse-emhare/app/Controller/ProgrammeRegistrationDatesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeRequirementsController",
+    "file": "sparse-emhare/app/Controller/ProgrammeRequirementsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeRequirementsSubjectsController",
+    "file": "sparse-emhare/app/Controller/ProgrammeRequirementsSubjectsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeRollforwardTypesController",
+    "file": "sparse-emhare/app/Controller/ProgrammeRollforwardTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeSubjectsController",
+    "file": "sparse-emhare/app/Controller/ProgrammeSubjectsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeSubtypesController",
+    "file": "sparse-emhare/app/Controller/ProgrammeSubtypesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeTypeBillingTrackersController",
+    "file": "sparse-emhare/app/Controller/ProgrammeTypeBillingTrackersController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammeWeightsController",
+    "file": "sparse-emhare/app/Controller/ProgrammeWeightsController.php",
+    "actions": [
+      "beforeFilter",
+      "weight_links",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProgrammesController",
+    "file": "sparse-emhare/app/Controller/ProgrammesController.php",
+    "actions": [
+      "beforeFilter",
+      "findByDept",
+      "yearDropdown",
+      "getByDepartmentCode",
+      "getByDepartment",
+      "getByTheFaculty16",
+      "getByDepartmentCode1",
+      "getByTheFaculty15",
+      "getByTheFaculty14",
+      "getByFaculty12",
+      "getByFaculty11",
+      "getByTheFaculty",
+      "getByTheFaculty13",
+      "programmes_report2",
+      "faculty_programmes_pdf",
+      "faculty_programmes",
+      "faculty_specifics_pdf",
+      "faculty_specifics",
+      "getByFaculty3",
+      "getByFaculty1",
+      "getByFactory2",
+      "getByFactory3",
+      "getBySubtype",
+      "getByFactory4",
+      "getByFaculty",
+      "getByFaculty9",
+      "getByFaculty10",
+      "getByName",
+      "getByFactory",
+      "getByyFactory",
+      "getByFactoryFree",
+      "getByFacullty",
+      "getByFactorz",
+      "getByFactorys",
+      "getByProgz",
+      "prog",
+      "prog2",
+      "getByFakalty",
+      "getByPhakalty",
+      "getByFakalts",
+      "getByDept",
+      "selectByFac",
+      "selectByFac2",
+      "prog_summary",
+      "programmes_report",
+      "programmes_report_pdf",
+      "getByFacu",
+      "getByFact",
+      "getByFac",
+      "getBySar",
+      "getByF",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "active_courses",
+      "course_lists",
+      "course_summary",
+      "summary_faculty"
+    ]
+  },
+  {
+    "controller": "ProgrammesTypesController",
+    "file": "sparse-emhare/app/Controller/ProgrammesTypesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ProspectiveSponsorsController",
+    "file": "sparse-emhare/app/Controller/ProspectiveSponsorsController.18.04.2022.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "mailer",
+      "view",
+      "add",
+      "done",
+      "edit",
+      "delete",
+      "view_all",
+      "viewmba_all"
+    ]
+  },
+  {
+    "controller": "ProspectiveSponsorsController",
+    "file": "sparse-emhare/app/Controller/ProspectiveSponsorsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "mailer",
+      "view",
+      "add",
+      "done",
+      "final",
+      "edit",
+      "delete",
+      "view_all",
+      "delete_file",
+      "view_file",
+      "viewmba_all"
+    ]
+  },
+  {
+    "controller": "PublicHolidaysController",
+    "file": "sparse-emhare/app/Controller/PublicHolidaysController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PublishResultsController",
+    "file": "sparse-emhare/app/Controller/PublishResultsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "publish_students",
+      "publish_all_results",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PublishedStudentOverallDecisionsController",
+    "file": "sparse-emhare/app/Controller/PublishedStudentOverallDecisionsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ReceiptsController",
+    "file": "sparse-emhare/app/Controller/ReceiptsController.php",
+    "actions": [
+      "beforeFilter",
+      "change",
+      "cash_sale",
+      "stud_search",
+      "date_range",
+      "day_end_report",
+      "pdf_day_end_rpt",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RefundDescriptionsController",
+    "file": "sparse-emhare/app/Controller/RefundDescriptionsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RefundJournalTransactionsController",
+    "file": "sparse-emhare/app/Controller/RefundJournalTransactionsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RefundJournalsController",
+    "file": "sparse-emhare/app/Controller/RefundJournalsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RegSemesterIntakesController",
+    "file": "sparse-emhare/app/Controller/RegSemesterIntakesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RegistrationCourseFeesController",
+    "file": "sparse-emhare/app/Controller/RegistrationCourseFeesController.php",
+    "actions": [
+      "beforeFilter",
+      "add_programme_fee",
+      "add_faculty_fee",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RegistrationCutoffDatesController",
+    "file": "sparse-emhare/app/Controller/RegistrationCutoffDatesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RegistrationSemestersController",
+    "file": "sparse-emhare/app/Controller/RegistrationSemestersController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RegistrationTypesController",
+    "file": "sparse-emhare/app/Controller/RegistrationTypesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RegulationTypesController",
+    "file": "sparse-emhare/app/Controller/RegulationTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RemarksController",
+    "file": "sparse-emhare/app/Controller/RemarksController.php",
+    "actions": [
+      "beforeFilter",
+      "students_with_remarks",
+      "students_with_remarks_pdf",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RemovedRoomAllocationsController",
+    "file": "sparse-emhare/app/Controller/RemovedRoomAllocationsController.php",
+    "actions": [
+      "beforeFilter",
+      "evict_student",
+      "remove_student",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RepeatStudentRegistersController",
+    "file": "sparse-emhare/app/Controller/RepeatStudentRegistersController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ResultsClearancesController",
+    "file": "sparse-emhare/app/Controller/ResultsClearancesController.php",
+    "actions": [
+      "beforeFilter",
+      "final_clear",
+      "clear_results",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ReversedAcceptedApplicantsController",
+    "file": "sparse-emhare/app/Controller/ReversedAcceptedApplicantsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "ReversedApplicantSelectionsController",
+    "file": "sparse-emhare/app/Controller/ReversedApplicantSelectionsController.php",
+    "actions": [
+      "beforeFilter",
+      "reverse_selection_complete",
+      "reverse_selection",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "complete_reverse_selection",
+      "reverse_accepted_applicants",
+      "reverse_rejected_applicants",
+      "complete_rejected_selection"
+    ]
+  },
+  {
+    "controller": "RobotsController",
+    "file": "sparse-emhare/app/Controller/RobotsController.php",
+    "actions": []
+  },
+  {
+    "controller": "RollForwardAuditsController",
+    "file": "sparse-emhare/app/Controller/RollForwardAuditsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RollForwardStudentRegistersController",
+    "file": "sparse-emhare/app/Controller/RollForwardStudentRegistersController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RoomAllocationsBeforeCheckoutsController",
+    "file": "sparse-emhare/app/Controller/RoomAllocationsBeforeCheckoutsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RoomAllocationsController",
+    "file": "sparse-emhare/app/Controller/RoomAllocationsController.php",
+    "actions": [
+      "beforeFilter",
+      "blackhole",
+      "index_links",
+      "allocation_type_corridor_list_pdf",
+      "allocation_type_corridor_list",
+      "students_by_allocation_type",
+      "move_abco_students",
+      "acc_group_students",
+      "detailed_applicants_list_excel",
+      "detailed_applicants_list",
+      "reject_unallocated_students",
+      "applicants_by_group_and_gender_pdf",
+      "applicants_by_group_and_gender",
+      "system_allocated_students_corridor_list_excel",
+      "system_allocated_students_corridor_list_pdf",
+      "system_allocated_students_corridor_list",
+      "system_allocated_students_report_pdf",
+      "system_allocated_students_report_excel",
+      "system_allocated_students_report",
+      "accomodation_allocation_process",
+      "select_vacant_room_holding_place",
+      "hostels_matching_gender_holding_place",
+      "move_individual_occupant",
+      "move_to_holding_table",
+      "move_occupants",
+      "previous_check_ins",
+      "student_acc_allocation_dates",
+      "student_allocation_history",
+      "admin_alloc_acc_extend",
+      "select_vacant_room_warden",
+      "hostels_matching_gender_warden",
+      "move_wrong_allocations_warden",
+      "occupants_by_disability",
+      "occupants_by_disability_excel",
+      "occupants_by_country",
+      "occupants_by_country_excel",
+      "view_special_needs_students_pdf",
+      "view_special_needs_students",
+      "hostel_occupants_by_country_pdf",
+      "hostel_occupants_by_country",
+      "hostel_occupants_by_gender_pdf",
+      "occupants_by_level_warden",
+      "occupants_by_gender_warden",
+      "remove_harare",
+      "accomodation_accounts_receivable",
+      "accomodation_accounts_receivable_excel",
+      "check_out_resets",
+      "check_out_reset",
+      "harare_residents",
+      "view_check_in_students_janitor",
+      "view_uncheked_janitor",
+      "view_cheked_janitor",
+      "confirm_allocation",
+      "confirm_payment",
+      "accomodation_allocations_pdf",
+      "select_vacant_room",
+      "hostels_matching_gender",
+      "move_wrong_allocations",
+      "allocations_corridor_list",
+      "accommodation_allocations",
+      "accommodation_allocations_excell",
+      "move_students_from_hostels",
+      "search_by_name",
+      "change_any_floor",
+      "any_swop",
+      "change_rooms",
+      "hostel_occupants_by_gender",
+      "hostel_occupants_by_priority_level",
+      "hostel_occupants",
+      "students_by_disability_status",
+      "search_room",
+      "search_student",
+      "admin_alloc_acc",
+      "apply_acc",
+      "withdraw_application",
+      "disabled_allocations",
+      "alloc_reserved_rooms",
+      "corridor_list_warden",
+      "corridor_list_janitor",
+      "corridor_list_pdf",
+      "corridor_list_excel",
+      "corridor_list_by_floor",
+      "corridor_list_by_floor_pdf",
+      "corridor_list_by_floor_excel",
+      "swop_rooms",
+      "switch_students_warden",
+      "switch_students",
+      "corridor_list",
+      "check_in",
+      "check_out",
+      "check_in_out",
+      "janitor_check_in_out",
+      "warden_check_in_out",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "hostel_dh_allocations"
+    ]
+  },
+  {
+    "controller": "RoomAllocationsHoldingsController",
+    "file": "sparse-emhare/app/Controller/RoomAllocationsHoldingsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RoomFeesController",
+    "file": "sparse-emhare/app/Controller/RoomFeesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RoomOccupanciesController",
+    "file": "sparse-emhare/app/Controller/RoomOccupanciesController.php",
+    "actions": [
+      "beforeFilter",
+      "getBySingle",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RoomTypesController",
+    "file": "sparse-emhare/app/Controller/RoomTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "RoomsController",
+    "file": "sparse-emhare/app/Controller/RoomsController.php",
+    "actions": [
+      "beforeFilter",
+      "change_room_occupancy",
+      "change_room_types",
+      "getByHostel",
+      "over_allocated_pdf",
+      "over_allocated",
+      "vacant_rooms",
+      "room_reserve",
+      "search_reserve",
+      "import_rooms_excel",
+      "view_rooms",
+      "view_rooms_pdf",
+      "index",
+      "view",
+      "add",
+      "reserve_rooms",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SarRepeatAmmendmentsController",
+    "file": "sparse-emhare/app/Controller/SarRepeatAmmendmentsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SchoolsAttendedsController",
+    "file": "sparse-emhare/app/Controller/SchoolsAttendedsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SchoolsController",
+    "file": "sparse-emhare/app/Controller/SchoolsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SemProgrammeFeesAuditsController",
+    "file": "sparse-emhare/app/Controller/SemProgrammeFeesAuditsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SemProgrammeFeesController",
+    "file": "sparse-emhare/app/Controller/SemProgrammeFeesController.php",
+    "actions": [
+      "beforeFilter",
+      "semester_fees_excel",
+      "semester_fees_pdf",
+      "index",
+      "view",
+      "add",
+      "edit_specifics",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SemProgrammeOverallDecisionsController",
+    "file": "sparse-emhare/app/Controller/SemProgrammeOverallDecisionsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SemesterHostelInformationsController",
+    "file": "sparse-emhare/app/Controller/SemesterHostelInformationsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SemestersController",
+    "file": "sparse-emhare/app/Controller/SemestersController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SpecialisationTypesController",
+    "file": "sparse-emhare/app/Controller/SpecialisationTypesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SpecialisationsController",
+    "file": "sparse-emhare/app/Controller/SpecialisationsController.php",
+    "actions": []
+  },
+  {
+    "controller": "SpecialisedProgrammesController",
+    "file": "sparse-emhare/app/Controller/SpecialisedProgrammesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SponsorsController",
+    "file": "sparse-emhare/app/Controller/SponsorsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StaffDetailsController",
+    "file": "sparse-emhare/app/Controller/StaffDetailsController.php",
+    "actions": [
+      "beforeFilter",
+      "getByDepts",
+      "getByDepts1",
+      "index",
+      "view",
+      "cidr_match",
+      "add",
+      "edit",
+      "delete",
+      "staff_search"
+    ]
+  },
+  {
+    "controller": "StatusController",
+    "file": "sparse-emhare/app/Controller/StatusController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StructureProgrammeRequirementsSubjectsController",
+    "file": "sparse-emhare/app/Controller/StructureProgrammeRequirementsSubjectsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentAccountAdjustmentsController",
+    "file": "sparse-emhare/app/Controller/StudentAccountAdjustmentsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentAssignmentsController",
+    "file": "sparse-emhare/app/Controller/StudentAssignmentsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "trim_class",
+      "search",
+      "individual_compute_course_work",
+      "index",
+      "practical_index",
+      "view",
+      "add",
+      "compute_course_work",
+      "upload_inclass_tests",
+      "update_inclass_tests",
+      "inclass_tests",
+      "add_work",
+      "search_to_update_ass",
+      "add_work2",
+      "practical_mark_template_xls",
+      "inclass_test_template_xls",
+      "course_work_template_xls",
+      "upload_course_work",
+      "course_work",
+      "course_work_excel",
+      "course_work_displayed",
+      "course_wek_pdf",
+      "edit",
+      "delete",
+      "minimum_course_work",
+      "course_assessment",
+      "courses_with_marks_excel",
+      "courses_with_marks_pdf",
+      "courses_with_marks",
+      "course_work_hyperlink",
+      "cw_hyperlink_pdf",
+      "best_assessment",
+      "calculate_course_work",
+      "practical_work",
+      "upload_practical_work",
+      "practical_add_work",
+      "compute_practical_mark",
+      "best_practicals",
+      "calculate_practical_marks",
+      "practical_work_displayed",
+      "prac_hyperlink_pdf",
+      "search_to_enter_course_work",
+      "search_to_enter_inclass_test",
+      "search_to_enter_practical_work",
+      "minimum_practical_work"
+    ]
+  },
+  {
+    "controller": "StudentAssignmentsController",
+    "file": "sparse-emhare/app/Controller/StudentAssignmentsController12042021.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "trim_class",
+      "search",
+      "individual_compute_course_work",
+      "index",
+      "practical_index",
+      "view",
+      "add",
+      "compute_course_work",
+      "update_inclass_tests",
+      "inclass_tests",
+      "add_work",
+      "search_to_update_ass",
+      "add_work2",
+      "course_work",
+      "course_work_excel",
+      "course_work_displayed",
+      "course_wek_pdf",
+      "edit",
+      "delete",
+      "minimum_course_work",
+      "course_assessment",
+      "courses_with_marks_excel",
+      "courses_with_marks_pdf",
+      "courses_with_marks",
+      "course_work_hyperlink",
+      "cw_hyperlink_pdf",
+      "best_assessment",
+      "calculate_course_work",
+      "practical_work",
+      "practical_add_work",
+      "compute_practical_mark",
+      "best_practicals",
+      "calculate_practical_marks",
+      "practical_work_displayed",
+      "prac_hyperlink_pdf",
+      "search_to_enter_course_work",
+      "search_to_enter_inclass_test",
+      "search_to_enter_practical_work",
+      "minimum_practical_work"
+    ]
+  },
+  {
+    "controller": "StudentDegreeClassAuditsController",
+    "file": "sparse-emhare/app/Controller/StudentDegreeClassAuditsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentDetailsController",
+    "file": "sparse-emhare/app/Controller/StudentDetailsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "change_individual_programme",
+      "change_student_programme_ind",
+      "change_student_programme_batch",
+      "edit_barcode",
+      "temp_bill_unbilled_students",
+      "student_quotation",
+      "programme_specialisations_upload",
+      "mini_profile",
+      "registration_history",
+      "download_cmas_members_excel",
+      "download_cmas_members",
+      "cmas_membership_upload",
+      "proceed",
+      "proceed2",
+      "id_picture",
+      "records_carry",
+      "remove_pre_commit_carry",
+      "remove_pre_commit_repeat",
+      "repeat_register",
+      "carry_register",
+      "carry_add_more",
+      "repeat_add_more",
+      "records_repeat2",
+      "records_repeat",
+      "records_index_carry",
+      "records_index_repeat",
+      "amend_repeat",
+      "edit_stud_intake",
+      "update_stud_intake",
+      "view_confirm",
+      "confirm_courses",
+      "confirm_courses_update",
+      "ecocash",
+      "amend_all",
+      "get_images",
+      "acc_conduct",
+      "records_register2",
+      "records_add_more2",
+      "records_view_index_amend2",
+      "records_amend2",
+      "roll_forward_ind_final",
+      "roll_forward_ind",
+      "view_all_stud_results_types",
+      "view_winter_sch_registered_courses",
+      "student_program",
+      "reg_dashboard_pdf",
+      "registration_report",
+      "export_library_barcodes",
+      "export_library_barcodes_excel",
+      "graduands_report",
+      "graduands_report_xls",
+      "breakdown_invoice",
+      "breakdown_invoice_pdf",
+      "stud_current_results",
+      "stud_current_results_pdf",
+      "edit_ammend",
+      "ammend_repeat",
+      "support_data",
+      "reg_info",
+      "update_repeat",
+      "enrolment_register_faculty_first",
+      "enrolment_register_faculty_first_xls",
+      "enrolment_register_faculty",
+      "enrolment_register_faculty_per_prog",
+      "enrolment_register_faculty_per_prog_xls",
+      "enrolment_register_faculty_xls",
+      "result_slip_pdf",
+      "choose_accomodation",
+      "postgraduate_report_excel",
+      "postgraduate_report",
+      "undergraduate_report_excel",
+      "undergraduate_report",
+      "diploma_report_excel",
+      "diploma_report",
+      "summary_student_stats_excel",
+      "summary_student_stats",
+      "records_confirmed",
+      "records_view_index_confirm",
+      "records_confirm",
+      "reverse_lateReg",
+      "accepted_students_by_date_pdf",
+      "accepted_students_by_date_xls",
+      "accepted_students_by_date",
+      "bill_lateReg",
+      "register_courses",
+      "courses_students",
+      "student_slip_print",
+      "student_slip",
+      "send_sms",
+      "sms_broadcast",
+      "studinfo2",
+      "suspend_students",
+      "final_suspend",
+      "upload_repeat_students",
+      "view_stud_profile",
+      "view_full_profile",
+      "view_accepted_students",
+      "view_accepted_students_excell",
+      "export_library",
+      "export_library_excel",
+      "search_stud_edit_subjects",
+      "student_res_priority",
+      "generate_barcodes",
+      "add_details",
+      "rez_priority",
+      "faculty_enrolment_register_pdf",
+      "faculty_enrolment_register",
+      "edit_student_search",
+      "edit_stud_details",
+      "view_student",
+      "index2",
+      "invoice_pdf",
+      "result_slip2",
+      "result_slips",
+      "result_slip",
+      "profile_edit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "master_roll_forward",
+      "master_roll_prog",
+      "roll_forward",
+      "semester_roll_forward2",
+      "register",
+      "register2",
+      "studinfo",
+      "generic_quotation",
+      "available_courses",
+      "amend_courses",
+      "deregister",
+      "aadd_more",
+      "addregister2",
+      "addregister1",
+      "addregister3",
+      "register1",
+      "view_approved",
+      "fsg",
+      "finance_statement",
+      "online_invoice",
+      "view_results",
+      "view_results_pdf",
+      "view_results_all",
+      "view_results_all_pdf",
+      "invoice",
+      "rollforward_report_pdf",
+      "rollforward_report",
+      "upload_data",
+      "cosi_amendement",
+      "all_amend_cosi",
+      "approve_amend_courses",
+      "amend_courses_search",
+      "student_approve_cosi_amend",
+      "dean_view_stud_cosi_amend",
+      "dean_view_student_cosi_amend",
+      "academic_reg_view_stud_cosi_amend",
+      "records_view_index_amend",
+      "records_amend",
+      "records_add_more",
+      "records_register",
+      "exams_archive",
+      "stud_hist",
+      "history_disp",
+      "timetable_archive",
+      "view_student_profile_audit",
+      "view_full_profile_audit",
+      "roll_foward_part_one",
+      "roll_foward_part_two_faculty",
+      "roll_foward_part_two_programme",
+      "roll_forward_skip_semester",
+      "master_roll_forward_year",
+      "master_roll_forward_filters",
+      "reverse_roll_forward",
+      "view_rollback_data",
+      "reverse_roll_forward_individual",
+      "master_roll_forward_semester",
+      "master_roll_prog_year",
+      "master_roll_prog_semester",
+      "roll_forward_report",
+      "view_applicants_results",
+      "view_applicants_results_pdf",
+      "dphil_reg_list",
+      "reverse_billing",
+      "reverse_billing_update",
+      "reverse_billing_batch",
+      "reverse_billing_by_programme",
+      "bill_student",
+      "bill_student_update",
+      "bill_student_batch",
+      "change_student_programme_audit",
+      "change_student_programme_audit_pdf",
+      "programme_change_billing_audit",
+      "programme_change_billing_audit_pdf"
+    ]
+  },
+  {
+    "controller": "StudentDetailsController",
+    "file": "sparse-emhare/app/Controller/StudentDetailsController02022024.php",
+    "actions": [
+      "beforeFilter",
+      "beforeFilter",
+      "beforeRender",
+      "change_individual_programme",
+      "change_student_programme_ind",
+      "change_student_programme_batch",
+      "edit_barcode",
+      "temp_bill_unbilled_students",
+      "student_quotation",
+      "programme_specialisations_upload",
+      "mini_profile",
+      "registration_history",
+      "download_cmas_members_excel",
+      "download_cmas_members",
+      "cmas_membership_upload",
+      "proceed",
+      "id_picture",
+      "records_carry",
+      "remove_pre_commit_carry",
+      "remove_pre_commit_repeat",
+      "repeat_register",
+      "carry_register",
+      "carry_add_more",
+      "repeat_add_more",
+      "records_repeat2",
+      "records_repeat",
+      "records_index_carry",
+      "records_index_repeat",
+      "amend_repeat",
+      "edit_stud_intake",
+      "update_stud_intake",
+      "view_confirm",
+      "confirm_courses",
+      "confirm_courses_update",
+      "ecocash",
+      "amend_all",
+      "get_images",
+      "acc_conduct",
+      "records_register2",
+      "records_add_more2",
+      "records_view_index_amend2",
+      "records_amend2",
+      "roll_forward_ind_final",
+      "roll_forward_ind",
+      "view_all_stud_results_types",
+      "view_winter_sch_registered_courses",
+      "student_program",
+      "reg_dashboard_pdf",
+      "registration_report",
+      "export_library_barcodes",
+      "export_library_barcodes_excel",
+      "graduands_report",
+      "graduands_report_xls",
+      "breakdown_invoice",
+      "breakdown_invoice_pdf",
+      "stud_current_results",
+      "stud_current_results_pdf",
+      "edit_ammend",
+      "ammend_repeat",
+      "support_data",
+      "reg_info",
+      "update_repeat",
+      "enrolment_register_faculty_first",
+      "enrolment_register_faculty_first_xls",
+      "enrolment_register_faculty",
+      "enrolment_register_faculty_per_prog",
+      "enrolment_register_faculty_per_prog_xls",
+      "enrolment_register_faculty_xls",
+      "result_slip_pdf",
+      "choose_accomodation",
+      "postgraduate_report_excel",
+      "postgraduate_report",
+      "undergraduate_report_excel",
+      "undergraduate_report",
+      "diploma_report_excel",
+      "diploma_report",
+      "summary_student_stats_excel",
+      "summary_student_stats",
+      "records_confirmed",
+      "records_view_index_confirm",
+      "records_confirm",
+      "reverse_lateReg",
+      "accepted_students_by_date_pdf",
+      "accepted_students_by_date_xls",
+      "accepted_students_by_date",
+      "bill_lateReg",
+      "register_courses",
+      "courses_students",
+      "student_slip_print",
+      "student_slip",
+      "send_sms",
+      "sms_broadcast",
+      "studinfo2",
+      "suspend_students",
+      "final_suspend",
+      "upload_repeat_students",
+      "view_stud_profile",
+      "view_full_profile",
+      "view_accepted_students",
+      "view_accepted_students_excell",
+      "export_library",
+      "export_library_excel",
+      "search_stud_edit_subjects",
+      "student_res_priority",
+      "generate_barcodes",
+      "add_details",
+      "rez_priority",
+      "faculty_enrolment_register_pdf",
+      "faculty_enrolment_register",
+      "edit_student_search",
+      "edit_stud_details",
+      "view_student",
+      "index2",
+      "invoice_pdf",
+      "result_slip2",
+      "result_slip",
+      "profile_edit",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "master_roll_forward",
+      "master_roll_prog",
+      "roll_forward",
+      "semester_roll_forward2",
+      "register",
+      "studinfo",
+      "generic_quotation",
+      "available_courses",
+      "amend_courses",
+      "deregister",
+      "add_more",
+      "addregister1",
+      "register1",
+      "view_approved",
+      "finance_statement",
+      "online_invoice",
+      "view_results",
+      "view_results_pdf",
+      "view_results_all",
+      "view_results_all_pdf",
+      "invoice",
+      "rollforward_report_pdf",
+      "rollforward_report",
+      "upload_data",
+      "cosi_amendement",
+      "all_amend_cosi",
+      "approve_amend_courses",
+      "amend_courses_search",
+      "student_approve_cosi_amend",
+      "dean_view_stud_cosi_amend",
+      "dean_view_student_cosi_amend",
+      "academic_reg_view_stud_cosi_amend",
+      "records_view_index_amend",
+      "records_amend",
+      "records_add_more",
+      "records_register",
+      "exams_archive",
+      "stud_hist",
+      "history_disp",
+      "timetable_archive",
+      "view_student_profile_audit",
+      "view_full_profile_audit",
+      "roll_foward_part_one",
+      "roll_foward_part_two_faculty",
+      "roll_foward_part_two_programme",
+      "roll_forward_skip_semester",
+      "master_roll_forward_year",
+      "master_roll_forward_filters",
+      "reverse_roll_forward",
+      "view_rollback_data",
+      "reverse_roll_forward_individual",
+      "master_roll_forward_semester",
+      "master_roll_prog_year",
+      "master_roll_prog_semester",
+      "roll_forward_report",
+      "view_applicants_results",
+      "view_applicants_results_pdf",
+      "dphil_reg_list",
+      "reverse_billing",
+      "reverse_billing_update",
+      "reverse_billing_batch",
+      "reverse_billing_by_programme",
+      "bill_student",
+      "bill_student_update",
+      "bill_student_batch",
+      "change_student_programme_audit",
+      "change_student_programme_audit_pdf",
+      "programme_change_billing_audit",
+      "programme_change_billing_audit_pdf"
+    ]
+  },
+  {
+    "controller": "StudentDetailsHistoriesController",
+    "file": "sparse-emhare/app/Controller/StudentDetailsHistoriesController.php",
+    "actions": [
+      "beforeFilter",
+      "search",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentDietsController",
+    "file": "sparse-emhare/app/Controller/StudentDietsController.php",
+    "actions": [
+      "beforeFilter",
+      "meal_options_report",
+      "meal_sheet",
+      "meal_sheet_excel",
+      "meal_sheet_pdf",
+      "search_student",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentDiningHallsController",
+    "file": "sparse-emhare/app/Controller/StudentDiningHallsController.php",
+    "actions": [
+      "beforeFilter",
+      "remove_students_not_in_rez",
+      "unblock_meal",
+      "allocate_student_to_dh",
+      "block_meal",
+      "block_unblock_single_meal",
+      "dining_hall_totals",
+      "change_dh",
+      "meal_attendances",
+      "check_student_dh",
+      "meal_ticket",
+      "dh_entry",
+      "id_picture",
+      "id_picture",
+      "dh_entry",
+      "import_students",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentDissertationsController",
+    "file": "sparse-emhare/app/Controller/StudentDissertationsController.php",
+    "actions": [
+      "beforeFilter",
+      "lecturer_progress",
+      "lecturer_progress_pdf",
+      "my_dissertations",
+      "my_dissertations_pdf",
+      "diss_progress",
+      "diss_progress_pdf",
+      "view_dissertations",
+      "view_dissertations_pdf",
+      "search_supervisor3",
+      "search_supervisor2",
+      "search_supervisor",
+      "add_stud_dissertation",
+      "student_dissertation",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentExamHistoriesController",
+    "file": "sparse-emhare/app/Controller/StudentExamHistoriesController.bk.php",
+    "actions": [
+      "beforeFilter",
+      "beforeFilter",
+      "edit_grad_register",
+      "edit_date",
+      "add_dec",
+      "edit_dec",
+      "types_transcript_pdf",
+      "types_transcript",
+      "single_transcript_pdf",
+      "single_transcript",
+      "single_transcript_old",
+      "transcript_stud_full_profile",
+      "transcript_single_pdf",
+      "batch_download_pdf",
+      "batch_download_print",
+      "batch_download",
+      "group_by_year",
+      "group_by_semester",
+      "supplementary_course",
+      "supplementary_course",
+      "register_supplementary_course",
+      "register_supplementary_course",
+      "first_attempt_course",
+      "register_first_attempt_course",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "graduants_list",
+      "certificate",
+      "academic_transcript",
+      "final_individual_results",
+      "edit_individual_final_mark",
+      "edit_final_update_marks",
+      "results_publications_list",
+      "delete_student_results2",
+      "delete_student_results",
+      "search_student_results",
+      "moderate_modification"
+    ]
+  },
+  {
+    "controller": "StudentExamHistoriesController",
+    "file": "sparse-emhare/app/Controller/StudentExamHistoriesController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeFilter",
+      "edit_grad_register",
+      "edit_date",
+      "add_dec",
+      "edit_dec",
+      "types_transcript_pdf",
+      "types_transcript",
+      "single_transcript_pdf",
+      "single_transcript_pdf_old",
+      "single_transcript",
+      "single_transcript_old",
+      "transcript_stud_full_profile",
+      "transcript_single_pdf",
+      "batch_download_pdf",
+      "batch_download_print",
+      "batch_download",
+      "group_by_year",
+      "group_by_semester",
+      "supplementary_course",
+      "supplementary_course",
+      "register_supplementary_course",
+      "register_supplementary_course",
+      "first_attempt_course",
+      "register_first_attempt_course",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "graduants_list",
+      "certificate",
+      "academic_transcript",
+      "final_individual_results",
+      "edit_individual_final_mark",
+      "edit_final_update_marks",
+      "results_publications_list",
+      "delete_student_results2",
+      "delete_student_results",
+      "search_student_results",
+      "moderate_modification"
+    ]
+  },
+  {
+    "controller": "StudentExamResultsController",
+    "file": "sparse-emhare/app/Controller/StudentExamResultsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "edit_individual_arch_decision",
+      "edit_individual_arch_degree",
+      "search_to_edit_arch_decision",
+      "published_vs_publishable_results_per_level_excel",
+      "published_vs_publishable_results_per_level",
+      "published_vs_publishable_results_pdf",
+      "published_vs_publishable_results",
+      "trim_zeros_from_sessional_by_course",
+      "trim_zeros_from_sessional_by_reg",
+      "trim_zeros_links",
+      "trim_zeros_from_sessional",
+      "update_course_weights",
+      "reg_number_publish_block",
+      "individual_publish_block",
+      "publish_individual_results_block",
+      "publish_per_level_block",
+      "publish_results_per_course_block",
+      "publish_specific_block",
+      "publish_results_specific_progs_block",
+      "publish_all_block",
+      "publish_all_results_block",
+      "endorse_by_ac_block",
+      "block_results_publication_links",
+      "update_edited_decision",
+      "edit_decision",
+      "search_student_to_edit_decision",
+      "archive_results",
+      "endorse_per_course",
+      "publish_results_per_course",
+      "delete_current_results",
+      "delete_results_by_course_code",
+      "update_selected_published_data",
+      "edit_published_data",
+      "edit_published_results",
+      "edit_results_links",
+      "view_full_profile_exams",
+      "update_selected_data_exams",
+      "edit_selected_data_exams",
+      "exams_edit_results_attributes",
+      "update_selected_data",
+      "edit_selected_data",
+      "search_student_to_edit",
+      "publish_results_links",
+      "endorse_index",
+      "endorse_by_faculty_board_cluster",
+      "exam_capturing_progress_per_dept_pdf",
+      "exam_capturing_progress_per_dept_excel",
+      "exam_capturing_progress_per_faculty_excel",
+      "exam_capturing_progress_per_faculty_pdf",
+      "exam_capturing_progress_per_dept",
+      "exam_capturing_progress_per_course_excel",
+      "exam_capturing_progress_per_course_pdf",
+      "exam_capturing_progress_per_course",
+      "exam_capturing_progress_per_faculty",
+      "programmes_with_current_results",
+      "change_student_registered_year",
+      "search_student",
+      "search_enhance_course",
+      "update_enhance_course",
+      "update_rev_enhance_course",
+      "endorse_programme_cluster",
+      "endorse_programme",
+      "endorse_code",
+      "endorse_options",
+      "remove_stud_class_lists",
+      "progs_pending",
+      "exams_endorsement",
+      "faculty_endorsement",
+      "add_stud_progs2",
+      "add_stud_progs",
+      "search_stud",
+      "edit_overal_marks",
+      "search_overal_marks",
+      "view_current_results",
+      "endorse_by_departmental_board_single",
+      "students_results_range_sar_gsm",
+      "students_results_range_sar_gsm_pdf",
+      "billed_student_results",
+      "nullfy_stud_results",
+      "update_nullfy_result",
+      "chairman_exam_marks",
+      "save_chairman_exam_marks",
+      "save_chairman_exam_marks",
+      "stud_results_range_pdf",
+      "stud_results_range",
+      "stud_results_range_per_stud",
+      "view_supresed_profiles",
+      "remove_stud_sessional",
+      "search_remove_stud_sessional",
+      "add_stud_sessional",
+      "search_add_stud_sessional",
+      "edit_individual_degree",
+      "update_winter_xul_exam_mark",
+      "winter_xul_exam_mark",
+      "group_by_year1",
+      "group_by_semester1",
+      "results_publications_list_file_pdf",
+      "results_publications_list_file",
+      "choose_unsupress",
+      "unsuppress_stud_results",
+      "unupdate_stud_suppressed",
+      "unsuppress_stud_results1",
+      "unupdate_stud_suppressed1",
+      "suppress_stud_results",
+      "update_stud_suppressed",
+      "chs_report_pdf",
+      "chs_report",
+      "chs_report_excel",
+      "edit_individual_remarks",
+      "edit_individual_exam_remark",
+      "edit_individual_update_remarks",
+      "supplementary_exam_results",
+      "supplementary_exam_results_pdf",
+      "supplementary_exam_result_export_xls",
+      "edit_individual_results_sup",
+      "edit_individual_exam_mark_sup",
+      "edit_individual_update_marks_sup",
+      "non_firstresults_sar",
+      "search_individual_decision",
+      "edit_individual_decision",
+      "non_firstresults_excel_sar",
+      "final_individual_results",
+      "edit_individual_final_mark",
+      "edit_final_update_marks",
+      "allresults_prog",
+      "allresults_prog_excel",
+      "non_firstresults",
+      "non_firstresults_excel",
+      "results_summary_sheet",
+      "results_summary_sheet_pdf",
+      "border_marks",
+      "mark_adjustments",
+      "mark_adjustments_final",
+      "results_publications_list",
+      "results_publications_list_pdf",
+      "results_publications_list_reprint",
+      "results_publications_list_reprint_pdf",
+      "group_by_year_mod",
+      "group_by_semester_mod",
+      "group_by_year",
+      "group_by_semester",
+      "my_group_by_year",
+      "my_group_by_semester",
+      "students_results_range",
+      "students_results_range_pdf",
+      "array_mode",
+      "exam_mark_stats",
+      "exam_mark_stats_excel",
+      "exam_results_pdf",
+      "exam_result_export_xls",
+      "supp_exam_result_export_xls",
+      "faculty_exam_board",
+      "progress_on_exam_mark_entry",
+      "progress_on_exam_mark_entry_pdf",
+      "progress_on_exam_mark_entry_excel",
+      "faculty_progress_on_exam_mark_entry",
+      "faculty_progress_on_exam_mark_entry_excel",
+      "faculty_progress_on_exam_mark_entry_pdf",
+      "department_progress_on_exam_mark_entry",
+      "department_progress_on_exam_mark_entry_pdf",
+      "department_progress_on_exam_mark_entry_excel",
+      "stud_marks_faculty_exam_borad",
+      "academic_reg_exam_board",
+      "stud_marks_academic_reg_exam_borad",
+      "prev_exam_profile",
+      "dept_exam_board",
+      "allresults",
+      "allresults_pdf",
+      "allresults_xls",
+      "index",
+      "sar_exams_index",
+      "view",
+      "add",
+      "exam_results",
+      "supp_exam_results",
+      "update_marks",
+      "upload_exam_marks",
+      "cidr_match",
+      "exam_mark_template_xls",
+      "exam_mark",
+      "edit",
+      "delete",
+      "departmental_marks_schedule",
+      "departmental_marks_schedule_pdf",
+      "examboard_marks",
+      "sar_exam_marks",
+      "sar_update_marks",
+      "individual_exam_mark",
+      "individual_update_marks",
+      "reg_number_publish",
+      "individual_publish",
+      "publish_individual_results",
+      "publish_per_level",
+      "publish_specific",
+      "publish_results_specific_progs",
+      "publish_all",
+      "publish_all_results",
+      "endorse_by_ac",
+      "fac_exams_index",
+      "fac_exam_marks",
+      "fac_update_marks",
+      "endorse_by_faculty_board",
+      "dept_exams_index",
+      "dept_exam_marks",
+      "dept_update_marks",
+      "endorse_by_departmental_board",
+      "ac_set_to_publish",
+      "set_publish_all_results",
+      "set_publish_results_specific_progs",
+      "set_publish_specific",
+      "set_publish_all",
+      "ac_set_to_publish_year",
+      "sar_edit_individual_exam_mark",
+      "sar_edit_individual_update_marks",
+      "sar_edit_individual_results",
+      "edit_individual_exam_mark",
+      "edit_individual_update_marks",
+      "edit_individual_results",
+      "reverse_endorse_by_departmental_board",
+      "reverse_endorse_by_faculty_board",
+      "faculty_progress_on_endorsement",
+      "faculty_progress_on_endorsement_pdf",
+      "sup_students_results_range",
+      "sup_students_results_range_pdf",
+      "update_first_attempt_marks",
+      "search_student_first_attempt",
+      "first_attempt_exam_mark",
+      "first_attempt_update_marks",
+      "final_publish",
+      "individual_publication_list",
+      "individual_publication_list_pdf",
+      "students_results_range_chairperson",
+      "students_results_range_chairperson_pdf",
+      "set_to_publish_individual_results",
+      "set_to_individual_publish",
+      "set_to_reg_number_publish",
+      "search_to_enter_exam_mark",
+      "individual_publish_dept",
+      "publish_individual_results_dept",
+      "individual_publish_faculty",
+      "publish_individual_results_faculty",
+      "reg_number_publish_faculty",
+      "reg_number_publish_dept",
+      "exams_endorsement_detailed",
+      "temp_push_decisions",
+      "temp_populate_student_programme"
+    ]
+  },
+  {
+    "controller": "StudentExamResultsController",
+    "file": "sparse-emhare/app/Controller/StudentExamResultsController12042021.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "publish_results_links",
+      "endorse_index",
+      "endorse_by_faculty_board_cluster",
+      "exam_capturing_progress_per_dept_pdf",
+      "exam_capturing_progress_per_dept_excel",
+      "exam_capturing_progress_per_faculty_excel",
+      "exam_capturing_progress_per_faculty_pdf",
+      "exam_capturing_progress_per_dept",
+      "exam_capturing_progress_per_course_excel",
+      "exam_capturing_progress_per_course_pdf",
+      "exam_capturing_progress_per_course",
+      "exam_capturing_progress_per_faculty",
+      "programmes_with_current_results",
+      "change_student_registered_year",
+      "search_student",
+      "search_enhance_course",
+      "update_enhance_course",
+      "update_rev_enhance_course",
+      "endorse_programme_cluster",
+      "endorse_programme",
+      "endorse_code",
+      "endorse_options",
+      "remove_stud_class_lists",
+      "progs_pending",
+      "exams_endorsement",
+      "faculty_endorsement",
+      "add_stud_progs2",
+      "add_stud_progs",
+      "search_stud",
+      "edit_overal_marks",
+      "search_overal_marks",
+      "view_current_results",
+      "endorse_by_departmental_board_single",
+      "students_results_range_sar_gsm",
+      "students_results_range_sar_gsm_pdf",
+      "billed_student_results",
+      "nullfy_stud_results",
+      "update_nullfy_result",
+      "chairman_exam_marks",
+      "save_chairman_exam_marks",
+      "stud_results_range_pdf",
+      "stud_results_range",
+      "stud_results_range_per_stud",
+      "view_supresed_profiles",
+      "remove_stud_sessional",
+      "search_remove_stud_sessional",
+      "add_stud_sessional",
+      "search_add_stud_sessional",
+      "edit_individual_degree",
+      "update_winter_xul_exam_mark",
+      "winter_xul_exam_mark",
+      "group_by_year1",
+      "group_by_semester1",
+      "results_publications_list_file_pdf",
+      "results_publications_list_file",
+      "choose_unsupress",
+      "unsuppress_stud_results",
+      "unupdate_stud_suppressed",
+      "unsuppress_stud_results1",
+      "unupdate_stud_suppressed1",
+      "suppress_stud_results",
+      "update_stud_suppressed",
+      "chs_report_pdf",
+      "chs_report",
+      "chs_report_excel",
+      "edit_individual_remarks",
+      "edit_individual_exam_remark",
+      "edit_individual_update_remarks",
+      "supplementary_exam_results",
+      "supplementary_exam_results_pdf",
+      "supplementary_exam_result_export_xls",
+      "edit_individual_results_sup",
+      "edit_individual_exam_mark_sup",
+      "edit_individual_update_marks_sup",
+      "non_firstresults_sar",
+      "search_individual_decision",
+      "edit_individual_decision",
+      "non_firstresults_excel_sar",
+      "final_individual_results",
+      "edit_individual_final_mark",
+      "edit_final_update_marks",
+      "allresults_prog",
+      "allresults_prog_excel",
+      "non_firstresults",
+      "non_firstresults_excel",
+      "results_summary_sheet",
+      "results_summary_sheet_pdf",
+      "border_marks",
+      "mark_adjustments",
+      "mark_adjustments_final",
+      "results_publications_list",
+      "results_publications_list_pdf",
+      "results_publications_list_reprint",
+      "results_publications_list_reprint_pdf",
+      "group_by_year_mod",
+      "group_by_semester_mod",
+      "group_by_year",
+      "group_by_semester",
+      "my_group_by_year",
+      "my_group_by_semester",
+      "students_results_range",
+      "students_results_range_pdf",
+      "array_mode",
+      "exam_mark_stats",
+      "exam_mark_stats_excel",
+      "exam_results_pdf",
+      "exam_result_export_xls",
+      "supp_exam_result_export_xls",
+      "faculty_exam_board",
+      "progress_on_exam_mark_entry",
+      "progress_on_exam_mark_entry_pdf",
+      "progress_on_exam_mark_entry_excel",
+      "faculty_progress_on_exam_mark_entry",
+      "faculty_progress_on_exam_mark_entry_excel",
+      "faculty_progress_on_exam_mark_entry_pdf",
+      "department_progress_on_exam_mark_entry",
+      "department_progress_on_exam_mark_entry_pdf",
+      "department_progress_on_exam_mark_entry_excel",
+      "stud_marks_faculty_exam_borad",
+      "academic_reg_exam_board",
+      "stud_marks_academic_reg_exam_borad",
+      "prev_exam_profile",
+      "dept_exam_board",
+      "allresults",
+      "allresults_pdf",
+      "allresults_xls",
+      "index",
+      "sar_exams_index",
+      "view",
+      "add",
+      "exam_results",
+      "supp_exam_results",
+      "update_marks",
+      "cidr_match",
+      "exam_mark",
+      "edit",
+      "delete",
+      "departmental_marks_schedule",
+      "departmental_marks_schedule_pdf",
+      "examboard_marks",
+      "sar_exam_marks",
+      "sar_update_marks",
+      "individual_exam_mark",
+      "individual_update_marks",
+      "reg_number_publish",
+      "individual_publish",
+      "publish_individual_results",
+      "publish_per_level",
+      "publish_specific",
+      "publish_results_specific_progs",
+      "publish_all",
+      "publish_all_results",
+      "endorse_by_ac",
+      "fac_exams_index",
+      "fac_exam_marks",
+      "fac_update_marks",
+      "endorse_by_faculty_board",
+      "dept_exams_index",
+      "dept_exam_marks",
+      "dept_update_marks",
+      "endorse_by_departmental_board",
+      "ac_set_to_publish",
+      "set_publish_all_results",
+      "set_publish_results_specific_progs",
+      "set_publish_specific",
+      "set_publish_all",
+      "ac_set_to_publish_year",
+      "sar_edit_individual_exam_mark",
+      "sar_edit_individual_update_marks",
+      "sar_edit_individual_results",
+      "edit_individual_exam_mark",
+      "edit_individual_update_marks",
+      "edit_individual_results",
+      "reverse_endorse_by_departmental_board",
+      "reverse_endorse_by_faculty_board",
+      "faculty_progress_on_endorsement",
+      "faculty_progress_on_endorsement_pdf",
+      "sup_students_results_range",
+      "sup_students_results_range_pdf",
+      "update_first_attempt_marks",
+      "search_student_first_attempt",
+      "first_attempt_exam_mark",
+      "first_attempt_update_marks",
+      "final_publish",
+      "individual_publication_list",
+      "individual_publication_list_pdf",
+      "students_results_range_chairperson",
+      "students_results_range_chairperson_pdf",
+      "set_to_publish_individual_results",
+      "set_to_individual_publish",
+      "set_to_reg_number_publish",
+      "search_to_enter_exam_mark",
+      "individual_publish_dept",
+      "publish_individual_results_dept",
+      "individual_publish_faculty",
+      "publish_individual_results_faculty",
+      "reg_number_publish_faculty",
+      "reg_number_publish_dept",
+      "exams_endorsement_detailed"
+    ]
+  },
+  {
+    "controller": "StudentExtraCoursesController",
+    "file": "sparse-emhare/app/Controller/StudentExtraCoursesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentIdCardsController",
+    "file": "sparse-emhare/app/Controller/StudentIdCardsController.php",
+    "actions": [
+      "beforeFilter",
+      "idcard_summary",
+      "printed_cards",
+      "printed_cards_pdf",
+      "cards_for_unregistered_students",
+      "cards_for_unregistered_students_pdf",
+      "students_with_reprints",
+      "students_with_reprints_pdf",
+      "createimg",
+      "index",
+      "create_id",
+      "view",
+      "snap",
+      "add",
+      "edit",
+      "delete",
+      "photo_upload",
+      "stud_search"
+    ]
+  },
+  {
+    "controller": "StudentInvoicesController",
+    "file": "sparse-emhare/app/Controller/StudentInvoicesController.php",
+    "actions": [
+      "beforeFilter",
+      "student_search",
+      "student_statements",
+      "ssz",
+      "pdf_summary_invoice",
+      "fsg",
+      "finance_statement",
+      "finance_statement_copy",
+      "invoice_students",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "summary_invoice",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentNoticesController",
+    "file": "sparse-emhare/app/Controller/StudentNoticesController.php",
+    "actions": [
+      "beforeFilter",
+      "download",
+      "view_more",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentOverallDecisionHistoriesController",
+    "file": "sparse-emhare/app/Controller/StudentOverallDecisionHistoriesController.php",
+    "actions": [
+      "beforeFilter",
+      "search_decision",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentOverallDecisionsController",
+    "file": "sparse-emhare/app/Controller/StudentOverallDecisionsController.php",
+    "actions": [
+      "beforeFilter",
+      "align_decision_to_student_data",
+      "search_individual_decision",
+      "compute_individual_class",
+      "individual_class",
+      "compute_individual_overall_decisions",
+      "compute_individual_decision",
+      "compute_stud_overall_decisions",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentPaymentsController",
+    "file": "sparse-emhare/app/Controller/StudentPaymentsController.php",
+    "actions": [
+      "beforeFilter",
+      "ecocash_payments",
+      "webservicetest",
+      "upload_ftp_file",
+      "reverse_entry",
+      "post_batch",
+      "ftp_report",
+      "detailed_bank_report",
+      "bank_payment_report",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentProgrammesController",
+    "file": "sparse-emhare/app/Controller/StudentProgrammesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentReceiptsController",
+    "file": "sparse-emhare/app/Controller/StudentReceiptsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentRegisterHistoriesController",
+    "file": "sparse-emhare/app/Controller/StudentRegisterHistoriesController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "search_student",
+      "report_chairperson",
+      "delete",
+      "delete_history",
+      "edit_history"
+    ]
+  },
+  {
+    "controller": "StudentRegisterRepeatCoursesController",
+    "file": "sparse-emhare/app/Controller/StudentRegisterRepeatCoursesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "PHPExcel_Cell_MyValueBinder",
+    "file": "sparse-emhare/app/Controller/StudentRegistersController.php",
+    "actions": [
+      "bindValue",
+      "beforeFilter",
+      "beforeFilter",
+      "beforeRender",
+      "faculty_registered_students",
+      "studs_not_take_offer",
+      "studs_not_take_offer_xls",
+      "registered_summary_audit",
+      "registered_summary_audit_pdf",
+      "list_progr_reg_students_excel",
+      "list_progr_reg_students",
+      "vcregsummary_excel",
+      "reg_studs_without_rqd_fees",
+      "registered_cos_diff",
+      "registered_cos_diff_grp",
+      "search_cosi_timtbl",
+      "results_status",
+      "summary_intake",
+      "summary_intake_pdf",
+      "dereg_stud_course",
+      "dereg_stud_course_update",
+      "move_studs_course_update",
+      "move_studs_course",
+      "class_lists_exams_pdf",
+      "class_lists_exams_xls",
+      "class_lists_exams",
+      "search_stud_timetable",
+      "export_all",
+      "register_students_faculty_all",
+      "view__prev_selected_courses",
+      "registered_students_by_prog_type_pdf",
+      "registered_students_by_prog_type_excel",
+      "registered_students_by_prog_type",
+      "registered_school",
+      "registered_school_excel",
+      "totals_per_faculty",
+      "totals_per_faculty_pdf",
+      "invoice_other",
+      "invoice_final",
+      "superuser_approve",
+      "export_course",
+      "register_students_search_by_course",
+      "export_medicine",
+      "export_medicine1",
+      "register_students_faculty_medicine",
+      "course_approval_list_faculty_pdf",
+      "course_approval_list_faculty",
+      "approval_statistics_pdf",
+      "approval_statistics_report",
+      "registered_approved",
+      "registered_approved_excel",
+      "register_students_faculty_date",
+      "export_csv_by_date",
+      "register_students_faculty",
+      "register_students_faculty_totals",
+      "register_students_faculty_totals_pdf",
+      "export_csv",
+      "register_students_faculty_excel",
+      "register_students_report",
+      "register_students_report_excel",
+      "view_instructors_cosi_reqmnts_statistics",
+      "view_instructors_cosi_reqmnts_statistics_pdf",
+      "view_instructors_statistics",
+      "view_instructors_statistics_pdf",
+      "cosi_amend",
+      "amend_cosis",
+      "view_reg_students",
+      "view_reg_students_excell",
+      "dates_month",
+      "lecturer_help",
+      "lecturer_manual",
+      "lecturer_manual2",
+      "lecturer_video_tutorial",
+      "chairperson_manual",
+      "chairperson_video_tutorial",
+      "sar_manual",
+      "sar_manual2",
+      "reg_trend",
+      "generateGraph",
+      "reg_dashboard_late_reg",
+      "accepted_registration",
+      "accepted_registration_excel",
+      "accepted_registration_pdf",
+      "approve_part_ones",
+      "paid_faculty_totals",
+      "reg_by_prog_type",
+      "paid_class_lists",
+      "reg_by_prog_type_pdf",
+      "vcregsummary",
+      "registered_summary",
+      "reg_dashboard_prog_type",
+      "reg_dashboard",
+      "reg_dashboard_early",
+      "reg_dashboard_pdf",
+      "reg_dashboard_sponsor_pdf",
+      "reg_dashboard_prog_type_pdf",
+      "reg_faculty_totals",
+      "reg_faculty_totals_pdf",
+      "index_reports",
+      "stud_regsummary",
+      "stud_regsummary_pdf",
+      "regsummary_diff",
+      "selected_courses",
+      "total_faculty_records",
+      "report_faculty_records",
+      "index_records",
+      "class_lists_records",
+      "summary_dept_reg",
+      "index_pdf",
+      "cosi_stats",
+      "index",
+      "index_sar",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete",
+      "delete_repeat",
+      "delete_carry",
+      "department_approve_course",
+      "student_approved",
+      "registered_by_programme",
+      "search_to_approve",
+      "search_to_approve_records",
+      "pre_register_students",
+      "register_students",
+      "register_by_programme",
+      "approve_by_year_of_dept",
+      "pdf_denied_list",
+      "denied_list",
+      "sar_denial_reasons",
+      "denial_reasons",
+      "student_courses",
+      "faculty_deny_course",
+      "report_faculty",
+      "department_deny_course",
+      "chairperson_search",
+      "report_chairperson",
+      "report_dean",
+      "report_secretary",
+      "admin_records",
+      "summary_registration",
+      "pdf_report",
+      "pdf_summary_dept_reg",
+      "class_lists",
+      "total_faculty",
+      "class_lists_xls",
+      "approve_courses",
+      "regsummary_pdf",
+      "regsummary",
+      "regsummary2",
+      "sar_approve",
+      "sar_courses",
+      "approve_by_dept",
+      "sar_deny_course",
+      "sar_approve_course",
+      "suspend",
+      "suspended_reason",
+      "admin_suspend_student",
+      "class_lists_lecturer",
+      "class_lists_lecturer_xls",
+      "stud_cosi_lists2",
+      "stud_cosi_lists3",
+      "stud_cosi_lists",
+      "stud_cosi_lists_excel2",
+      "stud_cosi_lists_excel",
+      "courses_list_faculty",
+      "courses_list_faculty_pdf",
+      "courses_list",
+      "courses_list_pdf_report",
+      "index_cosi_amend",
+      "chair_stud_cosi_lists",
+      "chair_stud_cosi_lists_excel",
+      "exam_attendance_slip",
+      "exam_attendance_slip_pdf",
+      "hameno",
+      "course_confirmation",
+      "course_confirmation_pdf",
+      "move_studs_course_two",
+      "move_studs_course_two_update",
+      "exams_class_lists_xls"
+    ]
+  },
+  {
+    "controller": "StudentRegistrationHistoriesController",
+    "file": "sparse-emhare/app/Controller/StudentRegistrationHistoriesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentRegistrationsController",
+    "file": "sparse-emhare/app/Controller/StudentRegistrationsController.php",
+    "actions": [
+      "beforeFilter",
+      "automatically_registered_students_excel",
+      "automatically_registered_students",
+      "accomodation_students_excel",
+      "accomodation_students",
+      "registered_students_report_excel",
+      "registered_students_report",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentSubjectsController",
+    "file": "sparse-emhare/app/Controller/StudentSubjectsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "student_subjects",
+      "student_subjects_excel",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentTypesController",
+    "file": "sparse-emhare/app/Controller/StudentTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentUniversityAwardsController",
+    "file": "sparse-emhare/app/Controller/StudentUniversityAwardsController.php",
+    "actions": [
+      "beforeFilter",
+      "list_awards_by_year_pdf",
+      "list_awards_by_year",
+      "index",
+      "search_student",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentWeightsController",
+    "file": "sparse-emhare/app/Controller/StudentWeightsController.php",
+    "actions": [
+      "beforeFilter",
+      "edit_weight",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentsAccountGroupsController",
+    "file": "sparse-emhare/app/Controller/StudentsAccountGroupsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentsAccountsGroupsController",
+    "file": "sparse-emhare/app/Controller/StudentsAccountsGroupsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "StudentsSpecialisationsController",
+    "file": "sparse-emhare/app/Controller/StudentsSpecialisationsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SubjectsController",
+    "file": "sparse-emhare/app/Controller/SubjectsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SupplementaryCourseFeesController",
+    "file": "sparse-emhare/app/Controller/SupplementaryCourseFeesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SuspendedStudentsController",
+    "file": "sparse-emhare/app/Controller/SuspendedStudentsController.php",
+    "actions": [
+      "beforeFilter",
+      "clear_students",
+      "clear_suspend",
+      "index",
+      "index_pdf",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "SystemGroupsController",
+    "file": "sparse-emhare/app/Controller/SystemGroupsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "TempStudentPaymentsController",
+    "file": "sparse-emhare/app/Controller/TempStudentPaymentsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "TenderTypesController",
+    "file": "sparse-emhare/app/Controller/TenderTypesController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "TransacactionsAuditsController",
+    "file": "sparse-emhare/app/Controller/TransacactionsAuditsController.php",
+    "actions": [
+      "index",
+      "view",
+      "reset_stud_bal",
+      "reset_summary",
+      "reason_summary",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "TransactionDescriptionsController",
+    "file": "sparse-emhare/app/Controller/TransactionDescriptionsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "TransactionsAuditsController",
+    "file": "sparse-emhare/app/Controller/TransactionsAuditsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeFilter",
+      "index",
+      "age_analysis_programme",
+      "reset_stud_bal",
+      "reset_summary",
+      "reason_summary",
+      "age_analysis_all",
+      "age_analysis_year",
+      "analysis_student_excel",
+      "analysis_programme_excel",
+      "age_analysis_all_excel",
+      "analysis_year_excel",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "TransactionsController",
+    "file": "sparse-emhare/app/Controller/TransactionsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "TranscriptAuditsController",
+    "file": "sparse-emhare/app/Controller/TranscriptAuditsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "TuitionBillingTypesController",
+    "file": "sparse-emhare/app/Controller/TuitionBillingTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "UnbilledStudentsController",
+    "file": "sparse-emhare/app/Controller/UnbilledStudentsController.php",
+    "actions": [
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "UniversityAwardsController",
+    "file": "sparse-emhare/app/Controller/UniversityAwardsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "UploadQualificationsController",
+    "file": "sparse-emhare/app/Controller/UploadQualificationsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "upload",
+      "uploadSpecificFile"
+    ]
+  },
+  {
+    "controller": "UploadsController",
+    "file": "sparse-emhare/app/Controller/UploadsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "cutepdf",
+      "referencepdf",
+      "mba_id",
+      "import_letter",
+      "view",
+      "add",
+      "import_mba",
+      "import",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "UsersController",
+    "file": "sparse-emhare/app/Controller/UsersController.php",
+    "actions": [
+      "beforeFilter",
+      "initDB",
+      "cidr_match",
+      "reset_staff_password",
+      "download",
+      "forgetpwd",
+      "index",
+      "view",
+      "deactivate",
+      "activate",
+      "add",
+      "edit2",
+      "edit",
+      "delete",
+      "notice",
+      "login",
+      "logout",
+      "change_password",
+      "feedback",
+      "user_search"
+    ]
+  },
+  {
+    "controller": "VerifiedFirstYearsController",
+    "file": "sparse-emhare/app/Controller/VerifiedFirstYearsController.php",
+    "actions": [
+      "beforeFilter",
+      "beforeRender",
+      "index",
+      "search_student",
+      "view",
+      "add",
+      "add_cert",
+      "edit",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "WaiverTypesController",
+    "file": "sparse-emhare/app/Controller/WaiverTypesController.php",
+    "actions": [
+      "beforeFilter",
+      "reject",
+      "approve",
+      "search_to_approve",
+      "edit_waiver_student",
+      "update_edit_waiver_student",
+      "waiver_sponsor",
+      "search_waiver_students",
+      "waiver_individual",
+      "waiver_students",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "WaiveredSponsorsController",
+    "file": "sparse-emhare/app/Controller/WaiveredSponsorsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "all_waivered",
+      "view_by_sponsor",
+      "view_by_sponsor_pdf",
+      "all_waivered_pdf",
+      "all_waivered_excel",
+      "view_by_sponsor_excel",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "WaiveredStudentsController",
+    "file": "sparse-emhare/app/Controller/WaiveredStudentsController.php",
+    "actions": [
+      "beforeFilter",
+      "edit_waiver_student",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "WinterSchoolOccasionalStudentsController",
+    "file": "sparse-emhare/app/Controller/WinterSchoolOccasionalStudentsController.php",
+    "actions": [
+      "beforeFilter",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "WinterSchoolRegistrationsController",
+    "file": "sparse-emhare/app/Controller/WinterSchoolRegistrationsController.php",
+    "actions": [
+      "beforeFilter",
+      "winter_save",
+      "winter_add",
+      "winter_search",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  },
+  {
+    "controller": "WithdrawnStudentsController",
+    "file": "sparse-emhare/app/Controller/WithdrawnStudentsController.php",
+    "actions": [
+      "beforeFilter",
+      "student_index",
+      "withdrawn_students",
+      "withdrawn_students_pdf",
+      "index",
+      "view",
+      "add",
+      "edit",
+      "delete"
+    ]
+  }
+]

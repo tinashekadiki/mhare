@@ -1,0 +1,7 @@
+{
+  "name": "portal-shell",
+  "projectType": "library",
+  "root": "packages/portal-shell",
+  "sourceRoot": "packages/portal-shell",
+  "targets": {}
+}

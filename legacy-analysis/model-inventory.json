@@ -1,0 +1,8020 @@
+[
+  {
+    "model": "AcademicRegistrationDate",
+    "file": "sparse-emhare/app/Model/AcademicRegistrationDate.php",
+    "validations": [
+      "created_by",
+      "date",
+      "end_date",
+      "first_year_end_date",
+      "first_year_start_date",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "reg_year",
+      "rule",
+      "semester",
+      "start_date"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "AcademicRegistrationSemester",
+    "file": "sparse-emhare/app/Model/AcademicRegistrationSemester.php",
+    "validations": [
+      "RegSemesterIntake",
+      "created_by",
+      "description",
+      "notempty",
+      "rule",
+      "year"
+    ],
+    "associations": {
+      "hasMany": [
+        "RegSemesterIntake"
+      ]
+    }
+  },
+  {
+    "model": "AcceptedToUndecidedApplicant",
+    "file": "sparse-emhare/app/Model/AcceptedToUndecidedApplicant.php",
+    "validations": [
+      "ApplicantsDetail",
+      "Location",
+      "Statu",
+      "applicants_detail_id",
+      "final_year",
+      "gender",
+      "id_number",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "Location",
+        "Statu"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationCheckOutReset",
+    "file": "sparse-emhare/app/Model/AccommodationCheckOutReset.php",
+    "validations": [
+      "AccomodationAllocationType",
+      "DenialReason",
+      "Room",
+      "Statu",
+      "accomodation_allocation_type_id",
+      "allocated_by",
+      "checked_in_by",
+      "checked_out_by",
+      "denial_reason_id",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "reset_by",
+      "room_id",
+      "rule",
+      "statu_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationAllocationType",
+        "DenialReason",
+        "Room",
+        "Statu"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationFacility",
+    "file": "sparse-emhare/app/Model/AccommodationFacility.php",
+    "validations": [
+      "AccommodationPremiseFacility",
+      "description",
+      "facility_name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccommodationPremiseFacility"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationLandlord",
+    "file": "sparse-emhare/app/Model/AccommodationLandlord.php",
+    "validations": [
+      "AccommodationPremise",
+      "email_address",
+      "firstname",
+      "home_address",
+      "national_id",
+      "notempty",
+      "phone_number1",
+      "phone_number2",
+      "rating",
+      "rule",
+      "surname",
+      "title"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccommodationPremise"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationModificationReason",
+    "file": "sparse-emhare/app/Model/AccommodationModificationReason.php",
+    "validations": [
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "AccommodationModificationTrail",
+    "file": "sparse-emhare/app/Model/AccommodationModificationTrail.php",
+    "validations": [
+      "AccommodationModificationReason",
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccommodationModificationReason",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationPremise",
+    "file": "sparse-emhare/app/Model/AccommodationPremise.php",
+    "validations": [
+      "AccommodationLandlord",
+      "AccommodationPremiseFacility",
+      "AccommodationRating",
+      "AccommodationRentalPeriod",
+      "AccommodationSuburb",
+      "AccommodationTenantGender",
+      "AccommodationType",
+      "accommodation_landlord_id",
+      "accommodation_rating_id",
+      "accommodation_rental_period_id",
+      "accommodation_suburb_id",
+      "accommodation_tenant_gender_id",
+      "accommodation_type_id",
+      "distance_from_campus",
+      "notempty",
+      "numeric",
+      "rental_fee",
+      "rule",
+      "status",
+      "street_address"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccommodationLandlord",
+        "AccommodationRating",
+        "AccommodationRentalPeriod",
+        "AccommodationSuburb",
+        "AccommodationTenantGender",
+        "AccommodationType"
+      ],
+      "hasMany": [
+        "AccommodationPremiseFacility"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationPremiseFacility",
+    "file": "sparse-emhare/app/Model/AccommodationPremiseFacility.php",
+    "validations": [
+      "AccommodationFacility",
+      "AccommodationPremise",
+      "accommodation_facility_id",
+      "accommodation_premise_id",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccommodationFacility",
+        "AccommodationPremise"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationRating",
+    "file": "sparse-emhare/app/Model/AccommodationRating.php",
+    "validations": [
+      "AccommodationPremise",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccommodationPremise"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationRentalPeriod",
+    "file": "sparse-emhare/app/Model/AccommodationRentalPeriod.php",
+    "validations": [
+      "AccommodationPremise",
+      "notempty",
+      "rental_period",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccommodationPremise"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationRevokingFacultyException",
+    "file": "sparse-emhare/app/Model/AccommodationRevokingFacultyException.php",
+    "validations": [
+      "Faculty",
+      "created_by",
+      "faculty_code",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Faculty"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationRevokingLevelSemException",
+    "file": "sparse-emhare/app/Model/AccommodationRevokingLevelSemException.php",
+    "validations": [
+      "created_by",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "AccommodationRevokingProgrammeException",
+    "file": "sparse-emhare/app/Model/AccommodationRevokingProgrammeException.php",
+    "validations": [
+      "Programme",
+      "created_by",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationRevokingSponsorException",
+    "file": "sparse-emhare/app/Model/AccommodationRevokingSponsorException.php",
+    "validations": [
+      "Sponsor",
+      "created_by",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "rule",
+      "sponsor_code"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Sponsor"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationSuburb",
+    "file": "sparse-emhare/app/Model/AccommodationSuburb.php",
+    "validations": [
+      "AccommodationPremise",
+      "notBlank",
+      "rule",
+      "surbub_name"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccommodationPremise"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationTenantGender",
+    "file": "sparse-emhare/app/Model/AccommodationTenantGender.php",
+    "validations": [
+      "AccommodationPremise",
+      "gender",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccommodationPremise"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationType",
+    "file": "sparse-emhare/app/Model/AccommodationType.php",
+    "validations": [
+      "AccommodationPremise",
+      "accommodation_type",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccommodationPremise"
+      ]
+    }
+  },
+  {
+    "model": "AccommodationWithdrawal",
+    "file": "sparse-emhare/app/Model/AccommodationWithdrawal.php",
+    "validations": [
+      "RegistrationSemester",
+      "Room",
+      "Statu",
+      "date",
+      "due_date",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "registration_semester_id",
+      "room_id",
+      "rule",
+      "statu_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "RegistrationSemester",
+        "Room",
+        "Statu"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationAllocationType",
+    "file": "sparse-emhare/app/Model/AccomodationAllocationType.php",
+    "validations": [
+      "AccomodationPeriodOfStay",
+      "AccomodationRate",
+      "AccomodationSemesterPeriod",
+      "RemovedRoomAllocation",
+      "RoomAllocation",
+      "allocation_type",
+      "created_by",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationPeriodOfStay",
+        "AccomodationRate",
+        "AccomodationSemesterPeriod",
+        "RemovedRoomAllocation",
+        "RoomAllocation"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationBilling",
+    "file": "sparse-emhare/app/Model/AccomodationBilling.php",
+    "validations": [
+      "academic_year",
+      "billing_user",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule",
+      "semester"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "AccomodationBlacklist",
+    "file": "sparse-emhare/app/Model/AccomodationBlacklist.php",
+    "validations": [
+      "DenialReason",
+      "denial_reason",
+      "denial_reason_id",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule",
+      "userid"
+    ],
+    "associations": {
+      "belongsTo": [
+        "DenialReason"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationConfiguration",
+    "file": "sparse-emhare/app/Model/AccomodationConfiguration.php",
+    "validations": [],
+    "associations": {}
+  },
+  {
+    "model": "AccomodationCutOffDate",
+    "file": "sparse-emhare/app/Model/AccomodationCutOffDate.php",
+    "validations": [
+      "PaymentCutoffUnit",
+      "RegistrationSemester",
+      "end_date",
+      "notempty",
+      "registration_semester_id",
+      "rule",
+      "start_date"
+    ],
+    "associations": {
+      "belongsTo": [
+        "PaymentCutoffUnit",
+        "RegistrationSemester"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationDamage",
+    "file": "sparse-emhare/app/Model/AccomodationDamage.php",
+    "validations": [
+      "AccomodationFacilityName",
+      "DamageCategory",
+      "HallsOfResidence",
+      "accomodation_facility_name_id",
+      "damage_category_id",
+      "description",
+      "halls_of_residence_id",
+      "notempty",
+      "numeric",
+      "priority",
+      "recorded_by",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationFacilityName",
+        "DamageCategory",
+        "HallsOfResidence"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationFacilityName",
+    "file": "sparse-emhare/app/Model/AccomodationFacilityName.php",
+    "validations": [
+      "AccomodationDamage",
+      "HostelCleaning",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationDamage",
+        "HostelCleaning"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationGroup",
+    "file": "sparse-emhare/app/Model/AccomodationGroup.php",
+    "validations": [
+      "AccomodationGroupAttribute",
+      "AccomodationGroupAttributesBySponsor",
+      "AccomodationGroupsApplicationPeriod",
+      "AccomodationGroupsAttributesByDisabilityCode",
+      "AccomodationGroupsAttributesByProgramme",
+      "AccomodationGroupsAttributesByStudentType",
+      "AccomodationPoolStudent",
+      "group_name",
+      "notempty",
+      "quota",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationGroupAttribute",
+        "AccomodationGroupAttributesBySponsor",
+        "AccomodationGroupsApplicationPeriod",
+        "AccomodationGroupsAttributesByDisabilityCode",
+        "AccomodationGroupsAttributesByProgramme",
+        "AccomodationGroupsAttributesByStudentType",
+        "AccomodationPoolStudent"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationGroupAttribute",
+    "file": "sparse-emhare/app/Model/AccomodationGroupAttribute.php",
+    "validations": [
+      "AccomodationGroup",
+      "Faculty",
+      "ProgrammeSubtype",
+      "ProgrammesType"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationGroup",
+        "Faculty",
+        "ProgrammeSubtype",
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationGroupAttributesBySponsor",
+    "file": "sparse-emhare/app/Model/AccomodationGroupAttributesBySponsor.php",
+    "validations": [
+      "AccomodationGroup",
+      "ProgrammeSubtype",
+      "ProgrammesType",
+      "Sponsor",
+      "accomodation_group_id",
+      "modified_by",
+      "notempty",
+      "rule",
+      "sponsor_code"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationGroup",
+        "ProgrammeSubtype",
+        "ProgrammesType",
+        "Sponsor"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationGroupsApplicationPeriod",
+    "file": "sparse-emhare/app/Model/AccomodationGroupsApplicationPeriod.php",
+    "validations": [
+      "AccomodationGroup"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationGroup"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationGroupsAttributesByDisabilityCode",
+    "file": "sparse-emhare/app/Model/AccomodationGroupsAttributesByDisabilityCode.php",
+    "validations": [
+      "AccomodationGroup",
+      "Disability",
+      "ProgrammeSubtype",
+      "ProgrammesType",
+      "accomodation_group_id",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationGroup",
+        "Disability",
+        "ProgrammeSubtype",
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationGroupsAttributesByProgramme",
+    "file": "sparse-emhare/app/Model/AccomodationGroupsAttributesByProgramme.php",
+    "validations": [
+      "AccomodationGroup",
+      "Programme",
+      "ProgrammeSubtype",
+      "ProgrammesType"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationGroup",
+        "Programme",
+        "ProgrammeSubtype",
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationGroupsAttributesByStudentType",
+    "file": "sparse-emhare/app/Model/AccomodationGroupsAttributesByStudentType.php",
+    "validations": [
+      "AccomodationGroup",
+      "ProgrammeSubtype",
+      "ProgrammesType",
+      "StudentType",
+      "accomodation_group_id",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationGroup",
+        "ProgrammeSubtype",
+        "ProgrammesType",
+        "StudentType"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationPeriodOfStay",
+    "file": "sparse-emhare/app/Model/AccomodationPeriodOfStay.php",
+    "validations": [
+      "AccomodationAllocationType",
+      "FinanceRegistrationPeriod",
+      "RegistrationSemester",
+      "Room",
+      "Statu",
+      "accomodation_allocation_type_id",
+      "created_by",
+      "date",
+      "entry_date",
+      "exit_date",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "registration_semester_id",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationAllocationType",
+        "FinanceRegistrationPeriod",
+        "RegistrationSemester",
+        "Room",
+        "Statu"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationPoolStudent",
+    "file": "sparse-emhare/app/Model/AccomodationPoolStudent.php",
+    "validations": [
+      "AccomodationGroup",
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationGroup",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationRate",
+    "file": "sparse-emhare/app/Model/AccomodationRate.php",
+    "validations": [
+      "AccomodationAllocationType",
+      "HallsOfResidence",
+      "RoomType",
+      "accomodation_allocation_type_id",
+      "created_by",
+      "halls_of_residence_id",
+      "notempty",
+      "numeric",
+      "rule",
+      "student_type"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationAllocationType",
+        "HallsOfResidence",
+        "RoomType"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationSemesterPeriod",
+    "file": "sparse-emhare/app/Model/AccomodationSemesterPeriod.php",
+    "validations": [
+      "AccomodationAllocationType",
+      "RegistrationSemester",
+      "accomodation_allocation_type_id",
+      "created_by",
+      "date",
+      "end_date",
+      "notempty",
+      "numeric",
+      "registration_semester_id",
+      "rule",
+      "start_date"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationAllocationType",
+        "RegistrationSemester"
+      ]
+    }
+  },
+  {
+    "model": "AccomodationSwap",
+    "file": "sparse-emhare/app/Model/AccomodationSwap.php",
+    "validations": [
+      "date",
+      "final_room",
+      "initial_room",
+      "notempty",
+      "reg_number",
+      "rule",
+      "swap_date",
+      "swapped_by"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "AccomodationWaitingList",
+    "file": "sparse-emhare/app/Model/AccomodationWaitingList.php",
+    "validations": [
+      "HallsOfResidence",
+      "halls_of_residence_id",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "HallsOfResidence"
+      ]
+    }
+  },
+  {
+    "model": "Account",
+    "file": "sparse-emhare/app/Model/Account.php",
+    "validations": [
+      "CashbookRecord",
+      "Gl"
+    ],
+    "associations": {
+      "hasMany": [
+        "CashbookRecord"
+      ],
+      "hasAndBelongsToMany": [
+        "Gl"
+      ]
+    }
+  },
+  {
+    "model": "AccountGroup",
+    "file": "sparse-emhare/app/Model/AccountGroup.php",
+    "validations": [
+      "AccountType",
+      "StudentDetail",
+      "account_link",
+      "code",
+      "description",
+      "notempty",
+      "numeric",
+      "payment_limit",
+      "payment_parameter",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccountType",
+        "StudentDetail"
+      ],
+      "hasMany": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "AccountType",
+    "file": "sparse-emhare/app/Model/AccountType.php",
+    "validations": [
+      "AccountGroup",
+      "BankAccount",
+      "GeneralLedger",
+      "InvoiceLineItem",
+      "Receipt",
+      "StudentInvoice",
+      "StudentPayment",
+      "TempStudentPayment",
+      "TransactionsAudit",
+      "account_link",
+      "code",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccountGroup",
+        "BankAccount",
+        "GeneralLedger",
+        "InvoiceLineItem",
+        "Receipt",
+        "StudentInvoice",
+        "StudentPayment",
+        "TempStudentPayment",
+        "TransactionsAudit"
+      ]
+    }
+  },
+  {
+    "model": "AllocationPrecedence",
+    "file": "sparse-emhare/app/Model/AllocationPrecedence.php",
+    "validations": [
+      "AllocationPriority",
+      "date",
+      "isUnique",
+      "numeric",
+      "priority_level",
+      "rule",
+      "start_application_date"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AllocationPriority"
+      ]
+    }
+  },
+  {
+    "model": "AllocationPrecedencesController",
+    "file": "sparse-emhare/app/Model/AllocationPrecedencesController.php",
+    "validations": [
+      "conditions",
+      "fields"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "AllocationPriority",
+    "file": "sparse-emhare/app/Model/AllocationPriority.php",
+    "validations": [
+      "AllocationPrecedence",
+      "Programme",
+      "disability",
+      "exception_city",
+      "isUnique",
+      "level_of_study",
+      "notEmpty",
+      "notempty",
+      "numeric",
+      "priority_level",
+      "programme_id",
+      "rule",
+      "student_type"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ],
+      "hasOne": [
+        "AllocationPrecedence"
+      ]
+    }
+  },
+  {
+    "model": "Antiplagiarism",
+    "file": "sparse-emhare/app/Model/Antiplagiarism.php",
+    "validations": [
+      "Programme",
+      "StudentDetail",
+      "comment",
+      "course_code",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "rule",
+      "semester",
+      "year",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "AppModel",
+    "file": "sparse-emhare/app/Model/AppModel.php",
+    "validations": [],
+    "associations": {}
+  },
+  {
+    "model": "ApplicantAcademicRecord",
+    "file": "sparse-emhare/app/Model/ApplicantAcademicRecord.php",
+    "validations": [
+      "ApplicantsDetail",
+      "applicants_detail_id",
+      "date",
+      "date_of_graducation",
+      "institution",
+      "notBlank",
+      "numeric",
+      "qualification_received",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantAlevelQualification",
+    "file": "sparse-emhare/app/Model/ApplicantAlevelQualification.php",
+    "validations": [
+      "ApplicantOlevelQualification",
+      "ApplicantsDetail",
+      "ApplicantsPoint",
+      "ExamResult",
+      "Point",
+      "School",
+      "Subject",
+      "applicants_detail_id",
+      "candidate_number",
+      "centre_number",
+      "checkUnique",
+      "exambody_code",
+      "grade",
+      "mark",
+      "notBlank",
+      "numeric",
+      "rule",
+      "ruleName2",
+      "subject_code",
+      "year_written"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "ApplicantsPoint",
+        "ExamResult",
+        "Point",
+        "School",
+        "Subject"
+      ],
+      "hasMany": [
+        "ApplicantOlevelQualification"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantEducationalQualification",
+    "file": "sparse-emhare/app/Model/ApplicantEducationalQualification.php",
+    "validations": [
+      "ApplicantsDetail",
+      "Country",
+      "applicants_detail_id",
+      "date",
+      "institution",
+      "notBlank",
+      "numeric",
+      "period_from",
+      "period_to",
+      "qualification",
+      "result",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "Country"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantEmploymentHistory",
+    "file": "sparse-emhare/app/Model/ApplicantEmploymentHistory.php",
+    "validations": [
+      "ApplicantsDetail",
+      "applicants_detail_id",
+      "date",
+      "employer",
+      "end_date",
+      "notBlank",
+      "numeric",
+      "postion",
+      "rule",
+      "start_date"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantOlevelQualification",
+    "file": "sparse-emhare/app/Model/ApplicantOlevelQualification.php",
+    "validations": [
+      "ApplicantAlevelQualification",
+      "ApplicantsDetail",
+      "ExamResult",
+      "OlevelSubject",
+      "applicants_detail_id",
+      "candidate_number",
+      "centre_number",
+      "checkUnique",
+      "date",
+      "exam_body_code",
+      "grade",
+      "notBlank",
+      "numeric",
+      "olevel_subject_code",
+      "rule",
+      "ruleName2",
+      "year_written"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantAlevelQualification",
+        "ApplicantsDetail",
+        "ExamResult",
+        "OlevelSubject"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantPayment",
+    "file": "sparse-emhare/app/Model/ApplicantPayment.php",
+    "validations": [
+      "ApplicantsDetail",
+      "User",
+      "applicants_detail_id",
+      "date",
+      "description",
+      "notBlank",
+      "numeric",
+      "rule",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantPresentEmployer",
+    "file": "sparse-emhare/app/Model/ApplicantPresentEmployer.php",
+    "validations": [
+      "ApplicantsDetail",
+      "applicants_detail_id",
+      "date",
+      "employer_name",
+      "notBlank",
+      "notempty",
+      "numeric",
+      "period_of_notice",
+      "rule",
+      "start_date"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantProffessionalAchievement",
+    "file": "sparse-emhare/app/Model/ApplicantProffessionalAchievement.php",
+    "validations": [
+      "ApplicantsDetail",
+      "applicants_detail_id",
+      "articles_published",
+      "member_proff_board",
+      "name_of_award",
+      "notBlank",
+      "numeric",
+      "papers_presented",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantReferee",
+    "file": "sparse-emhare/app/Model/ApplicantReferee.php",
+    "validations": [
+      "ApplicantsDetail",
+      "address",
+      "applicants_detail_id",
+      "discipline",
+      "email",
+      "firstname",
+      "mobile",
+      "notblank",
+      "relationship",
+      "rule",
+      "surname",
+      "title",
+      "work"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantReference",
+    "file": "sparse-emhare/app/Model/ApplicantReference.php",
+    "validations": [
+      "ApplicantsDetail",
+      "address",
+      "applicants_detail_id",
+      "discipline",
+      "email",
+      "firstname",
+      "mobile",
+      "notBlank",
+      "numeric",
+      "referee_number",
+      "relationship",
+      "rule",
+      "surname",
+      "title",
+      "work"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantWorkExperience",
+    "file": "sparse-emhare/app/Model/ApplicantWorkExperience.php",
+    "validations": [
+      "ApplicantsDetail",
+      "applicants__detail_id",
+      "contact_details",
+      "date",
+      "notBlank",
+      "numeric",
+      "organisation",
+      "period_from",
+      "period_to",
+      "position",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantsDetail",
+    "file": "sparse-emhare/app/Model/ApplicantsDetail.php",
+    "validations": [
+      "AcceptedToUndecidedApplicant",
+      "ApplicantAcademicRecord",
+      "ApplicantAlevelQualification",
+      "ApplicantEducationalQualification",
+      "ApplicantEmploymentHistory",
+      "ApplicantOlevelQualification",
+      "ApplicantPayment",
+      "ApplicantPresentEmployer",
+      "ApplicantProffessionalAchievement",
+      "ApplicantReferee",
+      "ApplicantReference",
+      "ApplicantsPoint",
+      "ApplicationProgrammeType",
+      "ApplicationType",
+      "Country",
+      "DenialReason",
+      "Disability",
+      "ExamBody",
+      "ExamBodyAresult",
+      "ExamBodyOresult",
+      "Intake",
+      "IntakeCorrection",
+      "PreviousStudent",
+      "ProgrammeChoice",
+      "ProgrammeChoiceSubject",
+      "ProgrammesType",
+      "ProspectiveSponsor",
+      "Receipt",
+      "SchoolsAttended",
+      "Sponsor",
+      "Statu",
+      "StudentDetail",
+      "StudentReceipt",
+      "Upload",
+      "a_candidate_number",
+      "a_centre_number",
+      "address",
+      "applicant_type",
+      "application_type_id",
+      "boolean",
+      "check_status",
+      "citizenship",
+      "city",
+      "conditions",
+      "date",
+      "disability_code",
+      "dob",
+      "email",
+      "email_address",
+      "fields",
+      "firstname",
+      "gender",
+      "home_phone",
+      "id_number",
+      "intake_id",
+      "maritial_status",
+      "mobile",
+      "nationality",
+      "next_of_kin_fullname",
+      "notBlank",
+      "numeric",
+      "o_candidate_number",
+      "o_centre_number",
+      "order",
+      "period_of_residence",
+      "permanent_res_zim",
+      "place_of_birth",
+      "race",
+      "religion",
+      "residence_priority",
+      "residence_status",
+      "rule",
+      "sponsor_code",
+      "statu_id",
+      "surname",
+      "title"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicationProgrammeType",
+        "ApplicationType",
+        "Country",
+        "DenialReason",
+        "Disability",
+        "Intake",
+        "Sponsor",
+        "Statu"
+      ],
+      "hasMany": [
+        "ApplicantAcademicRecord",
+        "ApplicantAlevelQualification",
+        "ApplicantEducationalQualification",
+        "ApplicantEmploymentHistory",
+        "ApplicantOlevelQualification",
+        "ApplicantPayment",
+        "ApplicantProffessionalAchievement",
+        "ApplicantReferee",
+        "ApplicantReference",
+        "ExamBody",
+        "ExamBodyAresult",
+        "ExamBodyOresult",
+        "IntakeCorrection",
+        "PreviousStudent",
+        "ProgrammeChoice",
+        "ProgrammeChoiceSubject",
+        "ProgrammesType",
+        "Receipt",
+        "StudentReceipt",
+        "Upload"
+      ],
+      "hasOne": [
+        "AcceptedToUndecidedApplicant",
+        "ApplicantPresentEmployer",
+        "ApplicantProffessionalAchievement",
+        "ApplicantsPoint",
+        "ProspectiveSponsor",
+        "SchoolsAttended",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "ApplicantsPoint",
+    "file": "sparse-emhare/app/Model/ApplicantsPoint.php",
+    "validations": [
+      "ApplicantAlevelQualification",
+      "ApplicantsDetail",
+      "applicants_detail_id",
+      "numeric",
+      "rule",
+      "total_points"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ],
+      "hasMany": [
+        "ApplicantAlevelQualification"
+      ]
+    }
+  },
+  {
+    "model": "ApplicationFee",
+    "file": "sparse-emhare/app/Model/ApplicationFee.php",
+    "validations": [
+      "ProgrammesType",
+      "User",
+      "date",
+      "deadline_date",
+      "notempty",
+      "numeric",
+      "programmes_types_id",
+      "rule",
+      "student_type",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ProgrammesType",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "ApplicationProgrammeChangePeriod",
+    "file": "sparse-emhare/app/Model/ApplicationProgrammeChangePeriod.php",
+    "validations": [],
+    "associations": {}
+  },
+  {
+    "model": "ApplicationProgrammeType",
+    "file": "sparse-emhare/app/Model/ApplicationProgrammeType.php",
+    "validations": [
+      "ApplicantsDetail",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "ApplicationType",
+    "file": "sparse-emhare/app/Model/ApplicationType.php",
+    "validations": [
+      "ApplicantsDetail",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "ArchAccommodationPeriodOfStay",
+    "file": "sparse-emhare/app/Model/ArchAccommodationPeriodOfStay.php",
+    "validations": [
+      "FinanceRegistrationPeriod"
+    ],
+    "associations": {
+      "belongsTo": [
+        "FinanceRegistrationPeriod"
+      ]
+    }
+  },
+  {
+    "model": "ArchCurrentRepeatStudent",
+    "file": "sparse-emhare/app/Model/ArchCurrentRepeatStudent.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "ArchInvoiceLineItem",
+    "file": "sparse-emhare/app/Model/ArchInvoiceLineItem.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "ArchRoomAllocation",
+    "file": "sparse-emhare/app/Model/ArchRoomAllocation.php",
+    "validations": [
+      "FinanceRegistrationPeriod"
+    ],
+    "associations": {
+      "belongsTo": [
+        "FinanceRegistrationPeriod"
+      ]
+    }
+  },
+  {
+    "model": "ArchSemProgrammeFee",
+    "file": "sparse-emhare/app/Model/ArchSemProgrammeFee.php",
+    "validations": [
+      "Programme"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "ArchStudentAccommodationPayment",
+    "file": "sparse-emhare/app/Model/ArchStudentAccommodationPayment.php",
+    "validations": [
+      "Room"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Room"
+      ]
+    }
+  },
+  {
+    "model": "ArchStudentBillingAudit",
+    "file": "sparse-emhare/app/Model/ArchStudentBillingAudit.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "ArchStudentDiningHall",
+    "file": "sparse-emhare/app/Model/ArchStudentDiningHall.php",
+    "validations": [
+      "DiningHall"
+    ],
+    "associations": {
+      "belongsTo": [
+        "DiningHall"
+      ]
+    }
+  },
+  {
+    "model": "ArchStudentIdCard",
+    "file": "sparse-emhare/app/Model/ArchStudentIdCard.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "AssignmentTotal",
+    "file": "sparse-emhare/app/Model/AssignmentTotal.php",
+    "validations": [
+      "Course",
+      "StaffDetail",
+      "assignment1_total",
+      "assignment2_total",
+      "assignment3_total",
+      "assignment4_total",
+      "assignment5_total",
+      "assignment6_total",
+      "assignment7_total",
+      "course_code",
+      "course_instructor",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "StaffDetail"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrail",
+    "file": "sparse-emhare/app/Model/AuditTrail.php",
+    "validations": [],
+    "associations": {}
+  },
+  {
+    "model": "AuditTrailAccountGroup",
+    "file": "sparse-emhare/app/Model/AuditTrailAccountGroup.php",
+    "validations": [
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "notempty",
+      "rule",
+      "table_name",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailBankAccount",
+    "file": "sparse-emhare/app/Model/AuditTrailBankAccount.php",
+    "validations": [
+      "Record",
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "notempty",
+      "numeric",
+      "record_id",
+      "rule",
+      "table_name",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Record",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailCourse",
+    "file": "sparse-emhare/app/Model/AuditTrailCourse.php",
+    "validations": [
+      "User",
+      "action",
+      "created",
+      "data_type",
+      "field_name",
+      "new_value",
+      "notempty",
+      "numeric",
+      "old_value",
+      "record_id",
+      "rule",
+      "table_name",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailCurrentResult",
+    "file": "sparse-emhare/app/Model/AuditTrailCurrentResult.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailFee",
+    "file": "sparse-emhare/app/Model/AuditTrailFee.php",
+    "validations": [
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "new_value",
+      "notempty",
+      "old_value",
+      "rule",
+      "table_name",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailGeneralLedger",
+    "file": "sparse-emhare/app/Model/AuditTrailGeneralLedger.php",
+    "validations": [
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "new_value",
+      "notempty",
+      "old_value",
+      "rule",
+      "table_name",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailProgramme",
+    "file": "sparse-emhare/app/Model/AuditTrailProgramme.php",
+    "validations": [
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "new_value",
+      "notempty",
+      "numeric",
+      "old_value",
+      "record_id",
+      "rule",
+      "table_name",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailProgrammeFee",
+    "file": "sparse-emhare/app/Model/AuditTrailProgrammeFee.php",
+    "validations": [
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "notempty",
+      "rule",
+      "table_name",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailReceipt",
+    "file": "sparse-emhare/app/Model/AuditTrailReceipt.php",
+    "validations": [
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "notempty",
+      "rule",
+      "table_name",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailStudentAssignment",
+    "file": "sparse-emhare/app/Model/AuditTrailStudentAssignment.php",
+    "validations": [
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "new_value",
+      "notempty",
+      "numeric",
+      "old_value",
+      "record_id",
+      "rule",
+      "table_name",
+      "username"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailStudentExamResult",
+    "file": "sparse-emhare/app/Model/AuditTrailStudentExamResult.php",
+    "validations": [
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "new_value",
+      "notempty",
+      "old_value",
+      "record_id",
+      "rule",
+      "table_name",
+      "username"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailStudentInvoice",
+    "file": "sparse-emhare/app/Model/AuditTrailStudentInvoice.php",
+    "validations": [
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "new_value",
+      "notempty",
+      "old_value",
+      "rule",
+      "table_name",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailStudentPayment",
+    "file": "sparse-emhare/app/Model/AuditTrailStudentPayment.php",
+    "validations": [
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "new_value",
+      "notempty",
+      "old_value",
+      "rule",
+      "table_name",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "AuditTrailTransactionsAudit",
+    "file": "sparse-emhare/app/Model/AuditTrailTransactionsAudit.php",
+    "validations": [
+      "User",
+      "action",
+      "data_type",
+      "field_name",
+      "new_value",
+      "notempty",
+      "old_value",
+      "rule",
+      "table_name",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "Award",
+    "file": "sparse-emhare/app/Model/Award.php",
+    "validations": [
+      "AwardNominee",
+      "AwardSponsor",
+      "Category",
+      "award_sponsor_id",
+      "category_id",
+      "description",
+      "notempty",
+      "numeric",
+      "remarks",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AwardSponsor",
+        "Category"
+      ],
+      "hasMany": [
+        "AwardNominee"
+      ]
+    }
+  },
+  {
+    "model": "AwardNominee",
+    "file": "sparse-emhare/app/Model/AwardNominee.php",
+    "validations": [
+      "Award",
+      "StudentDetail",
+      "award_id",
+      "comments",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule",
+      "selected_by",
+      "year"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Award",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "AwardSponsor",
+    "file": "sparse-emhare/app/Model/AwardSponsor.php",
+    "validations": [
+      "Award",
+      "notempty",
+      "rule",
+      "sponsor_name"
+    ],
+    "associations": {
+      "hasMany": [
+        "Award"
+      ]
+    }
+  },
+  {
+    "model": "BankAccount",
+    "file": "sparse-emhare/app/Model/BankAccount.php",
+    "validations": [
+      "AccountType",
+      "StudentDetail",
+      "User",
+      "account_link",
+      "description",
+      "invoice_number",
+      "ip_address",
+      "notempty",
+      "reference",
+      "rule",
+      "student_detail_reg_number",
+      "txn_date",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccountType",
+        "StudentDetail",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "BillingMode",
+    "file": "sparse-emhare/app/Model/BillingMode.php",
+    "validations": [
+      "ProgrammesType"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "CampusIndicator",
+    "file": "sparse-emhare/app/Model/CampusIndicator.php",
+    "validations": [
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "CashbookRecord",
+    "file": "sparse-emhare/app/Model/CashbookRecord.php",
+    "validations": [
+      "Account",
+      "Module",
+      "account_id",
+      "and",
+      "conditions",
+      "date",
+      "description",
+      "errors",
+      "fields",
+      "messages",
+      "module_id",
+      "notempty",
+      "numeric",
+      "reference",
+      "rule",
+      "transaction_date"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Account",
+        "Module"
+      ]
+    }
+  },
+  {
+    "model": "Category",
+    "file": "sparse-emhare/app/Model/Category.php",
+    "validations": [
+      "Award",
+      "category_letter",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "Award"
+      ]
+    }
+  },
+  {
+    "model": "CbzDeposit",
+    "file": "sparse-emhare/app/Model/CbzDeposit.php",
+    "validations": [
+      "notBlank",
+      "pastel",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "CommentKey",
+    "file": "sparse-emhare/app/Model/CommentKey.php",
+    "validations": [
+      "comment_key",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "ConditionType",
+    "file": "sparse-emhare/app/Model/ConditionType.php",
+    "validations": [
+      "PriorityByDisability",
+      "PriorityByLocation",
+      "PriorityByProgramme",
+      "PriorityByStudentType",
+      "condition_based_on",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "PriorityByDisability",
+        "PriorityByLocation",
+        "PriorityByProgramme",
+        "PriorityByStudentType"
+      ]
+    }
+  },
+  {
+    "model": "Country",
+    "file": "sparse-emhare/app/Model/Country.php",
+    "validations": [
+      "ApplicantEducationalQualification",
+      "ApplicantsDetail",
+      "SchoolsAttended",
+      "code",
+      "continent",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ApplicantEducationalQualification",
+        "ApplicantsDetail",
+        "SchoolsAttended"
+      ]
+    }
+  },
+  {
+    "model": "Course",
+    "file": "sparse-emhare/app/Model/Course.php",
+    "validations": [
+      "AssignmentTotal",
+      "CourseAssignment",
+      "CourseExamRequirement",
+      "CourseInstructor",
+      "CourseResult",
+      "CourseWeight",
+      "CurrentResult",
+      "Department",
+      "ExamCourseTestType",
+      "ExamMulticoursePaperCourse",
+      "PrevStudentRegister",
+      "Programme",
+      "PublishResult",
+      "Remark",
+      "StudentAssignment",
+      "StudentExamHistory",
+      "StudentExamResult",
+      "StudentRegister",
+      "StudentRegisterHistory",
+      "course_code",
+      "course_name",
+      "double",
+      "notempty",
+      "programme_code",
+      "rule",
+      "semester_code",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Department",
+        "Programme"
+      ],
+      "hasMany": [
+        "AssignmentTotal",
+        "CourseAssignment",
+        "CourseExamRequirement",
+        "CourseInstructor",
+        "CourseResult",
+        "CourseWeight",
+        "CurrentResult",
+        "ExamCourseTestType",
+        "ExamMulticoursePaperCourse",
+        "PrevStudentRegister",
+        "PublishResult",
+        "Remark",
+        "StudentAssignment",
+        "StudentExamHistory",
+        "StudentExamResult",
+        "StudentRegister",
+        "StudentRegisterHistory"
+      ],
+      "hasOne": [
+        "ExamCourseTestType"
+      ]
+    }
+  },
+  {
+    "model": "CourseAmmendment",
+    "file": "sparse-emhare/app/Model/CourseAmmendment.php",
+    "validations": [
+      "Statu",
+      "StudentDetail",
+      "approval_date",
+      "date",
+      "date_of_change",
+      "from_course_code",
+      "from_dept_code",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule",
+      "statu_id",
+      "to_course_code",
+      "to_dept_code"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Statu",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "CourseAssignment",
+    "file": "sparse-emhare/app/Model/CourseAssignment.php",
+    "validations": [
+      "Course",
+      "assignment1_weighting",
+      "assignment2_weighting",
+      "assignment3_weighting",
+      "assignment4_weighting",
+      "course_code",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course"
+      ]
+    }
+  },
+  {
+    "model": "CourseCapacity",
+    "file": "sparse-emhare/app/Model/CourseCapacity.php",
+    "validations": [
+      "capacity",
+      "course_code",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "CourseExamRequirement",
+    "file": "sparse-emhare/app/Model/CourseExamRequirement.php",
+    "validations": [
+      "Course",
+      "User",
+      "course_code",
+      "course_work",
+      "date_stamp",
+      "exam_mark",
+      "notempty",
+      "numeric",
+      "rule",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "CourseFee",
+    "file": "sparse-emhare/app/Model/CourseFee.php",
+    "validations": [
+      "Faculty",
+      "Programme",
+      "faculty_code",
+      "notempty",
+      "num_courses",
+      "numeric",
+      "programme_code",
+      "rule",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Faculty",
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "CourseInstructor",
+    "file": "sparse-emhare/app/Model/CourseInstructor.php",
+    "validations": [
+      "Course",
+      "StaffDetail",
+      "course_code",
+      "ecnumber",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "StaffDetail"
+      ]
+    }
+  },
+  {
+    "model": "CourseResult",
+    "file": "sparse-emhare/app/Model/CourseResult.php",
+    "validations": [
+      "Course",
+      "StudentDetail",
+      "classification",
+      "course_code",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "reg_type",
+      "result",
+      "rule",
+      "semester",
+      "year"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "CourseWeight",
+    "file": "sparse-emhare/app/Model/CourseWeight.php",
+    "validations": [
+      "Course",
+      "course_code",
+      "course_weight",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course"
+      ]
+    }
+  },
+  {
+    "model": "CurrentRepeatStudent",
+    "file": "sparse-emhare/app/Model/CurrentRepeatStudent.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "CurrentResult",
+    "file": "sparse-emhare/app/Model/CurrentResult.php",
+    "validations": [
+      "Course",
+      "StudentDetail",
+      "classification",
+      "course_code",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "reg_type",
+      "result",
+      "rule",
+      "semester",
+      "year"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "DamageCategory",
+    "file": "sparse-emhare/app/Model/DamageCategory.php",
+    "validations": [
+      "AccomodationDamage",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationDamage"
+      ]
+    }
+  },
+  {
+    "model": "DateDegreeOffered",
+    "file": "sparse-emhare/app/Model/DateDegreeOffered.php",
+    "validations": [],
+    "associations": {}
+  },
+  {
+    "model": "DecisionsCompulsoryCourse",
+    "file": "sparse-emhare/app/Model/DecisionsCompulsoryCourse.php",
+    "validations": [
+      "course_code",
+      "created_by",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "programme_code",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "Decison",
+    "file": "sparse-emhare/app/Model/Decison.php",
+    "validations": [
+      "OverallDecision",
+      "comment",
+      "decision_code",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "OverallDecision"
+      ]
+    }
+  },
+  {
+    "model": "DegreeClassRequirement",
+    "file": "sparse-emhare/app/Model/DegreeClassRequirement.php",
+    "validations": [
+      "Programme",
+      "level1contribution",
+      "level2contribution",
+      "level3contribution",
+      "level4contribution",
+      "level5contribution",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "DegreeSubject",
+    "file": "sparse-emhare/app/Model/DegreeSubject.php",
+    "validations": [
+      "Programme",
+      "StudentSubject",
+      "name",
+      "notempty",
+      "programme_code",
+      "rule",
+      "subject_code"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ],
+      "hasMany": [
+        "StudentSubject"
+      ]
+    }
+  },
+  {
+    "model": "DeletedCourseResult",
+    "file": "sparse-emhare/app/Model/DeletedCourseResult.php",
+    "validations": [
+      "classification",
+      "course_code",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "reg_type",
+      "result",
+      "rule",
+      "semester",
+      "year"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "DeletedStudentExamResult",
+    "file": "sparse-emhare/app/Model/DeletedStudentExamResult.php",
+    "validations": [
+      "Statu",
+      "classification",
+      "course_code",
+      "date_stamp",
+      "final_mark",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "reg_type",
+      "remark",
+      "rule",
+      "semester",
+      "statu_id",
+      "username",
+      "weight",
+      "year",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Statu"
+      ]
+    }
+  },
+  {
+    "model": "DenialReason",
+    "file": "sparse-emhare/app/Model/DenialReason.php",
+    "validations": [
+      "AccomodationBlacklist",
+      "ApplicantsDetail",
+      "DisapprovedCourse",
+      "RemovedRoomAllocation",
+      "StudentWeight"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationBlacklist",
+        "ApplicantsDetail",
+        "DisapprovedCourse",
+        "RemovedRoomAllocation",
+        "StudentWeight"
+      ]
+    }
+  },
+  {
+    "model": "Department",
+    "file": "sparse-emhare/app/Model/Department.php",
+    "validations": [
+      "Course",
+      "DepartmentChairpersonNomination",
+      "DepartmentDeadline",
+      "ExamFacultyTestVenue",
+      "Faculty",
+      "StaffDetail",
+      "code",
+      "faculty_code",
+      "name",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "DepartmentDeadline",
+        "Faculty"
+      ],
+      "hasMany": [
+        "Course",
+        "DepartmentChairpersonNomination",
+        "ExamFacultyTestVenue",
+        "StaffDetail"
+      ]
+    }
+  },
+  {
+    "model": "DepartmentChairpersonNomination",
+    "file": "sparse-emhare/app/Model/DepartmentChairpersonNomination.php",
+    "validations": [
+      "EvotingDepartment",
+      "EvotingFaculty",
+      "notempty",
+      "reason",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "EvotingDepartment",
+        "EvotingFaculty"
+      ]
+    }
+  },
+  {
+    "model": "DepartmentChairpersonNominationPeriod",
+    "file": "sparse-emhare/app/Model/DepartmentChairpersonNominationPeriod.php",
+    "validations": [],
+    "associations": {}
+  },
+  {
+    "model": "DepartmentDeadline",
+    "file": "sparse-emhare/app/Model/DepartmentDeadline.php",
+    "validations": [
+      "Department",
+      "Faculty",
+      "deadline_date",
+      "department_code",
+      "faculty_code",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "Department",
+        "Faculty"
+      ]
+    }
+  },
+  {
+    "model": "DeregisteredStudentRegister",
+    "file": "sparse-emhare/app/Model/DeregisteredStudentRegister.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "DiningHall",
+    "file": "sparse-emhare/app/Model/DiningHall.php",
+    "validations": [
+      "ArchStudentDiningHall",
+      "DiningHallAttendant",
+      "HostelDiningHall",
+      "Student",
+      "StudentDiningHall",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ArchStudentDiningHall",
+        "DiningHallAttendant",
+        "HostelDiningHall",
+        "StudentDiningHall"
+      ],
+      "hasAndBelongsToMany": [
+        "Student"
+      ]
+    }
+  },
+  {
+    "model": "DiningHallAttendant",
+    "file": "sparse-emhare/app/Model/DiningHallAttendant.php",
+    "validations": [
+      "DiningHall",
+      "StaffDetail",
+      "assigned_by",
+      "dining_hall_id",
+      "ecnumber",
+      "notEmpty",
+      "numeric",
+      "rule",
+      "unique"
+    ],
+    "associations": {
+      "belongsTo": [
+        "DiningHall",
+        "StaffDetail"
+      ]
+    }
+  },
+  {
+    "model": "DiningHallSurnameFilter",
+    "file": "sparse-emhare/app/Model/DiningHallSurnameFilter.php",
+    "validations": [
+      "DiningHall",
+      "HallsOfResidence",
+      "created_by",
+      "dining_hall_id",
+      "halls_of_residence_id",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule",
+      "surname_begining_with"
+    ],
+    "associations": {
+      "belongsTo": [
+        "DiningHall",
+        "HallsOfResidence"
+      ]
+    }
+  },
+  {
+    "model": "DiningMealCheck",
+    "file": "sparse-emhare/app/Model/DiningMealCheck.php",
+    "validations": [
+      "MealTypeTime",
+      "StudentDiningHall",
+      "date",
+      "meal_date",
+      "meal_type_time_id",
+      "numeric",
+      "rule",
+      "student_dining_hall_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "MealTypeTime",
+        "StudentDiningHall"
+      ]
+    }
+  },
+  {
+    "model": "Disability",
+    "file": "sparse-emhare/app/Model/Disability.php",
+    "validations": [
+      "AccomodationGroupsAttributesByDisabilityCode",
+      "ApplicantsDetail",
+      "StudentDetail",
+      "code",
+      "disability",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationGroupsAttributesByDisabilityCode",
+        "ApplicantsDetail",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "DisapprovedCourse",
+    "file": "sparse-emhare/app/Model/DisapprovedCourse.php",
+    "validations": [
+      "DenialReason",
+      "authorised_by",
+      "course_code",
+      "date",
+      "denial_reason_id",
+      "notempty",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "DenialReason"
+      ]
+    }
+  },
+  {
+    "model": "DissertationProgress",
+    "file": "sparse-emhare/app/Model/DissertationProgress.php",
+    "validations": [
+      "DissertationStage",
+      "StudentDetail",
+      "action_by_student",
+      "action_by_supervisor",
+      "agenda",
+      "created_by",
+      "date_of_meeting",
+      "date_of_next_meeting",
+      "notempty",
+      "reg_number",
+      "research_topic",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "DissertationStage",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "DissertationStage",
+    "file": "sparse-emhare/app/Model/DissertationStage.php",
+    "validations": [
+      "DissertationProgress",
+      "createdby",
+      "date_created",
+      "notempty",
+      "rule",
+      "stage"
+    ],
+    "associations": {
+      "hasMany": [
+        "DissertationProgress"
+      ]
+    }
+  },
+  {
+    "model": "DissertationSubmissionDate",
+    "file": "sparse-emhare/app/Model/DissertationSubmissionDate.php",
+    "validations": [
+      "Course",
+      "course_code",
+      "created_by",
+      "notempty",
+      "rule",
+      "submission_date"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course"
+      ]
+    }
+  },
+  {
+    "model": "DissertationTitle",
+    "file": "sparse-emhare/app/Model/DissertationTitle.php",
+    "validations": [],
+    "associations": {}
+  },
+  {
+    "model": "EcocashClientCorrelator",
+    "file": "sparse-emhare/app/Model/EcocashClientCorrelator.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "EmhareFirstYear",
+    "file": "sparse-emhare/app/Model/EmhareFirstYear.php",
+    "validations": [
+      "numeric",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "EvotingDepartment",
+    "file": "sparse-emhare/app/Model/EvotingDepartment.php",
+    "validations": [
+      "DepartmentChairpersonNomination",
+      "EvotingFaculty",
+      "EvotingStaffDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "EvotingFaculty"
+      ],
+      "hasMany": [
+        "DepartmentChairpersonNomination",
+        "EvotingStaffDetail"
+      ]
+    }
+  },
+  {
+    "model": "EvotingFaculty",
+    "file": "sparse-emhare/app/Model/EvotingFaculty.php",
+    "validations": [
+      "DepartmentChairpersonNomination",
+      "EvotingDepartment",
+      "EvotingStaffDetail"
+    ],
+    "associations": {
+      "hasMany": [
+        "DepartmentChairpersonNomination",
+        "EvotingDepartment",
+        "EvotingStaffDetail"
+      ]
+    }
+  },
+  {
+    "model": "EvotingStaffDetail",
+    "file": "sparse-emhare/app/Model/EvotingStaffDetail.php",
+    "validations": [
+      "EvotingDepartment",
+      "User"
+    ],
+    "associations": {
+      "belongsTo": [
+        "EvotingDepartment"
+      ],
+      "hasMany": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "ExamBoardPaper",
+    "file": "sparse-emhare/app/Model/ExamBoardPaper.php",
+    "validations": [
+      "Programme",
+      "notempty",
+      "numeric",
+      "paper_code",
+      "programme_code",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "ExamBody",
+    "file": "sparse-emhare/app/Model/ExamBody.php",
+    "validations": [
+      "ApplicantsDetail",
+      "code",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "ExamBodyAresult",
+    "file": "sparse-emhare/app/Model/ExamBodyAresult.php",
+    "validations": [
+      "ApplicantsDetail",
+      "ExamResult",
+      "School",
+      "Subject",
+      "candidate_number",
+      "centre_number",
+      "errors",
+      "grade",
+      "messages",
+      "notempty",
+      "numeric",
+      "rule",
+      "subject_code"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "ExamResult",
+        "School",
+        "Subject"
+      ]
+    }
+  },
+  {
+    "model": "ExamBodyOresult",
+    "file": "sparse-emhare/app/Model/ExamBodyOresult.php",
+    "validations": [
+      "ApplicantsDetail",
+      "ExamResult",
+      "OlevelSubject",
+      "School",
+      "candidate_number",
+      "centre_number",
+      "errors",
+      "grade",
+      "messages",
+      "notempty",
+      "numeric",
+      "rule",
+      "subject_code"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "ExamResult",
+        "OlevelSubject",
+        "School"
+      ]
+    }
+  },
+  {
+    "model": "ExamCase",
+    "file": "sparse-emhare/app/Model/ExamCase.php",
+    "validations": [
+      "ExamCaseRecord",
+      "case_code",
+      "description",
+      "id",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ExamCaseRecord"
+      ]
+    }
+  },
+  {
+    "model": "ExamCaseRecord",
+    "file": "sparse-emhare/app/Model/ExamCaseRecord.php",
+    "validations": [
+      "ExamCase",
+      "Programme",
+      "StudentDetail",
+      "date",
+      "date_recorded",
+      "exam_case_id",
+      "id",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "registered_year",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamCase",
+        "Programme",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "ExamCourseMaterial",
+    "file": "sparse-emhare/app/Model/ExamCourseMaterial.php",
+    "validations": [
+      "ExamMaterial",
+      "course_code",
+      "created_by",
+      "exam_material_id",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamMaterial"
+      ]
+    }
+  },
+  {
+    "model": "ExamCourseTestRegister",
+    "file": "sparse-emhare/app/Model/ExamCourseTestRegister.php",
+    "validations": [
+      "ExamCourseTestType",
+      "ExamSession",
+      "boolean",
+      "created_by",
+      "exam_course_test_type_id",
+      "exam_session_id",
+      "ip_address",
+      "is_scheduled",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "registered_students",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamCourseTestType",
+        "ExamSession"
+      ]
+    }
+  },
+  {
+    "model": "ExamCourseTestType",
+    "file": "sparse-emhare/app/Model/ExamCourseTestType.php",
+    "validations": [
+      "Course",
+      "ExamCourseTestRegister",
+      "ExamDuration",
+      "ExamMasterTimetable",
+      "ExamStudentTimetable",
+      "ExamTestType",
+      "course_code",
+      "created_by",
+      "exam_duration_id",
+      "exam_test_type_id",
+      "expected_students",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "ExamDuration",
+        "ExamTestType"
+      ],
+      "hasMany": [
+        "ExamCourseTestRegister",
+        "ExamMasterTimetable",
+        "ExamStudentTimetable"
+      ]
+    }
+  },
+  {
+    "model": "ExamDuration",
+    "file": "sparse-emhare/app/Model/ExamDuration.php",
+    "validations": [
+      "ExamCourseTestType",
+      "ExamDurationVenue",
+      "ExamMasterTimetable",
+      "ExamMulticoursePaper",
+      "ExamSessionSlot",
+      "ExamSpecificTimeDuration",
+      "ExamStudentTimetable",
+      "boolean",
+      "created",
+      "datetime",
+      "hours",
+      "ip_address",
+      "is_exam_time_specific",
+      "minutes",
+      "modified",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ExamCourseTestType",
+        "ExamDurationVenue",
+        "ExamMasterTimetable",
+        "ExamMulticoursePaper",
+        "ExamSessionSlot",
+        "ExamSpecificTimeDuration",
+        "ExamStudentTimetable"
+      ]
+    }
+  },
+  {
+    "model": "ExamDurationVenue",
+    "file": "sparse-emhare/app/Model/ExamDurationVenue.php",
+    "validations": [
+      "ExamDuration",
+      "ExamVenue",
+      "created_by",
+      "exam_duration_id",
+      "exam_venue_code",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamDuration",
+        "ExamVenue"
+      ]
+    }
+  },
+  {
+    "model": "ExamFacultyTestVenue",
+    "file": "sparse-emhare/app/Model/ExamFacultyTestVenue.php",
+    "validations": [
+      "Department",
+      "Faculty",
+      "created_by",
+      "department_code",
+      "exam_venue_code",
+      "faculty_code",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Department",
+        "Faculty"
+      ]
+    }
+  },
+  {
+    "model": "ExamManualAlteration",
+    "file": "sparse-emhare/app/Model/ExamManualAlteration.php",
+    "validations": [
+      "ExamCourseTestRegister",
+      "created_by",
+      "exam_course_test_register_id",
+      "ip_address",
+      "new_exam_session_slot",
+      "new_venue_code",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamCourseTestRegister"
+      ]
+    }
+  },
+  {
+    "model": "ExamMasterTimetable",
+    "file": "sparse-emhare/app/Model/ExamMasterTimetable.php",
+    "validations": [
+      "ExamCourseTestType",
+      "ExamDuration",
+      "ExamSessionSlot",
+      "Status",
+      "created_by",
+      "datetime_pattern",
+      "end_time",
+      "exam_course_test_register_id",
+      "exam_duration_id",
+      "exam_session_slot_id",
+      "exam_venue_code",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "registered_students",
+      "rule",
+      "start_time",
+      "time"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamCourseTestType",
+        "ExamDuration",
+        "ExamSessionSlot",
+        "Status"
+      ]
+    }
+  },
+  {
+    "model": "ExamMaterial",
+    "file": "sparse-emhare/app/Model/ExamMaterial.php",
+    "validations": [
+      "ExamCourseMaterial",
+      "created_by",
+      "description",
+      "ip_address",
+      "modified_by",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ExamCourseMaterial"
+      ]
+    }
+  },
+  {
+    "model": "ExamMulticoursePaper",
+    "file": "sparse-emhare/app/Model/ExamMulticoursePaper.php",
+    "validations": [
+      "ExamDuration",
+      "ExamMulticoursePaperCourse",
+      "ExamTestType",
+      "Faculty",
+      "created_by",
+      "created_ip",
+      "faculty_code",
+      "modified_by",
+      "modified_ip",
+      "notempty",
+      "paper_name",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamDuration",
+        "ExamTestType",
+        "Faculty"
+      ],
+      "hasMany": [
+        "ExamMulticoursePaperCourse"
+      ]
+    }
+  },
+  {
+    "model": "ExamMulticoursePaperCourse",
+    "file": "sparse-emhare/app/Model/ExamMulticoursePaperCourse.php",
+    "validations": [
+      "Course",
+      "ExamMulticoursePaper",
+      "course_code",
+      "created_by",
+      "created_ip",
+      "exam_multicourse_paper_id",
+      "modified_by",
+      "modified_ip",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "ExamMulticoursePaper"
+      ]
+    }
+  },
+  {
+    "model": "ExamProgrammeSlotTracker",
+    "file": "sparse-emhare/app/Model/ExamProgrammeSlotTracker.php",
+    "validations": [
+      "ExamSession",
+      "ExamStartTime",
+      "boolean",
+      "current_exam_date_sub",
+      "exam_session_id",
+      "exam_start_time_id",
+      "min_next_datetime_pattern",
+      "mod_offset",
+      "modulo_n",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamSession",
+        "ExamStartTime"
+      ]
+    }
+  },
+  {
+    "model": "ExamRegisteredStudentsOverride",
+    "file": "sparse-emhare/app/Model/ExamRegisteredStudentsOverride.php",
+    "validations": [
+      "ExamSession",
+      "course_code",
+      "created_by",
+      "exam_session_id",
+      "ip_address",
+      "modified_by",
+      "new_registered_students",
+      "notempty",
+      "numeric",
+      "prev_registered_students",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamSession"
+      ]
+    }
+  },
+  {
+    "model": "ExamResult",
+    "file": "sparse-emhare/app/Model/ExamResult.php",
+    "validations": [
+      "ExamBodyAresult",
+      "ExamBodyOresult",
+      "School",
+      "candidate_number",
+      "centre_number",
+      "date",
+      "exam_body",
+      "notempty",
+      "numeric",
+      "rule",
+      "subject_code",
+      "subject_grade",
+      "year_written"
+    ],
+    "associations": {
+      "belongsTo": [
+        "School"
+      ],
+      "hasMany": [
+        "ExamBodyAresult",
+        "ExamBodyOresult"
+      ]
+    }
+  },
+  {
+    "model": "ExamSchedulingReversal",
+    "file": "sparse-emhare/app/Model/ExamSchedulingReversal.php",
+    "validations": [
+      "course_code",
+      "created_by",
+      "created_ip",
+      "exam_session_slot",
+      "exam_venue_code",
+      "notBlank",
+      "numeric",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "ExamSession",
+    "file": "sparse-emhare/app/Model/ExamSession.php",
+    "validations": [
+      "ExamCourseTestRegister",
+      "ExamProgrammeSlotTracker",
+      "ExamSessionDatetimePattern",
+      "ExamSessionProgrammeType",
+      "ExamTestType",
+      "ProgrammesType",
+      "academic_year",
+      "boolean",
+      "created_by",
+      "date",
+      "end_date",
+      "exam_test_type_id",
+      "exclude_weekends",
+      "ip_address",
+      "is_active",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "programmes_type_id",
+      "rule",
+      "semester",
+      "session_name",
+      "start_date"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamTestType",
+        "ProgrammesType"
+      ],
+      "hasMany": [
+        "ExamCourseTestRegister",
+        "ExamProgrammeSlotTracker",
+        "ExamSessionDatetimePattern",
+        "ExamSessionProgrammeType"
+      ]
+    }
+  },
+  {
+    "model": "ExamSessionDatetimePattern",
+    "file": "sparse-emhare/app/Model/ExamSessionDatetimePattern.php",
+    "validations": [
+      "ExamSession",
+      "ExamStartTime",
+      "created_by",
+      "date",
+      "datetime_pattern",
+      "exam_date",
+      "exam_date_stub",
+      "exam_session_id",
+      "exam_start_time_id",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamSession",
+        "ExamStartTime"
+      ]
+    }
+  },
+  {
+    "model": "ExamSessionProgrammeType",
+    "file": "sparse-emhare/app/Model/ExamSessionProgrammeType.php",
+    "validations": [
+      "ExamSession",
+      "ProgrammesType",
+      "created_by",
+      "exam_session_id",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "programmes_type_id",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamSession",
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "ExamSessionSlot",
+    "file": "sparse-emhare/app/Model/ExamSessionSlot.php",
+    "validations": [
+      "ExamDuration",
+      "ExamMasterTimetable",
+      "ExamStudentTimetable",
+      "created_by",
+      "datetime_pattern",
+      "exam_duration_id",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamDuration"
+      ],
+      "hasMany": [
+        "ExamMasterTimetable",
+        "ExamStudentTimetable"
+      ]
+    }
+  },
+  {
+    "model": "ExamSpecificTimeDuration",
+    "file": "sparse-emhare/app/Model/ExamSpecificTimeDuration.php",
+    "validations": [
+      "ExamDuration",
+      "ExamStartTime",
+      "created_by",
+      "exam_duration_id",
+      "exam_start_time_id",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamDuration",
+        "ExamStartTime"
+      ]
+    }
+  },
+  {
+    "model": "ExamStartTime",
+    "file": "sparse-emhare/app/Model/ExamStartTime.php",
+    "validations": [
+      "ExamSessionDatetimePattern",
+      "ExamVenueStartTime",
+      "created_by",
+      "description",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "rule",
+      "start_time",
+      "time",
+      "time_code"
+    ],
+    "associations": {
+      "hasMany": [
+        "ExamSessionDatetimePattern",
+        "ExamVenueStartTime"
+      ]
+    }
+  },
+  {
+    "model": "ExamStudentTimetable",
+    "file": "sparse-emhare/app/Model/ExamStudentTimetable.php",
+    "validations": [
+      "ExamCourseTestType",
+      "ExamDuration",
+      "ExamSessionSlot",
+      "Status",
+      "created_by",
+      "end_time",
+      "exam_course_test_register_id",
+      "exam_course_test_type_id",
+      "exam_duration_id",
+      "exam_session_slot_id",
+      "exam_venue_code",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "registered_students",
+      "rule",
+      "start_time",
+      "statu_id",
+      "time"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamCourseTestType",
+        "ExamDuration",
+        "ExamSessionSlot",
+        "Status"
+      ]
+    }
+  },
+  {
+    "model": "ExamTestType",
+    "file": "sparse-emhare/app/Model/ExamTestType.php",
+    "validations": [
+      "ExamMulticoursePaper",
+      "ExamTestTypeVenue",
+      "created_by",
+      "description",
+      "exam_type_name",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ExamMulticoursePaper",
+        "ExamTestTypeVenue"
+      ]
+    }
+  },
+  {
+    "model": "ExamTestTypeVenue",
+    "file": "sparse-emhare/app/Model/ExamTestTypeVenue.php",
+    "validations": [
+      "ExamTestType",
+      "created_by",
+      "exam_test_type_id",
+      "exam_venue_code",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamTestType"
+      ]
+    }
+  },
+  {
+    "model": "ExamTestVenueOccupancy",
+    "file": "sparse-emhare/app/Model/ExamTestVenueOccupancy.php",
+    "validations": [
+      "ExamVenue",
+      "cur_datetime_pattern",
+      "datetime_pattern",
+      "exam_venue_code",
+      "notempty",
+      "numeric",
+      "occupied_seats",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamVenue"
+      ]
+    }
+  },
+  {
+    "model": "ExamVenue",
+    "file": "sparse-emhare/app/Model/ExamVenue.php",
+    "validations": [
+      "ExamDurationVenue",
+      "ExamTestVenueOccupancy",
+      "ExamVenueStartTime",
+      "ExamVenueType",
+      "boolean",
+      "created_by",
+      "exam_capacity",
+      "exam_venue_type_id",
+      "ip_address",
+      "is_dept_exam_specific",
+      "is_dept_lecture_specific",
+      "is_exam_venue",
+      "is_faculty_exam_specific",
+      "is_faculty_lecture_specific",
+      "is_lecture_venue",
+      "lecture_capacity",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule",
+      "venue_code",
+      "venue_name"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamVenueType"
+      ],
+      "hasMany": [
+        "ExamDurationVenue",
+        "ExamTestVenueOccupancy",
+        "ExamVenueStartTime"
+      ]
+    }
+  },
+  {
+    "model": "ExamVenueStartTime",
+    "file": "sparse-emhare/app/Model/ExamVenueStartTime.php",
+    "validations": [
+      "ExamStartTime",
+      "ExamVenue",
+      "created_by",
+      "exam_start_time_id",
+      "exam_venue_code",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ExamStartTime",
+        "ExamVenue"
+      ]
+    }
+  },
+  {
+    "model": "ExamVenueType",
+    "file": "sparse-emhare/app/Model/ExamVenueType.php",
+    "validations": [
+      "ExamVenue",
+      "created_by",
+      "description",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "rule",
+      "type_name"
+    ],
+    "associations": {
+      "hasMany": [
+        "ExamVenue"
+      ]
+    }
+  },
+  {
+    "model": "Faculty",
+    "file": "sparse-emhare/app/Model/Faculty.php",
+    "validations": [
+      "AccommodationRevokingFacultyException",
+      "AccomodationGroupAttribute",
+      "Department",
+      "DepartmentChairpersonNomination",
+      "DepartmentDeadline",
+      "ExamFacultyTestVenue",
+      "ExamMulticoursePaper",
+      "FacultySubCategory",
+      "FacultyWeight",
+      "Fee",
+      "Programme",
+      "ProgrammeFee",
+      "SemProgrammeFee",
+      "StudentNotice",
+      "code",
+      "faculty_sub_category_id",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "FacultySubCategory"
+      ],
+      "hasMany": [
+        "AccommodationRevokingFacultyException",
+        "AccomodationGroupAttribute",
+        "Department",
+        "DepartmentChairpersonNomination",
+        "DepartmentDeadline",
+        "ExamFacultyTestVenue",
+        "ExamMulticoursePaper",
+        "FacultyWeight",
+        "Fee",
+        "Programme",
+        "ProgrammeFee",
+        "SemProgrammeFee",
+        "StudentNotice"
+      ]
+    }
+  },
+  {
+    "model": "FacultyBillingTracker",
+    "file": "sparse-emhare/app/Model/FacultyBillingTracker.php",
+    "validations": [
+      "created_by",
+      "date",
+      "end_date",
+      "faculty_code",
+      "ip_address",
+      "notempty",
+      "rule",
+      "start_date"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "FacultyCategory",
+    "file": "sparse-emhare/app/Model/FacultyCategory.php",
+    "validations": [
+      "FacultySubCategory",
+      "category_name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "FacultySubCategory"
+      ]
+    }
+  },
+  {
+    "model": "FacultyCourseFee",
+    "file": "sparse-emhare/app/Model/FacultyCourseFee.php",
+    "validations": [
+      "ProgrammeSubtype",
+      "ProgrammesType",
+      "create_ip",
+      "created_by",
+      "faculty_code",
+      "modified_by",
+      "modify_ip",
+      "notempty",
+      "numeric",
+      "programme_subtype_id",
+      "programmes_type_id",
+      "rule",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ProgrammeSubtype",
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "FacultyOverallDecision",
+    "file": "sparse-emhare/app/Model/FacultyOverallDecision.php",
+    "validations": [
+      "created_by",
+      "credit_hour",
+      "decision_code",
+      "faculty_code",
+      "max_compulsory_units",
+      "min_compulsory_units",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule",
+      "semester",
+      "year_from",
+      "year_of_study",
+      "year_to"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "FacultyRegulation",
+    "file": "sparse-emhare/app/Model/FacultyRegulation.php",
+    "validations": [
+      "Programme",
+      "RegulationType",
+      "description",
+      "faculty_code",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "regulation_type_id",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme",
+        "RegulationType"
+      ]
+    }
+  },
+  {
+    "model": "FacultySubCategory",
+    "file": "sparse-emhare/app/Model/FacultySubCategory.php",
+    "validations": [
+      "Faculty",
+      "FacultyCategory",
+      "faculty_category_id",
+      "notempty",
+      "numeric",
+      "rule",
+      "subcategory_name"
+    ],
+    "associations": {
+      "belongsTo": [
+        "FacultyCategory"
+      ],
+      "hasMany": [
+        "Faculty"
+      ]
+    }
+  },
+  {
+    "model": "FacultyWeight",
+    "file": "sparse-emhare/app/Model/FacultyWeight.php",
+    "validations": [
+      "Faculty",
+      "ProgrammeSubtype",
+      "ProgrammesType",
+      "faculty_code",
+      "notEmpty",
+      "numeric",
+      "programme_subtype_id",
+      "programmes_type_id",
+      "rule",
+      "weight",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Faculty",
+        "ProgrammeSubtype",
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "Fee",
+    "file": "sparse-emhare/app/Model/Fee.php",
+    "validations": [
+      "Course",
+      "Faculty",
+      "Programme",
+      "academicfees",
+      "attachmentfess",
+      "benchfees",
+      "cautionfees",
+      "examfees",
+      "faculty_code",
+      "fees1",
+      "fees2",
+      "fees3",
+      "fees4",
+      "fieldworkfees",
+      "firstaidfees",
+      "graduationfees",
+      "idcardfees",
+      "laboratoryfees",
+      "lateregfee",
+      "maintenancefees",
+      "medicalaidfees",
+      "notempty",
+      "numeric",
+      "registrationfees",
+      "rule",
+      "sportsfees",
+      "student_type",
+      "studentravelfees",
+      "studentunionlevy",
+      "technologyfees",
+      "userid",
+      "vaccinationfees",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Faculty"
+      ],
+      "hasAndBelongsToMany": [
+        "Course",
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "FeesParameter",
+    "file": "sparse-emhare/app/Model/FeesParameter.php",
+    "validations": [
+      "Level",
+      "Programme",
+      "ProgrammeSubtype",
+      "ProgrammesType",
+      "created_by",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "programme_subtype_id",
+      "programmes_type_id",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ProgrammeSubtype",
+        "ProgrammesType"
+      ],
+      "hasAndBelongsToMany": [
+        "Level",
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "FinanceRegistrationPeriod",
+    "file": "sparse-emhare/app/Model/FinanceRegistrationPeriod.php",
+    "validations": [
+      "AccomodationPeriodOfStay",
+      "ArchAccommodationPeriodOfStay",
+      "ArchRoomAllocation",
+      "PrevStudentRegister",
+      "RoomAllocation",
+      "RoomAllocationsHolding",
+      "StudentRegister",
+      "StudentRegistration"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationPeriodOfStay",
+        "ArchAccommodationPeriodOfStay",
+        "ArchRoomAllocation",
+        "PrevStudentRegister",
+        "RoomAllocation",
+        "RoomAllocationsHolding",
+        "StudentRegister",
+        "StudentRegistration"
+      ]
+    }
+  },
+  {
+    "model": "FreedUpRoom",
+    "file": "sparse-emhare/app/Model/FreedUpRoom.php",
+    "validations": [
+      "AccomodationAllocationType",
+      "RegistrationSemester",
+      "Room",
+      "Status",
+      "accomodation_allocation_type_id",
+      "check_in_date",
+      "computer_ip_address",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "registration_semester_id",
+      "room_id",
+      "rule",
+      "statu_id",
+      "user"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationAllocationType",
+        "RegistrationSemester",
+        "Room",
+        "Status"
+      ]
+    }
+  },
+  {
+    "model": "GeneralLedger",
+    "file": "sparse-emhare/app/Model/GeneralLedger.php",
+    "validations": [
+      "AccountType",
+      "StudentDetail",
+      "User",
+      "account_link",
+      "computer_ip_address",
+      "credit",
+      "debit",
+      "description",
+      "notempty",
+      "refference",
+      "rule",
+      "student_detail_reg_number",
+      "txn_date",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccountType",
+        "StudentDetail",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "GlAccount",
+    "file": "sparse-emhare/app/Model/GlAccount.old.php",
+    "validations": [
+      "GeneralLedger",
+      "account_description",
+      "active",
+      "boolean",
+      "code",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "GeneralLedger"
+      ]
+    }
+  },
+  {
+    "model": "GlAccount",
+    "file": "sparse-emhare/app/Model/GlAccount.php",
+    "validations": [
+      "GlRecord",
+      "code",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "GlRecord"
+      ]
+    }
+  },
+  {
+    "model": "GlRecord",
+    "file": "sparse-emhare/app/Model/GlRecord.php",
+    "validations": [
+      "GlAccount",
+      "Module",
+      "Period",
+      "audit_trail",
+      "date",
+      "debit_credit_account",
+      "description",
+      "done_by",
+      "fields",
+      "module_id",
+      "narrative",
+      "notempty",
+      "numeric",
+      "period_id",
+      "posted_by",
+      "reference",
+      "rule",
+      "transaction_date"
+    ],
+    "associations": {
+      "belongsTo": [
+        "GlAccount",
+        "Module",
+        "Period"
+      ]
+    }
+  },
+  {
+    "model": "GlobalRollforwardType",
+    "file": "sparse-emhare/app/Model/GlobalRollforwardType.php",
+    "validations": [
+      "ProgrammesType"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "GraduantsRegister",
+    "file": "sparse-emhare/app/Model/GraduantsRegister.php",
+    "validations": [
+      " grad_year",
+      "Programme",
+      "StudentDetail",
+      "credits",
+      "degree_class",
+      "notempty",
+      "numeric",
+      "overal_mark",
+      "programme_code",
+      "reg_number",
+      "registration_year",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "GraduateTracer",
+    "file": "sparse-emhare/app/Model/GraduateTracer.php",
+    "validations": [
+      "category_name",
+      "company_name",
+      "country",
+      "email_address",
+      "notempty",
+      "phone_number",
+      "position",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "GraduationFee",
+    "file": "sparse-emhare/app/Model/GraduationFee.php",
+    "validations": [
+      "StudentDetail",
+      "notempty",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "HallsOfResidence",
+    "file": "sparse-emhare/app/Model/HallsOfResidence.php",
+    "validations": [
+      "AccomodationDamage",
+      "AccomodationRate",
+      "AccomodationWaitingList",
+      "HostelCleaning",
+      "HostelDiningHall",
+      "HostelJanitor",
+      "ProgrammeHostel",
+      "Room",
+      "RoomFee",
+      "RoomOccupancy",
+      "SemesterHostelInformation",
+      "address",
+      "created_by",
+      "hostel_code",
+      "hostel_name",
+      "level_of_study",
+      "location",
+      "notempty",
+      "numeric",
+      "rule",
+      "shared_rooms",
+      "single_rooms",
+      "status",
+      "total_capacity",
+      "used_by",
+      "warden"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationDamage",
+        "AccomodationRate",
+        "AccomodationWaitingList",
+        "HostelCleaning",
+        "HostelDiningHall",
+        "HostelJanitor",
+        "ProgrammeHostel",
+        "Room",
+        "RoomFee",
+        "RoomOccupancy",
+        "SemesterHostelInformation"
+      ]
+    }
+  },
+  {
+    "model": "HostelCleaning",
+    "file": "sparse-emhare/app/Model/HostelCleaning.php",
+    "validations": [
+      "AccomodationFacilityName",
+      "HallsOfResidence",
+      "accomodation_facility_name_id",
+      "cleaner_name",
+      "comment",
+      "halls_of_residence_id",
+      "notempty",
+      "numeric",
+      "recorded_by",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationFacilityName",
+        "HallsOfResidence"
+      ]
+    }
+  },
+  {
+    "model": "HostelDiningHall",
+    "file": "sparse-emhare/app/Model/HostelDiningHall.php",
+    "validations": [
+      "DiningHall",
+      "HallsOfResidence",
+      "dining_hall_id",
+      "halls_of_residence_id",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "DiningHall",
+        "HallsOfResidence"
+      ]
+    }
+  },
+  {
+    "model": "HostelJanitor",
+    "file": "sparse-emhare/app/Model/HostelJanitor.php",
+    "validations": [
+      "HallsOfResidence",
+      "halls_of_residence_id",
+      "janitor_name",
+      "mobile_number",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "HallsOfResidence"
+      ]
+    }
+  },
+  {
+    "model": "IncorrectRoom",
+    "file": "sparse-emhare/app/Model/IncorrectRoom.php",
+    "validations": [
+      "HallsOfResidence",
+      "RoomType",
+      "created_by",
+      "floor",
+      "habitable",
+      "halls_of_residence_id",
+      "notempty",
+      "numeric",
+      "reserved",
+      "room_number",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "HallsOfResidence",
+        "RoomType"
+      ]
+    }
+  },
+  {
+    "model": "Intake",
+    "file": "sparse-emhare/app/Model/Intake.php",
+    "validations": [
+      "ApplicantsDetail",
+      "intake_name",
+      "notempty",
+      "numeric",
+      "rule",
+      "status"
+    ],
+    "associations": {
+      "hasMany": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "IntakeCorrection",
+    "file": "sparse-emhare/app/Model/IntakeCorrection.php",
+    "validations": [
+      "ApplicantsDetail",
+      "applicants_detail_id",
+      "ip_address",
+      "new_intake",
+      "notempty",
+      "numeric",
+      "previous_intake",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "InvoiceLineItem",
+    "file": "sparse-emhare/app/Model/InvoiceLineItem.php",
+    "validations": [
+      "StudentDetail",
+      "account_link",
+      "computer_ip_address",
+      "fees_code",
+      "invoice_number",
+      "line_description",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "registered_year",
+      "rule",
+      "semester",
+      "txn_date",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "InvoiceQuotation",
+    "file": "sparse-emhare/app/Model/InvoiceQuotation.php",
+    "validations": [
+      "invoice_number",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "LateRegBilling",
+    "file": "sparse-emhare/app/Model/LateRegBilling.php",
+    "validations": [
+      "academic_year",
+      "billing_user",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule",
+      "semester"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "LateRegistrationDate",
+    "file": "sparse-emhare/app/Model/LateRegistrationDate.php",
+    "validations": [
+      "created_by",
+      "date",
+      "end_date",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "reg_year",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "LevelFeesParameter",
+    "file": "sparse-emhare/app/Model/LevelFeesParameter.php",
+    "validations": [
+      "ProgrammeSubtype",
+      "ProgrammesType",
+      "created_by",
+      "ip_address",
+      "min_payment_allowed",
+      "notempty",
+      "numeric",
+      "programme_subtype_id",
+      "programmes_type_id",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ProgrammeSubtype",
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "Location",
+    "file": "sparse-emhare/app/Model/Location.php",
+    "validations": [
+      "description",
+      "location_code",
+      "notempty",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "LoginHistory",
+    "file": "sparse-emhare/app/Model/LoginHistory.php",
+    "validations": [
+      "boolean",
+      "date",
+      "datetime",
+      "id",
+      "notBlank",
+      "rule",
+      "sucessfull",
+      "username"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "MarkingScheme",
+    "file": "sparse-emhare/app/Model/MarkingScheme.php",
+    "validations": [
+      "ProgrammesType",
+      "division",
+      "grade",
+      "maximum_mark",
+      "minimum_mark",
+      "notempty",
+      "numeric",
+      "programmes_type_id",
+      "remark",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "MealOption",
+    "file": "sparse-emhare/app/Model/MealOption.php",
+    "validations": [
+      "StudentDiet",
+      "created_by",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "StudentDiet"
+      ]
+    }
+  },
+  {
+    "model": "MealTypeTime",
+    "file": "sparse-emhare/app/Model/MealTypeTime.php",
+    "validations": [
+      "DiningMealCheck",
+      "StudentDiningHall",
+      "end_time",
+      "meal_name",
+      "notempty",
+      "rule",
+      "start_time",
+      "time"
+    ],
+    "associations": {
+      "hasMany": [
+        "DiningMealCheck",
+        "StudentDiningHall"
+      ]
+    }
+  },
+  {
+    "model": "Module",
+    "file": "sparse-emhare/app/Model/Module.php",
+    "validations": [
+      "CashbookRecord",
+      "GlRecord",
+      "Status",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "CashbookRecord",
+        "GlRecord",
+        "Status"
+      ]
+    }
+  },
+  {
+    "model": "MovedAcceptedStudent",
+    "file": "sparse-emhare/app/Model/MovedAcceptedStudent.php",
+    "validations": [
+      "intake_from",
+      "intake_to",
+      "ip_address",
+      "moved_by",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "MovedUndecidedApplicant",
+    "file": "sparse-emhare/app/Model/MovedUndecidedApplicant.php",
+    "validations": [
+      "ApplicantsDetail",
+      "applicants_detail_id",
+      "intake_from",
+      "intake_to",
+      "ip_address",
+      "moved_by",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "NotInStudDetail",
+    "file": "sparse-emhare/app/Model/NotInStudDetail.php",
+    "validations": [],
+    "associations": {}
+  },
+  {
+    "model": "OfferLetter",
+    "file": "sparse-emhare/app/Model/OfferLetter.php",
+    "validations": [
+      "Programme",
+      "commencement_date",
+      "notempty",
+      "orientation_date",
+      "registration_date",
+      "rule"
+    ],
+    "associations": {
+      "hasAndBelongsToMany": [
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "OlevelSubject",
+    "file": "sparse-emhare/app/Model/OlevelSubject.php",
+    "validations": [
+      "ApplicantAlevelQualification",
+      "ApplicantOlevelQualification",
+      "ExamBodyAresult",
+      "ExamBodyOresult",
+      "ProgrammeChoiceSubject",
+      "ProgrammeRequirementsSubject",
+      "ProgrammeSubject",
+      "code",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ApplicantAlevelQualification",
+        "ApplicantOlevelQualification",
+        "ExamBodyAresult",
+        "ExamBodyOresult",
+        "ProgrammeChoiceSubject",
+        "ProgrammeRequirementsSubject",
+        "ProgrammeSubject"
+      ]
+    }
+  },
+  {
+    "model": "OverallDecision",
+    "file": "sparse-emhare/app/Model/OverallDecision.php",
+    "validations": [
+      "Decison",
+      "Programme",
+      "Student",
+      "compulsory_course_units",
+      "cumulative_elective_weights",
+      "decision_code",
+      "min_cumulative_compulsory_units",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "semester",
+      "total_credits",
+      "year_from",
+      "year_of_study",
+      "year_to"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Decison",
+        "Programme"
+      ],
+      "hasAndBelongsToMany": [
+        "Student"
+      ]
+    }
+  },
+  {
+    "model": "OverrideRegistrationDate",
+    "file": "sparse-emhare/app/Model/OverrideRegistrationDate.php",
+    "validations": [
+      "boolean",
+      "create_ip_address",
+      "created_by",
+      "date",
+      "end_registration_date",
+      "modified_by",
+      "modify_ip_address",
+      "notempty",
+      "numeric",
+      "override_reason",
+      "override_reg_dates",
+      "reg_number",
+      "registered_year",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "PasswordManagement",
+    "file": "sparse-emhare/app/Model/PasswordManagement.php",
+    "validations": [
+      "boolean",
+      "create_ip",
+      "created_by",
+      "max_lifespan",
+      "min_length",
+      "modified_by",
+      "modify_ip",
+      "notempty",
+      "numeric",
+      "password_expires",
+      "rqr_numbers",
+      "rqr_special_chars",
+      "rqr_uppercase_letter",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "PaymentSuspense",
+    "file": "sparse-emhare/app/Model/PaymentSuspense.php",
+    "validations": [
+      "StudentDetail",
+      "batch_number",
+      "description",
+      "notempty",
+      "reference",
+      "reg_number",
+      "rule",
+      "transaction_date"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "Period",
+    "file": "sparse-emhare/app/Model/Period.php",
+    "validations": [
+      "GlRecord",
+      "date",
+      "date_from",
+      "date_to",
+      "numeric",
+      "period",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "GlRecord"
+      ]
+    }
+  },
+  {
+    "model": "Point",
+    "file": "sparse-emhare/app/Model/Point.php",
+    "validations": [
+      "ApplicantAlevelQualification",
+      "grade",
+      "notempty",
+      "numeric",
+      "points",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ApplicantAlevelQualification"
+      ]
+    }
+  },
+  {
+    "model": "PrevStudentRegister",
+    "file": "sparse-emhare/app/Model/PrevStudentRegister.php",
+    "validations": [
+      "Course",
+      "FinanceRegistrationPeriod",
+      "Programme",
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "FinanceRegistrationPeriod",
+        "Programme",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "PreviousStudent",
+    "file": "sparse-emhare/app/Model/PreviousStudent.php",
+    "validations": [
+      "ApplicantsDetail",
+      "accepted",
+      "applicants_detail_id",
+      "boolean",
+      "date",
+      "enrolment_date",
+      "numeric",
+      "rule",
+      "take_offer"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "Priority",
+    "file": "sparse-emhare/app/Model/Priority.php",
+    "validations": [
+      "Allocation",
+      "PriorityByDisability",
+      "PriorityByLocation",
+      "PriorityByProgramme",
+      "PriorityByStudentType",
+      "description",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "priority_level",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "PriorityByDisability",
+        "PriorityByLocation",
+        "PriorityByProgramme",
+        "PriorityByStudentType"
+      ],
+      "hasAndBelongsToMany": [
+        "Allocation"
+      ]
+    }
+  },
+  {
+    "model": "PriorityByDisability",
+    "file": "sparse-emhare/app/Model/PriorityByDisability.php",
+    "validations": [
+      "ConditionType",
+      "Disability",
+      "Priority",
+      "condition_type_id",
+      "disability_id",
+      "numeric",
+      "priority_id",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ConditionType",
+        "Disability",
+        "Priority"
+      ]
+    }
+  },
+  {
+    "model": "PriorityByLocation",
+    "file": "sparse-emhare/app/Model/PriorityByLocation.php",
+    "validations": [
+      "ConditionType",
+      "Location",
+      "Priority",
+      "ProgrammesType",
+      "condition_type_id",
+      "level_of_study",
+      "location_id",
+      "numeric",
+      "priority_id",
+      "programmes_type_id",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ConditionType",
+        "Location",
+        "Priority",
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "PriorityByProgramme",
+    "file": "sparse-emhare/app/Model/PriorityByProgramme.php",
+    "validations": [
+      "ConditionType",
+      "Priority",
+      "StudentDetail",
+      "condition_type_id",
+      "level_of_study",
+      "notempty",
+      "numeric",
+      "priority_id",
+      "programme_code",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ConditionType",
+        "Priority",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "PriorityByProgrammeLevel",
+    "file": "sparse-emhare/app/Model/PriorityByProgrammeLevel.php",
+    "validations": [
+      "Priority",
+      "min_prog_duration",
+      "numeric",
+      "priority_id",
+      "rule",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Priority"
+      ]
+    }
+  },
+  {
+    "model": "PriorityByStudentType",
+    "file": "sparse-emhare/app/Model/PriorityByStudentType.php",
+    "validations": [
+      "ConditionType",
+      "Priority",
+      "StudentType",
+      "condition_type_id",
+      "numeric",
+      "priority_id",
+      "rule",
+      "student_type_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ConditionType",
+        "Priority",
+        "StudentType"
+      ]
+    }
+  },
+  {
+    "model": "Programme",
+    "file": "sparse-emhare/app/Model/Programme.php",
+    "validations": [
+      "AccommodationRevokingProgrammeException",
+      "AccomodationGroupsAttributesByProgramme",
+      "AllocationPriority",
+      "Antiplagiarism",
+      "ApplicantAlevelQualification",
+      "ArchSemProgrammeFee",
+      "Course",
+      "CourseFee",
+      "DegreeClassRequirement",
+      "DegreeSubject",
+      "ExamBoardPaper",
+      "ExamCaseRecord",
+      "Faculty",
+      "FacultyRegulation",
+      "GraduantsRegister",
+      "OverallDecision",
+      "PrevStudentRegister",
+      "ProgrammeChoice",
+      "ProgrammeChoiceSubject",
+      "ProgrammeCourseLimit",
+      "ProgrammeFee",
+      "ProgrammeRequirement",
+      "ProgrammeRequirementsSubject",
+      "ProgrammeRollforwardType",
+      "ProgrammeSubject",
+      "ProgrammeSubtype",
+      "ProgrammeWeight",
+      "ProgrammesType",
+      "RegistrationCourseFee",
+      "SemProgrammeFee",
+      "Specialisation",
+      "SpecialisedProgramme",
+      "StructureProgrammeRequirementsSubject",
+      "StudentAssignment",
+      "StudentDetail",
+      "StudentExamHistory",
+      "StudentExamResult",
+      "StudentOverallDecision",
+      "StudentRegister",
+      "StudentRegisterHistory",
+      "SupplementaryCourseFee",
+      "code",
+      "department_code",
+      "faculty_code",
+      "max_duration",
+      "min_duration",
+      "name",
+      "notempty",
+      "numeric",
+      "programmes_type_id",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Faculty",
+        "ProgrammeSubtype",
+        "ProgrammesType"
+      ],
+      "hasMany": [
+        "AccommodationRevokingProgrammeException",
+        "AccomodationGroupsAttributesByProgramme",
+        "AllocationPriority",
+        "Antiplagiarism",
+        "ApplicantAlevelQualification",
+        "ArchSemProgrammeFee",
+        "Course",
+        "CourseFee",
+        "DegreeClassRequirement",
+        "DegreeSubject",
+        "ExamBoardPaper",
+        "ExamCaseRecord",
+        "FacultyRegulation",
+        "GraduantsRegister",
+        "OverallDecision",
+        "PrevStudentRegister",
+        "ProgrammeChoice",
+        "ProgrammeChoiceSubject",
+        "ProgrammeCourseLimit",
+        "ProgrammeFee",
+        "ProgrammeRequirement",
+        "ProgrammeRequirementsSubject",
+        "ProgrammeRollforwardType",
+        "ProgrammeSubject",
+        "ProgrammeWeight",
+        "RegistrationCourseFee",
+        "SemProgrammeFee",
+        "Specialisation",
+        "SpecialisedProgramme",
+        "StructureProgrammeRequirementsSubject",
+        "StudentAssignment",
+        "StudentDetail",
+        "StudentExamHistory",
+        "StudentExamResult",
+        "StudentOverallDecision",
+        "StudentRegister",
+        "StudentRegisterHistory",
+        "SupplementaryCourseFee"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeCapacity",
+    "file": "sparse-emhare/app/Model/ProgrammeCapacity.php",
+    "validations": [
+      "capacity",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "year_of_study"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "ProgrammeChoice",
+    "file": "sparse-emhare/app/Model/ProgrammeChoice.php",
+    "validations": [
+      " choice",
+      "ApplicantsDetail",
+      "Programme",
+      "ProgrammeRequirementsSubject",
+      "ProgrammeSubject",
+      "Statu",
+      "applicants_detail_id",
+      "notBlank",
+      "numeric",
+      "programme_code",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "Programme",
+        "ProgrammeSubject",
+        "Statu"
+      ],
+      "hasMany": [
+        "ProgrammeRequirementsSubject"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeChoiceSubject",
+    "file": "sparse-emhare/app/Model/ProgrammeChoiceSubject.php",
+    "validations": [
+      "ApplicantsDetail",
+      "Programme",
+      "ProgrammeSubject",
+      "applicants_detail_id",
+      "choice",
+      "code",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "Programme",
+        "ProgrammeSubject"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeCourseLimit",
+    "file": "sparse-emhare/app/Model/ProgrammeCourseLimit.php",
+    "validations": [
+      "Programme",
+      "max_course",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeFee",
+    "file": "sparse-emhare/app/Model/ProgrammeFee.php",
+    "validations": [
+      "Faculty",
+      "Programme",
+      "academicfees",
+      "attachmentfess",
+      "benchfees",
+      "cautionfees",
+      "examfees",
+      "faculty_code",
+      "fieldworkfees",
+      "firstaidfees",
+      "graduationfees",
+      "laboratoryfees",
+      "lateregfee",
+      "maintenancefees",
+      "medicalaidfees",
+      "notempty",
+      "numeric",
+      "otherfees",
+      "programme_code",
+      "registrationfees",
+      "rule",
+      "sportsfees",
+      "student_type",
+      "studentravelfees",
+      "studentunionlevy",
+      "technologyfees",
+      "userid",
+      "vaccinationfees",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Faculty",
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeFeesParameter",
+    "file": "sparse-emhare/app/Model/ProgrammeFeesParameter.php",
+    "validations": [
+      "created_by",
+      "ip_address",
+      "min_payment_allowed",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "ProgrammeHostel",
+    "file": "sparse-emhare/app/Model/ProgrammeHostel.php",
+    "validations": [
+      "HallsOfResidence",
+      "created_by",
+      "halls_of_residence_id",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "HallsOfResidence"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeOfferLetter",
+    "file": "sparse-emhare/app/Model/ProgrammeOfferLetter.php",
+    "validations": [
+      "commencement_date",
+      "notempty",
+      "orientation_date",
+      "programme_code",
+      "registration_date",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "ProgrammeOverallDecision",
+    "file": "sparse-emhare/app/Model/ProgrammeOverallDecision.php",
+    "validations": [
+      "SemProgrammeOverallDecision",
+      "created_by",
+      "decision_code",
+      "max_compulsory_units",
+      "min_compulsory_units",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "year_from",
+      "year_of_study",
+      "year_to"
+    ],
+    "associations": {
+      "hasAndBelongsToMany": [
+        "SemProgrammeOverallDecision"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeRegistrationDate",
+    "file": "sparse-emhare/app/Model/ProgrammeRegistrationDate.php",
+    "validations": [
+      "created_by",
+      "date",
+      "end_date",
+      "first_year_end_date",
+      "first_year_start_date",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_year",
+      "rule",
+      "semester",
+      "start_date",
+      "year_of_study"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "ProgrammeRequirement",
+    "file": "sparse-emhare/app/Model/ProgrammeRequirement.php",
+    "validations": [
+      "Programme",
+      "Semester",
+      "female_cut_off",
+      "male_cut_off",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "semester_code"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme",
+        "Semester"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeRequirementsSubject",
+    "file": "sparse-emhare/app/Model/ProgrammeRequirementsSubject.php",
+    "validations": [
+      "OlevelSubject",
+      "Programme",
+      "ProgrammeChoice",
+      "Semester",
+      "Subject",
+      "boolean",
+      "compulsory",
+      "level",
+      "notempty",
+      "programme_code",
+      "rule",
+      "semester_code",
+      "subject_code"
+    ],
+    "associations": {
+      "belongsTo": [
+        "OlevelSubject",
+        "Programme",
+        "ProgrammeChoice",
+        "Semester",
+        "Subject"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeRollforwardType",
+    "file": "sparse-emhare/app/Model/ProgrammeRollforwardType.php",
+    "validations": [
+      "Programme"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeSubject",
+    "file": "sparse-emhare/app/Model/ProgrammeSubject.php",
+    "validations": [
+      "Programme",
+      "ProgrammeChoiceSubject",
+      "code",
+      "notempty",
+      "programme_code",
+      "rule",
+      "subject"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeSubtype",
+    "file": "sparse-emhare/app/Model/ProgrammeSubtype.php",
+    "validations": [
+      "AccomodationGroupAttribute",
+      "AccomodationGroupAttributesBySponsor",
+      "AccomodationGroupsAttributesByDisabilityCode",
+      "AccomodationGroupsAttributesByProgramme",
+      "AccomodationGroupsAttributesByStudentType",
+      "FacultyWeight",
+      "Programme",
+      "created_by",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "rule",
+      "subtype"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationGroupAttribute",
+        "AccomodationGroupAttributesBySponsor",
+        "AccomodationGroupsAttributesByDisabilityCode",
+        "AccomodationGroupsAttributesByProgramme",
+        "AccomodationGroupsAttributesByStudentType",
+        "FacultyWeight",
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeTypeBillingTracker",
+    "file": "sparse-emhare/app/Model/ProgrammeTypeBillingTracker.php",
+    "validations": [
+      "ProgrammesType",
+      "created_by",
+      "end_date",
+      "faculty_code",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "programmes_type_id",
+      "rule",
+      "semester",
+      "start_date",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammeWeight",
+    "file": "sparse-emhare/app/Model/ProgrammeWeight.php",
+    "validations": [
+      "Programme",
+      "credits",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "ProgrammesType",
+    "file": "sparse-emhare/app/Model/ProgrammesType.php",
+    "validations": [
+      "AccomodationGroupAttribute",
+      "AccomodationGroupAttributesBySponsor",
+      "AccomodationGroupsAttributesByDisabilityCode",
+      "AccomodationGroupsAttributesByProgramme",
+      "AccomodationGroupsAttributesByStudentType",
+      "ApplicantsDetail",
+      "ApplicationFee",
+      "BillingMode",
+      "ExamSessionProgrammeType",
+      "FacultyWeight",
+      "GlobalRollforwardType",
+      "MarkingScheme",
+      "Programme",
+      "ProgrammeTypeBillingTracker",
+      "StudentNotice",
+      "description",
+      "notBlank",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ],
+      "hasMany": [
+        "AccomodationGroupAttribute",
+        "AccomodationGroupAttributesBySponsor",
+        "AccomodationGroupsAttributesByDisabilityCode",
+        "AccomodationGroupsAttributesByProgramme",
+        "AccomodationGroupsAttributesByStudentType",
+        "ApplicationFee",
+        "BillingMode",
+        "ExamSessionProgrammeType",
+        "FacultyWeight",
+        "GlobalRollforwardType",
+        "MarkingScheme",
+        "Programme",
+        "ProgrammeTypeBillingTracker",
+        "StudentNotice"
+      ]
+    }
+  },
+  {
+    "model": "ProspectiveSponsor",
+    "file": "sparse-emhare/app/Model/ProspectiveSponsor.php",
+    "validations": [
+      "ApplicantsDetail",
+      "applicants_detail_id",
+      "boolean",
+      "ecnumber",
+      "notempty",
+      "numeric",
+      "relationship",
+      "rule",
+      "staff_dependant",
+      "staff_member"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "PublicHoliday",
+    "file": "sparse-emhare/app/Model/PublicHoliday.php",
+    "validations": [
+      "created_by",
+      "date",
+      "description",
+      "holiday_date",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "PublishResult",
+    "file": "sparse-emhare/app/Model/PublishResult.php",
+    "validations": [
+      "Course",
+      "StudentDetail",
+      "classification",
+      "course_code",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "reg_type",
+      "result",
+      "rule",
+      "semester",
+      "year"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "PublishedStudentOverallDecision",
+    "file": "sparse-emhare/app/Model/PublishedStudentOverallDecision.php",
+    "validations": [
+      "Semester",
+      "Statu",
+      "StudentDetail",
+      "Year",
+      "created_by",
+      "date",
+      "exam_date",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "overall_decision",
+      "reg_number",
+      "reg_type",
+      "registered_year",
+      "rule",
+      "statu_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Statu",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "Receipt",
+    "file": "sparse-emhare/app/Model/Receipt.php",
+    "validations": [
+      "AccountType",
+      "ApplicantsDetail",
+      "StudentDetail",
+      "TenderType",
+      "Transaction",
+      "TransactionDescription",
+      "User",
+      "account_link",
+      "alphanumeric",
+      "applicants_detail_id",
+      "computer_ip_address",
+      "created",
+      "credit",
+      "date",
+      "debit",
+      "description",
+      "id",
+      "modified",
+      "money",
+      "notempty",
+      "receipt_number",
+      "reg_number",
+      "rule",
+      "transaction_date",
+      "transaction_type",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccountType",
+        "ApplicantsDetail",
+        "StudentDetail",
+        "TenderType",
+        "Transaction",
+        "TransactionDescription",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "RefundDescription",
+    "file": "sparse-emhare/app/Model/RefundDescription.php",
+    "validations": [
+      "RefundJournal",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "RefundJournal"
+      ]
+    }
+  },
+  {
+    "model": "RefundJournal",
+    "file": "sparse-emhare/app/Model/RefundJournal.php",
+    "validations": [
+      "RefundDescription",
+      "RefundJournalTransaction",
+      "User",
+      "batch_number",
+      "description",
+      "notempty",
+      "rule",
+      "status",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "RefundDescription",
+        "User"
+      ],
+      "hasMany": [
+        "RefundJournalTransaction"
+      ]
+    }
+  },
+  {
+    "model": "RefundJournalTransaction",
+    "file": "sparse-emhare/app/Model/RefundJournalTransaction.php",
+    "validations": [
+      "RefundDescription",
+      "RefundJournal",
+      "StudentDetail",
+      "account_link",
+      "batch_number",
+      "description",
+      "notempty",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "RefundDescription",
+        "RefundJournal",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "RegSemesterIntake",
+    "file": "sparse-emhare/app/Model/RegSemesterIntake.php",
+    "validations": [
+      "AcademicRegistrationSemester",
+      "academic_registration_semester_id",
+      "created_by",
+      "intake",
+      "notempty",
+      "numeric",
+      "rule",
+      "semester"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AcademicRegistrationSemester"
+      ]
+    }
+  },
+  {
+    "model": "RegistrationCourseFee",
+    "file": "sparse-emhare/app/Model/RegistrationCourseFee.php",
+    "validations": [
+      "Programme",
+      "created_by",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "RegistrationCutoffDate",
+    "file": "sparse-emhare/app/Model/RegistrationCutoffDate.php",
+    "validations": [
+      "StudentDetail",
+      "end_date",
+      "latereg_enddate",
+      "latereg_startdate",
+      "notempty",
+      "numeric",
+      "reg_year",
+      "rule",
+      "semester",
+      "start_date"
+    ],
+    "associations": {
+      "hasMany": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "RegistrationSemester",
+    "file": "sparse-emhare/app/Model/RegistrationSemester.php",
+    "validations": [
+      "AccomodationCutOffDate",
+      "AccomodationPeriodOfStay",
+      "AccomodationSemesterPeriod",
+      "RemovedRoomAllocation",
+      "RoomAllocation",
+      "RoomOccupancy",
+      "created_by",
+      "notempty",
+      "numeric",
+      "rule",
+      "semester",
+      "status",
+      "year"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationCutOffDate",
+        "AccomodationPeriodOfStay",
+        "AccomodationSemesterPeriod",
+        "RemovedRoomAllocation",
+        "RoomAllocation",
+        "RoomOccupancy"
+      ]
+    }
+  },
+  {
+    "model": "RegistrationType",
+    "file": "sparse-emhare/app/Model/RegistrationType.php",
+    "validations": [
+      "description",
+      "notempty",
+      "reg_type",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "RegulationType",
+    "file": "sparse-emhare/app/Model/RegulationType.php",
+    "validations": [
+      "FacultyRegulation",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "FacultyRegulation"
+      ]
+    }
+  },
+  {
+    "model": "Remark",
+    "file": "sparse-emhare/app/Model/Remark.php",
+    "validations": [
+      "Course",
+      "StudentDetail",
+      "course_code",
+      "ip_address",
+      "new_classification",
+      "notempty",
+      "numeric",
+      "previous_classification",
+      "reason",
+      "reg_number",
+      "registered_year",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "RemovedRoomAllocation",
+    "file": "sparse-emhare/app/Model/RemovedRoomAllocation.php",
+    "validations": [
+      "AccomodationAllocationType",
+      "DenialReason",
+      "RegistrationSemester",
+      "Room",
+      "Statu",
+      "accomodation_allocation_type_id",
+      "allocated_by",
+      "checked_in_by",
+      "checked_out_by",
+      "comment",
+      "denial_reason_id",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "registration_semester_id",
+      "removed_by",
+      "room_id",
+      "rule",
+      "statu_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationAllocationType",
+        "DenialReason",
+        "RegistrationSemester",
+        "Room",
+        "Statu"
+      ]
+    }
+  },
+  {
+    "model": "RepeatStudentRegister",
+    "file": "sparse-emhare/app/Model/RepeatStudentRegister.php",
+    "validations": [
+      "Statu",
+      "User",
+      "course_code",
+      "library_register",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_date",
+      "reg_number",
+      "reg_type",
+      "registered_year",
+      "rule",
+      "semester",
+      "statu_id",
+      "user_id",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Statu",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "ResultsClearance",
+    "file": "sparse-emhare/app/Model/ResultsClearance.php",
+    "validations": [
+      "StudentDetail",
+      "created_by",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "registered_year",
+      "rule",
+      "semester"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "ReversedAcceptedApplicant",
+    "file": "sparse-emhare/app/Model/ReversedAcceptedApplicant.php",
+    "validations": [
+      "applicants_detail_id",
+      "date",
+      "dob",
+      "gender",
+      "id_number",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "ReversedApplicantSelection",
+    "file": "sparse-emhare/app/Model/ReversedApplicantSelection.php",
+    "validations": [
+      "ApplicantsDetail",
+      "applicants_detail_id",
+      "created_by",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "reversed_programme_choice",
+      "reversed_status",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "RollForwardAudit",
+    "file": "sparse-emhare/app/Model/RollForwardAudit.php",
+    "validations": [
+      "StudentDetail",
+      "created_by",
+      "from_registered_year",
+      "from_semester",
+      "from_year_of_study",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "roll_forward_type",
+      "rollforward_reverse",
+      "rule",
+      "to_registered_year",
+      "to_semester",
+      "to_year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "RollForwardStudentRegister",
+    "file": "sparse-emhare/app/Model/RollForwardStudentRegister.php",
+    "validations": [
+      "Statu",
+      "StudentDetail",
+      "User",
+      "boolean",
+      "course_code",
+      "ip_address",
+      "library_reactivation",
+      "library_register",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_date",
+      "reg_number",
+      "reg_type",
+      "registered_year",
+      "rollforward_by",
+      "rollforward_date",
+      "rule",
+      "semester",
+      "statu_id",
+      "user_id",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Statu",
+        "StudentDetail",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "Room",
+    "file": "sparse-emhare/app/Model/Room.php",
+    "validations": [
+      "AccomodationPeriodOfStay",
+      "ArchStudentAccommodationPayment",
+      "HallsOfResidence",
+      "RemovedRoomAllocation",
+      "RoomAllocation",
+      "RoomAllocationsHolding",
+      "RoomType",
+      "StudentAccommodationPayment",
+      "created_by",
+      "floor",
+      "habitable",
+      "halls_of_residence_id",
+      "notempty",
+      "numeric",
+      "room_number",
+      "room_type_id",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "HallsOfResidence",
+        "RoomType"
+      ],
+      "hasMany": [
+        "AccomodationPeriodOfStay",
+        "ArchStudentAccommodationPayment",
+        "RemovedRoomAllocation",
+        "RoomAllocation",
+        "RoomAllocationsHolding",
+        "StudentAccommodationPayment"
+      ]
+    }
+  },
+  {
+    "model": "RoomAllocation",
+    "file": "sparse-emhare/app/Model/RoomAllocation.php",
+    "validations": [
+      "AccomodationAllocationType",
+      "FinanceRegistrationPeriod",
+      "Room",
+      "Statu",
+      "StudentDetail",
+      "StudentDiningHall",
+      "allocated_by",
+      "checked_in_by",
+      "checked_out_by",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "reg_year",
+      "room_id",
+      "rule",
+      "semester",
+      "statu_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationAllocationType",
+        "FinanceRegistrationPeriod",
+        "Room",
+        "Statu",
+        "StudentDetail"
+      ],
+      "hasMany": [
+        "StudentDiningHall"
+      ]
+    }
+  },
+  {
+    "model": "RoomAllocationsBeforeCheckout",
+    "file": "sparse-emhare/app/Model/RoomAllocationsBeforeCheckout.php",
+    "validations": [
+      "AccomodationAllocationType",
+      "FinanceRegistrationPeriod",
+      "RegistrationSemester",
+      "Room",
+      "Statu",
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationAllocationType",
+        "FinanceRegistrationPeriod",
+        "RegistrationSemester",
+        "Room",
+        "Statu",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "RoomAllocationsHolding",
+    "file": "sparse-emhare/app/Model/RoomAllocationsHolding.php",
+    "validations": [
+      "AccomodationAllocationType",
+      "FinanceRegistrationPeriod",
+      "RegistrationSemester",
+      "Room",
+      "Statu",
+      "accomodation_allocation_type_id",
+      "allocated_by",
+      "billing_status",
+      "incomplete_payment",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "registration_semester_id",
+      "room_id",
+      "rule",
+      "statu_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccomodationAllocationType",
+        "FinanceRegistrationPeriod",
+        "RegistrationSemester",
+        "Room",
+        "Statu"
+      ]
+    }
+  },
+  {
+    "model": "RoomFee",
+    "file": "sparse-emhare/app/Model/RoomFee.php",
+    "validations": [
+      "HallsOfResidence",
+      "RoomType",
+      "halls_of_residence_id",
+      "numeric",
+      "room_type_id",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "HallsOfResidence",
+        "RoomType"
+      ]
+    }
+  },
+  {
+    "model": "RoomOccupancy",
+    "file": "sparse-emhare/app/Model/RoomOccupancy.php",
+    "validations": [
+      "HallsOfResidence",
+      "RegistrationSemester",
+      "halls_of_residence_id",
+      "numeric",
+      "rule",
+      "shared_rooms",
+      "single_rooms",
+      "total_capacity"
+    ],
+    "associations": {
+      "belongsTo": [
+        "HallsOfResidence",
+        "RegistrationSemester"
+      ]
+    }
+  },
+  {
+    "model": "RoomType",
+    "file": "sparse-emhare/app/Model/RoomType.php",
+    "validations": [
+      "AccomodationRate",
+      "Room",
+      "RoomFee",
+      "notempty",
+      "numeric",
+      "room_capacity",
+      "rule",
+      "type"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationRate",
+        "Room",
+        "RoomFee"
+      ]
+    }
+  },
+  {
+    "model": "SarAdmissionsAmmendment",
+    "file": "sparse-emhare/app/Model/SarAdmissionsAmmendment.php",
+    "validations": [
+      "StudentDetail",
+      "approval_date",
+      "approval_ip",
+      "approved",
+      "approved_by",
+      "deselected_by",
+      "deselected_date",
+      "deselected_ip",
+      "from_programme_code",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "reselected_by",
+      "reselected_date",
+      "reselected_ip",
+      "rule",
+      "to_programme_code"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "SarRepeatAmmendment",
+    "file": "sparse-emhare/app/Model/SarRepeatAmmendment.php",
+    "validations": [
+      "from_repeat_status",
+      "from_semester",
+      "from_year_of_study",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "rule",
+      "to_semester"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "School",
+    "file": "sparse-emhare/app/Model/School.php",
+    "validations": [
+      "ApplicantAlevelQualification",
+      "ExamBodyAresult",
+      "ExamBodyOresult",
+      "ExamResult",
+      "address",
+      "centre_number",
+      "email",
+      "landline",
+      "mobile_number",
+      "name",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ApplicantAlevelQualification",
+        "ExamBodyAresult",
+        "ExamBodyOresult",
+        "ExamResult"
+      ]
+    }
+  },
+  {
+    "model": "SchoolsAttended",
+    "file": "sparse-emhare/app/Model/SchoolsAttended.php",
+    "validations": [
+      "ApplicantsDetail",
+      "Country",
+      "applicants_detail_id",
+      "name",
+      "notBlank",
+      "numeric",
+      "period_from",
+      "period_to",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "Country"
+      ]
+    }
+  },
+  {
+    "model": "SemProgrammeFee",
+    "file": "sparse-emhare/app/Model/SemProgrammeFee.php",
+    "validations": [
+      "Faculty",
+      "Programme",
+      "academicfees",
+      "attachmentfess",
+      "benchfees",
+      "cautionfees",
+      "examfees",
+      "faculty_code",
+      "fieldworkfees",
+      "firstaidfees",
+      "graduationfees",
+      "laboratoryfees",
+      "lateregfee",
+      "maintenancefees",
+      "medicalaidfees",
+      "notempty",
+      "numeric",
+      "otherfees",
+      "programme_code",
+      "registrationfees",
+      "rule",
+      "semester",
+      "sportsfees",
+      "student_type",
+      "studentravelfees",
+      "studentunionlevy",
+      "technologyfees",
+      "userid",
+      "vaccinationfees",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Faculty",
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "SemProgrammeFeesAudit",
+    "file": "sparse-emhare/app/Model/SemProgrammeFeesAudit.php",
+    "validations": [
+      "created_by",
+      "faculty_code",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "semester",
+      "student_type",
+      "year_of_study"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "SemProgrammeOverallDecision",
+    "file": "sparse-emhare/app/Model/SemProgrammeOverallDecision.php",
+    "validations": [
+      "created_by",
+      "decision_code",
+      "max_compulsory_units",
+      "min_compulsory_units",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "semester",
+      "year_from",
+      "year_of_study",
+      "year_to"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "Semester",
+    "file": "sparse-emhare/app/Model/Semester.php",
+    "validations": [
+      "ProgrammeRequirement",
+      "ProgrammeRequirementsSubject",
+      "StructureProgrammeRequirementsSubject",
+      "code",
+      "course_work_deadline",
+      "date",
+      "end_date",
+      "exam_mark_deadline",
+      "intake",
+      "name",
+      "notempty",
+      "rule",
+      "start_date",
+      "year"
+    ],
+    "associations": {
+      "hasMany": [
+        "ProgrammeRequirement",
+        "ProgrammeRequirementsSubject",
+        "StructureProgrammeRequirementsSubject"
+      ]
+    }
+  },
+  {
+    "model": "SemesterHostelInformation",
+    "file": "sparse-emhare/app/Model/SemesterHostelInformation.php",
+    "validations": [
+      "HallsOfResidence",
+      "created_by",
+      "halls_of_residence_id",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule",
+      "semester",
+      "user_ip_address",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "HallsOfResidence"
+      ]
+    }
+  },
+  {
+    "model": "Specialisation",
+    "file": "sparse-emhare/app/Model/Specialisation.php",
+    "validations": [
+      "Programme",
+      "StudentsSpecialisation",
+      "code",
+      "description",
+      "notempty",
+      "programme_code",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ],
+      "hasMany": [
+        "StudentsSpecialisation"
+      ]
+    }
+  },
+  {
+    "model": "SpecialisationType",
+    "file": "sparse-emhare/app/Model/SpecialisationType.php",
+    "validations": [
+      "SpecialisedProgramme",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "SpecialisedProgramme"
+      ]
+    }
+  },
+  {
+    "model": "SpecialisedProgramme",
+    "file": "sparse-emhare/app/Model/SpecialisedProgramme.php",
+    "validations": [
+      "Programme",
+      "SpecialisationType",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "specialisation_type_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme",
+        "SpecialisationType"
+      ]
+    }
+  },
+  {
+    "model": "Sponsor",
+    "file": "sparse-emhare/app/Model/Sponsor.php",
+    "validations": [
+      "AccommodationRevokingSponsorException",
+      "AccomodationGroupAttributesBySponsor",
+      "ApplicantsDetail",
+      "StudentDetail",
+      "WaiveredSponsor",
+      "code",
+      "details",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccommodationRevokingSponsorException",
+        "AccomodationGroupAttributesBySponsor",
+        "ApplicantsDetail",
+        "StudentDetail",
+        "WaiveredSponsor"
+      ]
+    }
+  },
+  {
+    "model": "StaffDetail",
+    "file": "sparse-emhare/app/Model/StaffDetail.php",
+    "validations": [
+      "AssignmentTotal",
+      "CourseInstructor",
+      "Department",
+      "DiningHallAttendant",
+      "User",
+      "department_code",
+      "ecnumber",
+      "email",
+      "firstname",
+      "home_phone",
+      "mobile",
+      "notempty",
+      "numeric",
+      "rule",
+      "surname",
+      "title",
+      "work_phone"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AssignmentTotal",
+        "Department"
+      ],
+      "hasMany": [
+        "CourseInstructor",
+        "DiningHallAttendant",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "Status",
+    "file": "sparse-emhare/app/Model/Status.php",
+    "validations": [
+      "AccomodationPeriodOfStay",
+      "ApplicantsDetail",
+      "ExamMasterTimetable",
+      "ExamStudentTimetable",
+      "Module",
+      "ProgrammeChoice",
+      "PublishedStudentOverallDecision",
+      "RemovedRoomAllocation",
+      "RoomAllocation",
+      "StudentAccommodationPayment",
+      "StudentDetail",
+      "StudentExamResult",
+      "StudentInvoice",
+      "StudentRegister",
+      "description",
+      "notempty",
+      "rule",
+      "status"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Module"
+      ],
+      "hasMany": [
+        "AccomodationPeriodOfStay",
+        "ApplicantsDetail",
+        "ExamMasterTimetable",
+        "ExamStudentTimetable",
+        "ProgrammeChoice",
+        "PublishedStudentOverallDecision",
+        "RemovedRoomAllocation",
+        "RoomAllocation",
+        "StudentAccommodationPayment",
+        "StudentDetail",
+        "StudentExamResult",
+        "StudentInvoice",
+        "StudentRegister"
+      ]
+    }
+  },
+  {
+    "model": "StructureProgrammeRequirementsSubject",
+    "file": "sparse-emhare/app/Model/StructureProgrammeRequirementsSubject.php",
+    "validations": [
+      "Programme",
+      "Semester",
+      "female_cut_off",
+      "male_cut_off",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "semester_code"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme",
+        "Semester"
+      ]
+    }
+  },
+  {
+    "model": "StudentAccommodationPayment",
+    "file": "sparse-emhare/app/Model/StudentAccommodationPayment.php",
+    "validations": [
+      "Room",
+      "Statu",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule",
+      "statu_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Room",
+        "Statu"
+      ]
+    }
+  },
+  {
+    "model": "StudentAccountAdjustment",
+    "file": "sparse-emhare/app/Model/StudentAccountAdjustment.php",
+    "validations": [
+      "Transaction",
+      "amount",
+      "authorised_by",
+      "date",
+      "done_by",
+      "id",
+      "money",
+      "notempty",
+      "numeric",
+      "rule",
+      "student_detail_reg_number",
+      "transaction_type"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Transaction"
+      ]
+    }
+  },
+  {
+    "model": "StudentAssignment",
+    "file": "sparse-emhare/app/Model/StudentAssignment.php",
+    "validations": [
+      "Course",
+      "Programme",
+      "StudentDetail",
+      "aggregated_mark",
+      "assignment1",
+      "assignment2",
+      "assignment3",
+      "assignment4",
+      "course_code",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "rule",
+      "semester",
+      "year"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "Programme",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentAssignmentsHistory",
+    "file": "sparse-emhare/app/Model/StudentAssignmentsHistory.php",
+    "validations": [
+      "User",
+      "assignment1",
+      "assignment10",
+      "assignment11",
+      "assignment12",
+      "assignment2",
+      "assignment3",
+      "assignment4",
+      "assignment5",
+      "assignment6",
+      "assignment7",
+      "assignment8",
+      "assignment9",
+      "course_code",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "rule",
+      "semester",
+      "test1",
+      "test2",
+      "test3",
+      "test4",
+      "test5",
+      "user_id",
+      "weight",
+      "year",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "StudentBalance",
+    "file": "sparse-emhare/app/Model/StudentBalance.php",
+    "validations": [
+      "StudentDetail",
+      "notempty",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentBillingAudit",
+    "file": "sparse-emhare/app/Model/StudentBillingAudit.php",
+    "validations": [
+      "StudentDetail",
+      "academic_year",
+      "billing_user",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule",
+      "semester"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentDegreeClassAudit",
+    "file": "sparse-emhare/app/Model/StudentDegreeClassAudit.php",
+    "validations": [
+      "created_by",
+      "degree_class_from",
+      "degree_class_to",
+      "ip_address",
+      "notempty",
+      "programme_code",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "StudentDetail",
+    "file": "sparse-emhare/app/Model/StudentDetail.php",
+    "validations": [
+      "AccommodationModificationTrail",
+      "AccomodationPoolStudent",
+      "AccountGroup",
+      "Antiplagiarism",
+      "ApplicantsDetail",
+      "ArchCurrentRepeatStudent",
+      "ArchInvoiceLineItem",
+      "ArchStudentBillingAudit",
+      "ArchStudentIdCard",
+      "AuditTrailCurrentResult",
+      "AwardNominee",
+      "BankAccount",
+      "CourseAmmendment",
+      "CourseResult",
+      "CurrentRepeatStudent",
+      "CurrentResult",
+      "DeregisteredStudentRegister",
+      "Disability",
+      "EcocashClientCorrelator",
+      "ExamCaseRecord",
+      "GeneralLedger",
+      "GraduantsRegister",
+      "GraduationFee",
+      "InvoiceLineItem",
+      "PaymentSuspense",
+      "PrevStudentRegister",
+      "Programme",
+      "PublishResult",
+      "PublishedStudentOverallDecision",
+      "Receipt",
+      "RefundJournalTransaction",
+      "RegistrationCutoffDate",
+      "Remark",
+      "ResultsClearance",
+      "RollForwardAudit",
+      "RollForwardStudentRegister",
+      "RoomAllocation",
+      "RoomAllocationsBeforeCheckout",
+      "SarAdmissionsAmmendment",
+      "Sponsor",
+      "Status",
+      "StudentAssignment",
+      "StudentBillingAudit",
+      "StudentDiet",
+      "StudentExamHistory",
+      "StudentExamResult",
+      "StudentExtraCourse",
+      "StudentIdCard",
+      "StudentInvoice",
+      "StudentOverallDecision",
+      "StudentOverallDecisionHistory",
+      "StudentPayment",
+      "StudentProgramme",
+      "StudentRegister",
+      "StudentRegisterHistory",
+      "StudentRegisterRepeatCourse",
+      "StudentRegisteredCarryCourse",
+      "StudentRegisteredRepeatCourse",
+      "StudentRegistration",
+      "StudentSubject",
+      "StudentUniversityAward",
+      "StudentWeight",
+      "SuspendedStudent",
+      "TempStudentPayment",
+      "TransactionsAudit",
+      "User",
+      "VerifiedFirstYear",
+      "WaiveredStudent",
+      "WinterSchoolRegistration",
+      "WithdrawnStudent",
+      "address",
+      "applicants_detail_id",
+      "citizenship",
+      "city",
+      "date",
+      "dob",
+      "email",
+      "email_address",
+      "firstname",
+      "gender"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "Disability",
+        "Programme",
+        "RegistrationCutoffDate",
+        "Sponsor",
+        "Status"
+      ],
+      "hasMany": [
+        "AccommodationModificationTrail",
+        "AccomodationPoolStudent",
+        "AccountGroup",
+        "Antiplagiarism",
+        "ArchCurrentRepeatStudent",
+        "ArchInvoiceLineItem",
+        "ArchStudentBillingAudit",
+        "ArchStudentIdCard",
+        "AuditTrailCurrentResult",
+        "AwardNominee",
+        "BankAccount",
+        "CourseAmmendment",
+        "CourseResult",
+        "CurrentRepeatStudent",
+        "CurrentResult",
+        "DeregisteredStudentRegister",
+        "EcocashClientCorrelator",
+        "ExamCaseRecord",
+        "GeneralLedger",
+        "GraduantsRegister",
+        "GraduationFee",
+        "InvoiceLineItem",
+        "PaymentSuspense",
+        "PrevStudentRegister",
+        "PublishResult",
+        "PublishedStudentOverallDecision",
+        "Receipt",
+        "RefundJournalTransaction",
+        "Remark",
+        "ResultsClearance",
+        "RollForwardAudit",
+        "RollForwardStudentRegister",
+        "RoomAllocation",
+        "RoomAllocationsBeforeCheckout",
+        "SarAdmissionsAmmendment",
+        "StudentAssignment",
+        "StudentBillingAudit",
+        "StudentDiet",
+        "StudentExamHistory",
+        "StudentExamResult",
+        "StudentExtraCourse",
+        "StudentIdCard",
+        "StudentInvoice",
+        "StudentOverallDecision",
+        "StudentOverallDecisionHistory",
+        "StudentPayment",
+        "StudentProgramme",
+        "StudentRegister",
+        "StudentRegisterHistory",
+        "StudentRegisterRepeatCourse",
+        "StudentRegisteredCarryCourse",
+        "StudentRegisteredRepeatCourse",
+        "StudentRegistration",
+        "StudentSubject",
+        "StudentUniversityAward",
+        "StudentWeight",
+        "SuspendedStudent",
+        "TempStudentPayment",
+        "TransactionsAudit",
+        "User",
+        "VerifiedFirstYear",
+        "WaiveredStudent",
+        "WinterSchoolRegistration",
+        "WithdrawnStudent"
+      ]
+    }
+  },
+  {
+    "model": "StudentDetailsHistory",
+    "file": "sparse-emhare/app/Model/StudentDetailsHistory.php",
+    "validations": [
+      "ApplicantsDetail",
+      "Location",
+      "Statu",
+      "accepted_by",
+      "account_group_code",
+      "address",
+      "applicants_detail_id",
+      "attendance_type",
+      "barcode",
+      "campus_indicator",
+      "citizenship",
+      "city",
+      "country_code",
+      "created_by",
+      "date",
+      "date_accepted",
+      "date_created",
+      "date_of_registration",
+      "disability_code",
+      "dob",
+      "email_address",
+      "final_year",
+      "firstname",
+      "gender",
+      "home_phone",
+      "id_number",
+      "initial",
+      "intake",
+      "ip_address_creator",
+      "ip_adresss_accepted",
+      "location_id",
+      "marital_status",
+      "mobile",
+      "nationality",
+      "next_of_kin",
+      "next_of_kin_address",
+      "notempty",
+      "numeric",
+      "offered_place",
+      "paid_up",
+      "period_of_residence",
+      "permanent_res_zim",
+      "place_of_birth",
+      "previous_surname",
+      "programme_code",
+      "race",
+      "reg_delimeter",
+      "reg_number",
+      "registered_year",
+      "religion",
+      "repeat_student",
+      "residence_priority",
+      "residence_status",
+      "result_supressed",
+      "rule",
+      "semester",
+      "sponsor_code",
+      "start_year",
+      "statu_id",
+      "student_type",
+      "surname",
+      "suspend_reject",
+      "term_address",
+      "timed_out",
+      "tittle",
+      "vacation_address",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "Location",
+        "Statu"
+      ]
+    }
+  },
+  {
+    "model": "StudentDiet",
+    "file": "sparse-emhare/app/Model/StudentDiet.php",
+    "validations": [
+      "MealOption",
+      "StudentDetail",
+      "checkDuplicates",
+      "conditions",
+      "created_by",
+      "ip_address",
+      "meal_option_id",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "MealOption",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentDiningHall",
+    "file": "sparse-emhare/app/Model/StudentDiningHall.php",
+    "validations": [
+      "DiningHall",
+      "DiningMealCheck",
+      "MealTypeTime",
+      "RoomAllocation",
+      "dining_hall_id",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "DiningHall",
+        "MealTypeTime",
+        "RoomAllocation"
+      ],
+      "hasMany": [
+        "DiningMealCheck"
+      ]
+    }
+  },
+  {
+    "model": "StudentDissertation",
+    "file": "sparse-emhare/app/Model/StudentDissertation.php",
+    "validations": [
+      "StudentDetail",
+      "course_code",
+      "created_by",
+      "date_created",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "reg_year",
+      "research_topic",
+      "rule",
+      "semester",
+      "submission_date",
+      "supervisor",
+      "supervisor1",
+      "supervisor2"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentExamHistory",
+    "file": "sparse-emhare/app/Model/StudentExamHistory.php",
+    "validations": [
+      "Course",
+      "Programme",
+      "StudentDetail",
+      "classification",
+      "course_code",
+      "date_stamp",
+      "final_mark",
+      "notBlank",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "remark",
+      "rule",
+      "semester",
+      "user_id",
+      "year",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "Programme",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentExamResult",
+    "file": "sparse-emhare/app/Model/StudentExamResult.php",
+    "validations": [
+      "Course",
+      "Programme",
+      "Statu",
+      "StudentDetail",
+      "aggregate_exam_mark",
+      "classification",
+      "course_code",
+      "course_work",
+      "date_stamp",
+      "exam_mark",
+      "final_mark",
+      "notBlank",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "remark",
+      "rule",
+      "semester",
+      "user_id",
+      "username",
+      "year"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "Programme",
+        "Statu",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentExtraCourse",
+    "file": "sparse-emhare/app/Model/StudentExtraCourse.php",
+    "validations": [
+      "StudentDetail",
+      "extra_count",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "registered_semester",
+      "registered_year",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentIdCard",
+    "file": "sparse-emhare/app/Model/StudentIdCard.php",
+    "validations": [
+      "StudentDetail",
+      "notempty",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentInvoice",
+    "file": "sparse-emhare/app/Model/StudentInvoice.php",
+    "validations": [
+      "AccountType",
+      "Status",
+      "StudentDetail",
+      "User",
+      "account_link",
+      "computer_ip_address",
+      "credit",
+      "debit",
+      "description",
+      "invoice_number",
+      "notempty",
+      "reg_number",
+      "registered_year",
+      "rule",
+      "semester",
+      "txn_date",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccountType",
+        "Status",
+        "StudentDetail",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "StudentNotice",
+    "file": "sparse-emhare/app/Model/StudentNotice.php",
+    "validations": [
+      "Faculty",
+      "ProgrammesType"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Faculty",
+        "ProgrammesType"
+      ]
+    }
+  },
+  {
+    "model": "StudentOverallDecision",
+    "file": "sparse-emhare/app/Model/StudentOverallDecision.php",
+    "validations": [
+      "Decison",
+      "Programme",
+      "Semester",
+      "StudentDetail",
+      "Year",
+      "date",
+      "decision_code",
+      "exam_date",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "reg_type",
+      "rule",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Decison",
+        "Programme",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentOverallDecisionHistory",
+    "file": "sparse-emhare/app/Model/StudentOverallDecisionHistory.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentOverallDecisionsAudit",
+    "file": "sparse-emhare/app/Model/StudentOverallDecisionsAudit.php",
+    "validations": [],
+    "associations": {}
+  },
+  {
+    "model": "StudentPayment",
+    "file": "sparse-emhare/app/Model/StudentPayment.php",
+    "validations": [
+      "AccountType",
+      "StudentDetail",
+      "StudentPayment",
+      "User",
+      "account_link",
+      "alphanumeric",
+      "computer_ip_address",
+      "credit",
+      "debit",
+      "description",
+      "notempty",
+      "refference",
+      "rule",
+      "student_detail_reg_number",
+      "txn_date",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccountType",
+        "StudentDetail",
+        "User"
+      ],
+      "hasMany": [
+        "StudentPayment"
+      ]
+    }
+  },
+  {
+    "model": "StudentProgramme",
+    "file": "sparse-emhare/app/Model/StudentProgramme.php",
+    "validations": [
+      "StudentDetail",
+      "academic_year",
+      "created_by",
+      "end_month",
+      "end_year",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "registered_year",
+      "rule",
+      "start_month",
+      "start_year",
+      "user_ip_add"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentReceipt",
+    "file": "sparse-emhare/app/Model/StudentReceipt.php",
+    "validations": [
+      "ApplicantsDetail",
+      "Transaction",
+      "amount",
+      "applicants_detail_id",
+      "date",
+      "id",
+      "money",
+      "notempty",
+      "numeric",
+      "recieved_by",
+      "rule",
+      "student_detail_reg_number",
+      "transaction_type"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail",
+        "Transaction"
+      ]
+    }
+  },
+  {
+    "model": "StudentRegister",
+    "file": "sparse-emhare/app/Model/StudentRegister.php",
+    "validations": [
+      "Course",
+      "CourseAmmendment",
+      "FinanceRegistrationPeriod",
+      "Programme",
+      "Statu",
+      "StudentDetail",
+      "course_code",
+      "notblank",
+      "programme_code",
+      "reg_number",
+      "registered_year",
+      "rule",
+      "semester_code",
+      "statu_id",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "CourseAmmendment",
+        "FinanceRegistrationPeriod",
+        "Programme",
+        "Statu",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentRegisterHistory",
+    "file": "sparse-emhare/app/Model/StudentRegisterHistory.php",
+    "validations": [
+      "Course",
+      "Programme",
+      "Semester",
+      "StudentDetail",
+      "course_code",
+      "notempty",
+      "programme_code",
+      "reg_number",
+      "registered_year",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Course",
+        "Programme",
+        "Semester",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentRegisterRepeatCourse",
+    "file": "sparse-emhare/app/Model/StudentRegisterRepeatCourse.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentRegisteredCarryCourse",
+    "file": "sparse-emhare/app/Model/StudentRegisteredCarryCourse.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentRegisteredRepeatCourse",
+    "file": "sparse-emhare/app/Model/StudentRegisteredRepeatCourse.php",
+    "validations": [
+      "course_code",
+      "invoiced",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "StudentRegistration",
+    "file": "sparse-emhare/app/Model/StudentRegistration.php",
+    "validations": [
+      "FinanceRegistrationPeriod",
+      "Programme",
+      "StudentDetail",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "registered_courses",
+      "registered_year",
+      "registration_date",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "FinanceRegistrationPeriod",
+        "Programme",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentRegistrationHistory",
+    "file": "sparse-emhare/app/Model/StudentRegistrationHistory.php",
+    "validations": [],
+    "associations": {}
+  },
+  {
+    "model": "StudentSubject",
+    "file": "sparse-emhare/app/Model/StudentSubject.php",
+    "validations": [
+      "DegreeSubject",
+      "StudentDetail",
+      "notempty",
+      "reg_number",
+      "rule",
+      "subject_code"
+    ],
+    "associations": {
+      "belongsTo": [
+        "DegreeSubject",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentType",
+    "file": "sparse-emhare/app/Model/StudentType.php",
+    "validations": [
+      "AccomodationGroupsAttributesByStudentType",
+      "description",
+      "notempty",
+      "rule",
+      "type_code"
+    ],
+    "associations": {
+      "hasMany": [
+        "AccomodationGroupsAttributesByStudentType"
+      ]
+    }
+  },
+  {
+    "model": "StudentUniversityAward",
+    "file": "sparse-emhare/app/Model/StudentUniversityAward.php",
+    "validations": [
+      "StudentDetail",
+      "award_code",
+      "created_by",
+      "ip_address",
+      "notempty",
+      "numeric",
+      "reg_number",
+      "registered_year",
+      "rule",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentWeight",
+    "file": "sparse-emhare/app/Model/StudentWeight.php",
+    "validations": [
+      "DenialReason",
+      "StudentDetail",
+      "average_mark",
+      "cummulative_weighted_average",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_number",
+      "rule",
+      "weighted_average",
+      "year",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "DenialReason",
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "StudentsAccountGroup",
+    "file": "sparse-emhare/app/Model/StudentsAccountGroup.php",
+    "validations": [
+      "SystemGroup",
+      "client_id",
+      "notempty",
+      "numeric",
+      "rule",
+      "system_group_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "SystemGroup"
+      ]
+    }
+  },
+  {
+    "model": "StudentsAccountsGroup",
+    "file": "sparse-emhare/app/Model/StudentsAccountsGroup.php",
+    "validations": [
+      "AccountGroup",
+      "account_group_code",
+      "notempty",
+      "rule",
+      "student_details_reg_number"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "StudentsSpecialisation",
+    "file": "sparse-emhare/app/Model/StudentsSpecialisation.php",
+    "validations": [
+      "Specialisation",
+      "notempty",
+      "rule",
+      "specialisation_code",
+      "student_detail_reg_number"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Specialisation"
+      ]
+    }
+  },
+  {
+    "model": "Subject",
+    "file": "sparse-emhare/app/Model/Subject.php",
+    "validations": [
+      "ApplicantAlevelQualification",
+      "ApplicantOlevelQualification",
+      "ExamBodyAresult",
+      "ExamBodyOresult",
+      "Programme",
+      "ProgrammeChoice",
+      "ProgrammeChoiceSubject",
+      "ProgrammeRequirement",
+      "ProgrammeRequirementsSubject",
+      "ProgrammeSubject",
+      "code",
+      "name",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "ApplicantAlevelQualification",
+        "ApplicantOlevelQualification",
+        "ExamBodyAresult",
+        "ExamBodyOresult",
+        "ProgrammeChoiceSubject",
+        "ProgrammeRequirementsSubject",
+        "ProgrammeSubject"
+      ],
+      "hasAndBelongsToMany": [
+        "Programme",
+        "ProgrammeChoice",
+        "ProgrammeRequirement"
+      ]
+    }
+  },
+  {
+    "model": "SupplementaryCourseFee",
+    "file": "sparse-emhare/app/Model/SupplementaryCourseFee.php",
+    "validations": [
+      "Programme",
+      "created_by",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "programme_code",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Programme"
+      ]
+    }
+  },
+  {
+    "model": "SuspendedStudent",
+    "file": "sparse-emhare/app/Model/SuspendedStudent.php",
+    "validations": [
+      "StudentDetail",
+      "notempty",
+      "reason_id",
+      "reg_number",
+      "rule",
+      "userid"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "SystemGroup",
+    "file": "sparse-emhare/app/Model/SystemGroup.php",
+    "validations": [
+      "Acl",
+      "StudentsAccountGroup",
+      "User",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "StudentsAccountGroup",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "TempStudentPayment",
+    "file": "sparse-emhare/app/Model/TempStudentPayment.php",
+    "validations": [
+      "AccountType",
+      "StudentDetail",
+      "StudentPayment",
+      "User",
+      "account_link",
+      "batch_number",
+      "computer_ip_address",
+      "description",
+      "invoice_number",
+      "notempty",
+      "numeric",
+      "payment_source",
+      "receipt_number",
+      "reference",
+      "registered_year",
+      "rule",
+      "semester",
+      "student_detail_reg_number",
+      "txn_date",
+      "user_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "AccountType",
+        "StudentDetail",
+        "StudentPayment",
+        "User"
+      ]
+    }
+  },
+  {
+    "model": "TenderType",
+    "file": "sparse-emhare/app/Model/TenderType.php",
+    "validations": [
+      "Receipt",
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "Receipt"
+      ]
+    }
+  },
+  {
+    "model": "TransacactionsAudit",
+    "file": "sparse-emhare/app/Model/TransacactionsAudit.php",
+    "validations": [
+      "StudentDetail",
+      "Transaction",
+      "amount",
+      "client_id",
+      "date",
+      "money",
+      "narration",
+      "notempty",
+      "numeric",
+      "rule",
+      "transaction_id",
+      "transaction_type"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail",
+        "Transaction"
+      ]
+    }
+  },
+  {
+    "model": "Transaction",
+    "file": "sparse-emhare/app/Model/Transaction.php",
+    "validations": [
+      "GeneralLedger",
+      "Receipt",
+      "StudentAccountAdjustment",
+      "StudentPayment",
+      "StudentReceipt",
+      "TransacactionsAudit",
+      "description",
+      "notempty",
+      "rule",
+      "type"
+    ],
+    "associations": {
+      "hasMany": [
+        "GeneralLedger",
+        "Receipt",
+        "StudentAccountAdjustment",
+        "StudentPayment",
+        "StudentReceipt",
+        "TransacactionsAudit"
+      ]
+    }
+  },
+  {
+    "model": "TransactionDescription",
+    "file": "sparse-emhare/app/Model/TransactionDescription.php",
+    "validations": [
+      "Receipt",
+      "WaiveredStudent",
+      "description",
+      "notempty",
+      "rule"
+    ],
+    "associations": {
+      "hasMany": [
+        "Receipt",
+        "WaiveredStudent"
+      ]
+    }
+  },
+  {
+    "model": "TransactionsAudit",
+    "file": "sparse-emhare/app/Model/TransactionsAudit.php",
+    "validations": [
+      "StudentDetail",
+      "amount",
+      "client_id",
+      "date",
+      "id",
+      "money",
+      "narration",
+      "notempty",
+      "numeric",
+      "rule",
+      "transaction_type"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "TranscriptAudit",
+    "file": "sparse-emhare/app/Model/TranscriptAudit.php",
+    "validations": [
+      "ip_address",
+      "notBlank",
+      "numeric",
+      "printed_by",
+      "programme_code",
+      "reg_number",
+      "rule",
+      "year_of_study"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "TuitionBillingType",
+    "file": "sparse-emhare/app/Model/TuitionBillingType.php",
+    "validations": [
+      "description",
+      "in_use",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "UnbilledStudent",
+    "file": "sparse-emhare/app/Model/UnbilledStudent.php",
+    "validations": [
+      "notempty",
+      "numeric",
+      "programme_code",
+      "reg_date",
+      "reg_number",
+      "registered_year",
+      "rule",
+      "semester",
+      "year_of_study"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "UniversityAward",
+    "file": "sparse-emhare/app/Model/UniversityAward.php",
+    "validations": [],
+    "associations": {}
+  },
+  {
+    "model": "Upload",
+    "file": "sparse-emhare/app/Model/Upload.php",
+    "validations": [
+      "ApplicantsDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "ApplicantsDetail"
+      ]
+    }
+  },
+  {
+    "model": "User",
+    "file": "sparse-emhare/app/Model/User.php",
+    "validations": [
+      "Acl",
+      "ApplicantPayment",
+      "ApplicationFee",
+      "BankAccount",
+      "EvotingStaffDetail",
+      "GeneralLedger",
+      "Receipt",
+      "RefundJournal",
+      "StaffDetail",
+      "StudentDetail",
+      "StudentPayment",
+      "StudentsAccountsGroup",
+      "SystemGroup",
+      "TempStudentPayment",
+      "TransactionsAudit",
+      "boolean",
+      "conditions",
+      "ecnumber",
+      "email",
+      "notBlank",
+      "numeric",
+      "password",
+      "rule",
+      "status",
+      "system_group_id",
+      "username"
+    ],
+    "associations": {
+      "belongsTo": [
+        "EvotingStaffDetail",
+        "StaffDetail",
+        "StudentDetail",
+        "SystemGroup"
+      ],
+      "hasMany": [
+        "ApplicantPayment",
+        "ApplicationFee",
+        "BankAccount",
+        "GeneralLedger",
+        "Receipt",
+        "RefundJournal",
+        "StudentPayment",
+        "StudentsAccountsGroup",
+        "TempStudentPayment",
+        "TransactionsAudit"
+      ]
+    }
+  },
+  {
+    "model": "VerifiedFirstYear",
+    "file": "sparse-emhare/app/Model/VerifiedFirstYear.php",
+    "validations": [
+      "StudentDetail",
+      "certificates_valid",
+      "created_by",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "reg_number",
+      "rule"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "WaiverType",
+    "file": "sparse-emhare/app/Model/WaiverType.php",
+    "validations": [
+      "name",
+      "notempty",
+      "rule"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "WaiveredSponsor",
+    "file": "sparse-emhare/app/Model/WaiveredSponsor.php",
+    "validations": [
+      "Sponsor",
+      "TransactionDescription",
+      "comment",
+      "created_by",
+      "due_date",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "payment_made",
+      "registration_semester",
+      "registration_year",
+      "rule",
+      "sponsor_id",
+      "waiver_fee_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Sponsor",
+        "TransactionDescription"
+      ]
+    }
+  },
+  {
+    "model": "WaiveredStudent",
+    "file": "sparse-emhare/app/Model/WaiveredStudent.php",
+    "validations": [
+      "StudentDetail",
+      "TransactionDescription",
+      "comment",
+      "created_by",
+      "date",
+      "due_date",
+      "ip_address",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "payment_made",
+      "reg_number",
+      "registration_semester",
+      "registration_year",
+      "rule",
+      "waiver_fee_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail",
+        "TransactionDescription"
+      ]
+    }
+  },
+  {
+    "model": "WinterSchoolOccasionalStudent",
+    "file": "sparse-emhare/app/Model/WinterSchoolOccasionalStudent.php",
+    "validations": [
+      "address",
+      "applicants_detail_id",
+      "barcode",
+      "citizenship",
+      "city",
+      "country_code",
+      "created_by",
+      "date",
+      "dob",
+      "email_address",
+      "faculty_code",
+      "gender",
+      "home_phone",
+      "id_number",
+      "ip_address_creator",
+      "mobile",
+      "nationality",
+      "next_of_kin",
+      "next_of_kin_address",
+      "notempty",
+      "numeric",
+      "period_of_residence",
+      "permanent_res_zim",
+      "place_of_birth",
+      "programme_code",
+      "race",
+      "reg_number",
+      "religion",
+      "rule",
+      "semester",
+      "start_year",
+      "year_of_study"
+    ],
+    "associations": {}
+  },
+  {
+    "model": "WinterSchoolRegistration",
+    "file": "sparse-emhare/app/Model/WinterSchoolRegistration.php",
+    "validations": [
+      "StudentDetail"
+    ],
+    "associations": {
+      "belongsTo": [
+        "StudentDetail"
+      ]
+    }
+  },
+  {
+    "model": "WithdrawnStudent",
+    "file": "sparse-emhare/app/Model/WithdrawnStudent.php",
+    "validations": [
+      "Statu",
+      "StudentDetail",
+      "created_by",
+      "date",
+      "date_withdrawn",
+      "modified_by",
+      "notempty",
+      "numeric",
+      "reason",
+      "reg_number",
+      "rule",
+      "statu_id"
+    ],
+    "associations": {
+      "belongsTo": [
+        "Statu",
+        "StudentDetail"
+      ]
+    }
+  }
+]

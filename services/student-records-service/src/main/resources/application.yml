@@ -1,0 +1,12 @@
+server:
+  port: ${SERVER_PORT:8085}
+
+spring:
+  config:
+    import: classpath:emhare-service-common.yml
+  application:
+    name: student-records-service
+  datasource:
+    url: ${STUDENT_RECORDS_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_student_records}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}

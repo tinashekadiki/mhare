@@ -1,0 +1,276 @@
+package zw.ac.uz.emhare.admissions.web;
+
+import jakarta.validation.Valid;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+import zw.ac.uz.emhare.admissions.application.AdmissionOfferSummary;
+import zw.ac.uz.emhare.admissions.application.AdmissionRequirementSetSummary;
+import zw.ac.uz.emhare.admissions.application.AdmissionsSelectionOfferService;
+import zw.ac.uz.emhare.admissions.application.ApplicationTypeSummary;
+import zw.ac.uz.emhare.admissions.application.CreateAdmissionOfferCommand;
+import zw.ac.uz.emhare.admissions.application.EvaluationSummary;
+import zw.ac.uz.emhare.admissions.application.OfferBatchSummary;
+import zw.ac.uz.emhare.admissions.application.RecordEvaluationCommand;
+import zw.ac.uz.emhare.admissions.application.SelectionDecisionSummary;
+import zw.ac.uz.emhare.admissions.application.SelectionRoundSummary;
+import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient;
+import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient.CoreCurrentUserProfile;
+
+/** @author Tinashe K */
+@RestController
+@RequestMapping("/api/admissions")
+public class AdmissionsSelectionOfferController {
+
+    private final AdmissionsSelectionOfferService workflowService;
+    private final CoreIdentityClient coreIdentityClient;
+
+    public AdmissionsSelectionOfferController(
+            AdmissionsSelectionOfferService workflowService,
+            CoreIdentityClient coreIdentityClient) {
+        this.workflowService = workflowService;
+        this.coreIdentityClient = coreIdentityClient;
+    }
+
+    @GetMapping("/application-types")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_SETUP_MANAGE')")
+    public List<ApplicationTypeSummary> applicationTypes() {
+        return workflowService.listApplicationTypes();
+    }
+
+    @PostMapping("/application-types")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_SETUP_MANAGE')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApplicationTypeSummary createApplicationType(
+            @Valid @RequestBody CreateApplicationTypeRequest request) {
+        return workflowService.createApplicationType(
+                request.code(), request.name(), request.requiresEmploymentHistory(),
+                request.requiresReferees(), request.financeFeeStructureId(), request.financeFeeStructureCode(),
+                request.financeFeeStructureName(), request.active());
+    }
+
+    @PutMapping("/application-types/{applicationTypeId}")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_SETUP_MANAGE')")
+    public ApplicationTypeSummary updateApplicationType(
+            @PathVariable("applicationTypeId") UUID applicationTypeId,
+            @Valid @RequestBody UpdateApplicationTypeRequest request) {
+        return workflowService.updateApplicationType(
+                applicationTypeId, request.name(), request.requiresEmploymentHistory(),
+                request.requiresReferees(), request.financeFeeStructureId(), request.financeFeeStructureCode(),
+                request.financeFeeStructureName(), request.active(), request.changeReason(), request.expectedVersion());
+    }
+
+    @PostMapping("/intakes/{intakeId}/prepare-selection")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_ACADEMIC_REVIEW_RELEASE')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void prepareSelection(@PathVariable("intakeId") UUID intakeId) {
+        workflowService.prepareSelectionForIntake(intakeId);
+    }
+
+    @PostMapping("/applications/{applicationId}/choices/{programmeChoiceId}/evaluations")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_APPLICATION_REVIEW')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public EvaluationSummary recordEvaluation(
+            Authentication authentication,
+            @PathVariable("applicationId") UUID applicationId,
+            @PathVariable("programmeChoiceId") UUID programmeChoiceId,
+            @Valid @RequestBody RecordEvaluationRequest request) {
+        UUID actorUserId = currentUser(authentication).user().id();
+        return workflowService.recordEvaluation(new RecordEvaluationCommand(
+                applicationId, programmeChoiceId, request.requirementSetId(), request.status(),
+                request.rankScore(), request.missingRequirements(),
+                request.ruleResults(), request.summary(), actorUserId));
+    }
+
+    @GetMapping("/requirement-sets")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_APPLICATION_REVIEW')")
+    public List<AdmissionRequirementSetSummary> requirementSets() {
+        return workflowService.listRequirementSets();
+    }
+
+    @PostMapping("/requirement-sets")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_SETUP_MANAGE')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AdmissionRequirementSetSummary createRequirementSet(
+            @Valid @RequestBody CreateAdmissionRequirementSetRequest request) {
+        return workflowService.createRequirementSet(
+                request.programmeId(), request.applicationTypeId(), request.intakeId(), request.versionCode(),
+                request.effectiveFrom(), request.effectiveTo(), request.minimumTotalPoints(),
+                request.maleCutoffPoints(), request.femaleCutoffPoints(), request.requiresEnglish(),
+                request.requiresMathematicsOrScience(),
+                request.advancedRules(), request.advancedRulesVersion());
+    }
+
+    @PostMapping("/requirement-sets/{requirementSetId}/approve")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_SETUP_MANAGE')")
+    public AdmissionRequirementSetSummary approveRequirementSet(
+            Authentication authentication,
+            @PathVariable("requirementSetId") UUID requirementSetId) {
+        return workflowService.approveRequirementSet(requirementSetId, currentUser(authentication).user().id());
+    }
+
+    @GetMapping("/selection-rounds")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_ACADEMIC_REVIEW_RELEASE')")
+    public List<SelectionRoundSummary> selectionRounds() {
+        return workflowService.listSelectionRounds();
+    }
+
+    @PostMapping("/selection-rounds")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_ACADEMIC_REVIEW_RELEASE')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public SelectionRoundSummary createSelectionRound(@Valid @RequestBody CreateSelectionRoundRequest request) {
+        return workflowService.createSelectionRound(request.intakeId(), request.code(), request.name());
+    }
+
+    @PostMapping("/selection-rounds/{selectionRoundId}/open")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_APPLICATION_REVIEW')")
+    public SelectionRoundSummary openSelectionRound(@PathVariable("selectionRoundId") UUID selectionRoundId) {
+        return workflowService.openSelectionRound(selectionRoundId);
+    }
+
+    @PostMapping("/selection-rounds/{selectionRoundId}/approve")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_SELECTION_APPROVE')")
+    public SelectionRoundSummary approveSelectionRound(Authentication authentication, @PathVariable("selectionRoundId") UUID selectionRoundId) {
+        return workflowService.approveSelectionRound(selectionRoundId, currentUser(authentication).user().id());
+    }
+
+    @PostMapping("/selection-rounds/{selectionRoundId}/close")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_SELECTION_APPROVE')")
+    public SelectionRoundSummary closeSelectionRound(@PathVariable("selectionRoundId") UUID selectionRoundId) {
+        return workflowService.closeSelectionRound(selectionRoundId);
+    }
+
+    @GetMapping("/selection-rounds/{selectionRoundId}/decisions")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_APPLICATION_REVIEW')")
+    public List<SelectionDecisionSummary> selectionDecisions(@PathVariable("selectionRoundId") UUID selectionRoundId) {
+        return workflowService.listSelectionDecisions(selectionRoundId);
+    }
+
+    @GetMapping("/offer-batches")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_MANAGE')")
+    public List<OfferBatchSummary> offerBatches() {
+        return workflowService.listOfferBatches();
+    }
+
+    @PostMapping("/offer-batches")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_MANAGE')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public OfferBatchSummary createOfferBatch(@Valid @RequestBody CreateOfferBatchRequest request) {
+        return workflowService.createOfferBatch(
+                request.intakeId(), request.selectionRoundId(), request.code(), request.name(),
+                request.scopeType(), request.scopeId());
+    }
+
+    @PostMapping("/offer-batches/{offerBatchId}/approve")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_APPROVE')")
+    public OfferBatchSummary approveOfferBatch(Authentication authentication, @PathVariable("offerBatchId") UUID offerBatchId) {
+        return workflowService.approveOfferBatch(offerBatchId, currentUser(authentication).user().id());
+    }
+
+    @PostMapping("/offer-batches/{offerBatchId}/dispatch")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_DISPATCH')")
+    public OfferBatchSummary dispatchOfferBatch(@PathVariable("offerBatchId") UUID offerBatchId) {
+        return workflowService.markOfferBatchDispatched(offerBatchId);
+    }
+
+    @PostMapping("/offer-batches/{offerBatchId}/close")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_MANAGE')")
+    public OfferBatchSummary closeOfferBatch(@PathVariable("offerBatchId") UUID offerBatchId) {
+        return workflowService.closeOfferBatch(offerBatchId);
+    }
+
+    @GetMapping("/offers")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_MANAGE')")
+    public List<AdmissionOfferSummary> offers() {
+        return workflowService.listOffers();
+    }
+
+    @GetMapping("/offers/mine")
+    public List<AdmissionOfferSummary> myOffers(Authentication authentication) {
+        return workflowService.listApplicantOffers(currentUser(authentication).user().id());
+    }
+
+    @PostMapping("/offers")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_MANAGE')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AdmissionOfferSummary createOffer(
+            Authentication authentication,
+            @Valid @RequestBody CreateAdmissionOfferRequest request) {
+        List<CreateAdmissionOfferCommand.Condition> conditions = request.conditions() == null ? List.of() : request.conditions().stream()
+                .map(condition -> new CreateAdmissionOfferCommand.Condition(
+                        condition.code(), condition.description(), condition.required()))
+                .toList();
+        return workflowService.createOffer(new CreateAdmissionOfferCommand(
+                request.offerBatchId(), request.programmeChoiceId(), request.offerType(), request.conditionsText(),
+                request.acceptanceDeadline(), request.registrationDate(), request.orientationDate(),
+                request.commencementDate(), conditions,
+                currentUser(authentication).user().id()));
+    }
+
+    @PostMapping("/offers/{offerId}/approve")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_APPROVE')")
+    public AdmissionOfferSummary approveOffer(Authentication authentication, @PathVariable("offerId") UUID offerId) {
+        return workflowService.approveOffer(offerId, currentUser(authentication).user().id());
+    }
+
+    @PostMapping("/offers/{offerId}/dispatch")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_DISPATCH')")
+    public AdmissionOfferSummary dispatchOffer(
+            Authentication authentication,
+            @PathVariable UUID offerId,
+            @Valid @RequestBody DispatchOfferRequest request) {
+        return workflowService.dispatchOffer(
+                offerId, request.deliveryMethodCode(), request.sentTo(), request.providerMessageId(),
+                currentUser(authentication).user().id());
+    }
+
+    @PostMapping("/offers/{offerId}/conditions/{conditionId}/resolve")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_APPLICATION_REVIEW')")
+    public AdmissionOfferSummary resolveOfferCondition(
+            Authentication authentication,
+            @PathVariable UUID offerId,
+            @PathVariable UUID conditionId,
+            @Valid @RequestBody ResolveOfferConditionRequest request) {
+        return workflowService.resolveOfferCondition(
+                offerId, conditionId, request.resolution(), request.notes(),
+                currentUser(authentication).user().id());
+    }
+
+    @PostMapping("/offers/{offerId}/withdraw")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_APPLICATION_REVIEW')")
+    public AdmissionOfferSummary withdrawOffer(
+            Authentication authentication,
+            @PathVariable UUID offerId,
+            @Valid @RequestBody WithdrawOfferRequest request) {
+        return workflowService.withdrawOffer(offerId, request.reason(), currentUser(authentication).user().id());
+    }
+
+    @PostMapping("/offers/{offerId}/expire")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_APPLICATION_REVIEW')")
+    public AdmissionOfferSummary expireOffer(Authentication authentication, @PathVariable UUID offerId) {
+        return workflowService.expireOffer(offerId, currentUser(authentication).user().id());
+    }
+
+    @PostMapping("/offers/{offerId}/response")
+    public AdmissionOfferSummary respondToOffer(
+            Authentication authentication,
+            @PathVariable UUID offerId,
+            @Valid @RequestBody OfferResponseRequest request) {
+        return workflowService.respondToOffer(
+                offerId, currentUser(authentication).user().id(), request.response(), request.notes());
+    }
+
+    private CoreCurrentUserProfile currentUser(Authentication authentication) {
+        return coreIdentityClient.syncCurrentUser(authentication);
+    }
+}

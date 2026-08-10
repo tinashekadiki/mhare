@@ -1,0 +1,12 @@
+server:
+  port: ${SERVER_PORT:8086}
+
+spring:
+  config:
+    import: classpath:emhare-service-common.yml
+  application:
+    name: assessment-results-service
+  datasource:
+    url: ${ASSESSMENT_RESULTS_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_assessment_results}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}

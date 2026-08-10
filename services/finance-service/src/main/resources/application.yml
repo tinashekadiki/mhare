@@ -1,0 +1,27 @@
+server:
+  port: ${SERVER_PORT:8084}
+
+spring:
+  config:
+    import: classpath:emhare-service-common.yml
+  application:
+    name: finance-service
+  datasource:
+    url: ${FINANCE_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_finance}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}
+
+emhare:
+  messaging:
+    integration-enabled: true
+  payments:
+    cbz-iveri-lite:
+      enabled: ${CBZ_IVERI_LITE_ENABLED:false}
+      gateway-url: ${CBZ_IVERI_LITE_GATEWAY_URL:https://portal.host.iveri.com/Lite/Authorise.aspx}
+      application-id: ${CBZ_IVERI_LITE_APPLICATION_ID:}
+      shared-secret: ${CBZ_IVERI_LITE_SHARED_SECRET:}
+      transaction-currency-code: ${CBZ_IVERI_LITE_TRANSACTION_CURRENCY_CODE:USD}
+      successful-url: ${CBZ_IVERI_LITE_SUCCESSFUL_URL:}
+      fail-url: ${CBZ_IVERI_LITE_FAIL_URL:}
+      try-later-url: ${CBZ_IVERI_LITE_TRY_LATER_URL:}
+      error-url: ${CBZ_IVERI_LITE_ERROR_URL:}

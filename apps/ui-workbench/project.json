@@ -1,0 +1,30 @@
+{
+  "name": "ui-workbench",
+  "projectType": "application",
+  "root": "apps/ui-workbench",
+  "sourceRoot": "apps/ui-workbench",
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/ui-workbench",
+        "command": "npm run dev"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/.output"],
+      "options": {
+        "cwd": "apps/ui-workbench",
+        "command": "npm run build"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/ui-workbench",
+        "command": "npm run typecheck"
+      }
+    }
+  }
+}

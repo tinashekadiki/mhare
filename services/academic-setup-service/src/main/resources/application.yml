@@ -1,0 +1,18 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  config:
+    import: classpath:emhare-service-common.yml
+  application:
+    name: academic-setup-service
+  datasource:
+    url: ${ACADEMIC_SETUP_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_academic_setup}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}
+
+emhare:
+  student-records:
+    url: ${STUDENT_RECORDS_SERVICE_URL:http://localhost:8085}
+  assessment-results:
+    url: ${ASSESSMENT_RESULTS_SERVICE_URL:http://localhost:8086}

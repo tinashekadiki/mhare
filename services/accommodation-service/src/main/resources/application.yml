@@ -1,0 +1,12 @@
+server:
+  port: ${SERVER_PORT:8088}
+
+spring:
+  config:
+    import: classpath:emhare-service-common.yml
+  application:
+    name: accommodation-service
+  datasource:
+    url: ${ACCOMMODATION_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_accommodation}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}

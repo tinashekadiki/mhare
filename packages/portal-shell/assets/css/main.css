@@ -1,0 +1,58 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+  --color-uzgreen-50: #edf8f0;
+  --color-uzgreen-100: #d7efde;
+  --color-uzgreen-200: #b2dfc0;
+  --color-uzgreen-300: #81c796;
+  --color-uzgreen-400: #4faa6b;
+  --color-uzgreen-500: #2f8f4b;
+  --color-uzgreen-600: #20743a;
+  --color-uzgreen-700: #1a5c30;
+  --color-uzgreen-800: #174a29;
+  --color-uzgreen-900: #143d24;
+  --color-uzgreen-950: #0a2112;
+
+  --color-uzgold-50: #fff9e6;
+  --color-uzgold-100: #ffefb8;
+  --color-uzgold-200: #ffe286;
+  --color-uzgold-300: #ffd052;
+  --color-uzgold-400: #f6bd25;
+  --color-uzgold-500: #d99f0b;
+  --color-uzgold-600: #af7905;
+  --color-uzgold-700: #8b5b08;
+  --color-uzgold-800: #744a0d;
+  --color-uzgold-900: #633d10;
+  --color-uzgold-950: #392006;
+}
+
+html,
+body,
+#__nuxt {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+
+/* Keep desktop registers dense while making every operational control safe to tap. */
+@media (max-width: 767px), (hover: none), (pointer: coarse) {
+  button[data-slot],
+  a[data-slot="link"],
+  [role="tab"],
+  [role="menuitem"],
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  select,
+  textarea {
+    min-height: 2.75rem;
+  }
+
+  button[data-slot],
+  [role="tab"] {
+    min-width: 2.75rem;
+  }
+}

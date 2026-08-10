@@ -1,0 +1,102 @@
+{
+  "realm": "emhare",
+  "enabled": true,
+  "displayName": "eMhare",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "resetPasswordAllowed": true,
+  "verifyEmail": true,
+  "loginWithEmailAllowed": true,
+  "clients": [
+    {
+      "clientId": "emhare-web",
+      "name": "eMhare Web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:3001/*",
+        "http://localhost:3002/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002"
+      ]
+    },
+    {
+      "clientId": "emhare-api-gateway",
+      "name": "eMhare API Gateway",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": []
+    },
+    {
+      "clientId": "emhare-core-identity-provisioner",
+      "name": "eMhare Core Identity Provisioner",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${CORE_IDENTITY_KEYCLOAK_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": true,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-emhare-core-identity-provisioner",
+      "enabled": true,
+      "serviceAccountClientId": "emhare-core-identity-provisioner",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "query-users",
+          "view-users"
+        ]
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "system-admin",
+        "composite": false
+      },
+      {
+        "name": "admissions-officer",
+        "composite": false
+      },
+      {
+        "name": "academic-admin",
+        "composite": false
+      },
+      {
+        "name": "finance-officer",
+        "composite": false
+      },
+      {
+        "name": "applicant",
+        "composite": false
+      },
+      {
+        "name": "student",
+        "composite": false
+      },
+      {
+        "name": "uma_authorization",
+        "composite": false
+      }
+    ]
+  },
+  "defaultRoles": [
+    "applicant"
+  ]
+}

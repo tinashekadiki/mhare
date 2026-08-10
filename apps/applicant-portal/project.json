@@ -1,0 +1,30 @@
+{
+  "name": "applicant-portal",
+  "projectType": "application",
+  "root": "apps/applicant-portal",
+  "sourceRoot": "apps/applicant-portal",
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nuxt dev --host 0.0.0.0 --port 3001",
+        "cwd": "apps/applicant-portal"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/.output"],
+      "options": {
+        "command": "nuxt build",
+        "cwd": "apps/applicant-portal"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nuxt prepare && vue-tsc --noEmit",
+        "cwd": "apps/applicant-portal"
+      }
+    }
+  }
+}

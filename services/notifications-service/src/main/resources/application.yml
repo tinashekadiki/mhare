@@ -1,0 +1,18 @@
+server:
+  port: ${SERVER_PORT:8091}
+
+spring:
+  config:
+    import: classpath:emhare-service-common.yml
+  application:
+    name: notifications-service
+  datasource:
+    url: ${NOTIFICATIONS_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_notifications}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}
+
+emhare:
+  notifications:
+    provider: ${NOTIFICATIONS_DELIVERY_PROVIDER:disabled}
+    webhooks:
+      maximum-clock-skew: ${NOTIFICATIONS_WEBHOOK_MAXIMUM_CLOCK_SKEW:5m}

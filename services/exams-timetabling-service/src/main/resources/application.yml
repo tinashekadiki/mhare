@@ -1,0 +1,12 @@
+server:
+  port: ${SERVER_PORT:8087}
+
+spring:
+  config:
+    import: classpath:emhare-service-common.yml
+  application:
+    name: exams-timetabling-service
+  datasource:
+    url: ${EXAMS_TIMETABLING_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_exams_timetabling}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}

@@ -1,0 +1,84 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: emhare-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
+      POSTGRES_DB: emhare_admin
+      EMHARE_SERVICE_DB_USER: ${EMHARE_SERVICE_DB_USER:-emhare_service}
+      EMHARE_SERVICE_DB_PASSWORD: ${EMHARE_SERVICE_DB_PASSWORD:-emhare_dev_password}
+      KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_dev_password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d emhare_admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: emhare-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  valkey:
+    image: valkey/valkey:9-alpine
+    container_name: emhare-valkey
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey-data:/data
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: emhare-rustfs
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-emhare-dev-access}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-emhare-dev-secret-change-me}
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rustfs-data:/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.1
+    container_name: emhare-keycloak
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      CORE_IDENTITY_KEYCLOAK_CLIENT_SECRET: ${CORE_IDENTITY_KEYCLOAK_CLIENT_SECRET}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/emhare_keycloak
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_dev_password}
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+    ports:
+      - "8099:8080"
+    volumes:
+      - ./infrastructure/keycloak/realm-export.json:/opt/keycloak/data/import/emhare-realm.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  valkey-data:
+  rustfs-data:

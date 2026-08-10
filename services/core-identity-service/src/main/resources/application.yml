@@ -1,0 +1,20 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  config:
+    import: classpath:emhare-service-common.yml
+  application:
+    name: core-identity-service
+  datasource:
+    url: ${CORE_IDENTITY_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_core_identity}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}
+
+emhare:
+  identity-provisioning:
+    keycloak:
+      server-url: ${KEYCLOAK_BASE_URL:http://localhost:8099}
+      realm: ${KEYCLOAK_REALM:emhare}
+      client-id: ${CORE_IDENTITY_KEYCLOAK_CLIENT_ID:emhare-core-identity-provisioner}
+      client-secret: ${CORE_IDENTITY_KEYCLOAK_CLIENT_SECRET}

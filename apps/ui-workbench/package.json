@@ -1,0 +1,27 @@
+{
+  "name": "@emhare/ui-workbench",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^22.19.0 || ^24.11.0 || >=26.0.0",
+    "npm": ">=11.0.0"
+  },
+  "scripts": {
+    "dev": "nuxt dev --host 0.0.0.0 --port 3003",
+    "build": "nuxt build",
+    "typecheck": "nuxt prepare && vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@emhare/portal-shell": "*",
+    "@iconify-json/lucide": "^1.2.121",
+    "@nuxt/ui": "^4.10.0",
+    "@pinia/nuxt": "^1.0.1",
+    "nuxt": "^4.5.2",
+    "pinia": "^4.0.2",
+    "sweetalert2": "^11.26.25"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.9"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "emhare",
+  "private": true,
+  "engines": {
+    "node": "^22.19.0 || ^24.11.0 || >=26.0.0",
+    "npm": ">=11.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "nx": "nx",
+    "admin:dev": "nx serve admin-portal",
+    "admin:build": "nx build admin-portal",
+    "admin:typecheck": "nx typecheck admin-portal",
+    "applicant:dev": "nx serve applicant-portal",
+    "applicant:build": "nx build applicant-portal",
+    "applicant:typecheck": "nx typecheck applicant-portal",
+    "student:dev": "nx serve student-portal",
+    "student:build": "nx build student-portal",
+    "student:typecheck": "nx typecheck student-portal",
+    "workbench:dev": "nx serve ui-workbench",
+    "workbench:build": "nx build ui-workbench",
+    "workbench:typecheck": "nx typecheck ui-workbench",
+    "e2e": "playwright test",
+    "e2e:admin": "playwright test tests/e2e/admin-core.spec.ts",
+    "e2e:workbench": "playwright test tests/e2e/ui-workbench.spec.ts",
+    "frontend:build": "nx run-many -t build -p admin-portal applicant-portal student-portal ui-workbench",
+    "frontend:typecheck": "nx run-many -t typecheck -p admin-portal applicant-portal student-portal ui-workbench"
+  },
+  "devDependencies": {
+    "@nx/nuxt": "^23.1.1",
+    "@playwright/test": "^1.62.1",
+    "nx": "^23.1.1"
+  },
+  "dependencies": {
+    "oidc-client-ts": "^3.5.0"
+  }
+}

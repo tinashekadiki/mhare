@@ -1,0 +1,30 @@
+{
+  "name": "student-portal",
+  "projectType": "application",
+  "root": "apps/student-portal",
+  "sourceRoot": "apps/student-portal",
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nuxt dev --host 0.0.0.0 --port 3002",
+        "cwd": "apps/student-portal"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/.output"],
+      "options": {
+        "command": "nuxt build",
+        "cwd": "apps/student-portal"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nuxt prepare && vue-tsc --noEmit",
+        "cwd": "apps/student-portal"
+      }
+    }
+  }
+}

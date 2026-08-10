@@ -1,0 +1,822 @@
+package zw.ac.uz.emhare.admissions.application;
+
+import jakarta.transaction.Transactional;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
+import zw.ac.uz.emhare.admissions.application.AdmissionsDocumentViews.ApplicationDocumentRegister;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ApplicationDocumentVerificationRow;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ApplicationSectionSummary;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ApplicationSectionVerificationRow;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ApplicationWorkspace;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.EmploymentHistorySummary;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.NextOfKinSummary;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.QualificationResultSummary;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.QualificationSittingSummary;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.QualificationSittingVerificationRow;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ReferenceOption;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.RefereeSummary;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.VerificationQueue;
+import zw.ac.uz.emhare.admissions.integration.AcademicSetupCatalogueClient;
+import zw.ac.uz.emhare.admissions.integration.AcademicSetupCatalogueClient.AcademicProgrammeOption;
+
+/** Owns application progress, applicant capture and completeness gates. @author Tinashe K */
+@Service
+public class ApplicantApplicationWorkspaceService {
+
+    public static final String CURRENT_DECLARATION_VERSION = "2026.1";
+
+    private final ApplicationRepository applicationRepository;
+    private final ApplicantRepository applicantRepository;
+    private final ApplicationPaymentReferenceRepository paymentReferenceRepository;
+    private final ApplicationProgrammeChoiceRepository programmeChoiceRepository;
+    private final ApplicationTypeSectionRepository sectionDefinitionRepository;
+    private final ApplicationSectionRepository sectionRepository;
+    private final ApplicationTypeDocumentRequirementRepository documentRequirementRepository;
+    private final ApplicantNextOfKinRepository nextOfKinRepository;
+    private final ApplicantEmploymentHistoryRepository employmentRepository;
+    private final ApplicantRefereeRepository refereeRepository;
+    private final ApplicantRefereeInvitationService refereeInvitationService;
+    private final ApplicantQualificationSittingRepository qualificationSittingRepository;
+    private final ApplicantQualificationResultRepository qualificationResultRepository;
+    private final ExamBodyRepository examBodyRepository;
+    private final AdmissionSubjectRepository subjectRepository;
+    private final AdmissionsDocumentService documentService;
+    private final ApplicationPaymentSubmissionReadinessService paymentSubmissionReadinessService;
+    private final QualificationEligibilityService qualificationEligibilityService;
+    private final AcademicSetupCatalogueClient academicSetupCatalogueClient;
+    private final AdmissionsApplicationWorkflowProgressService workflowProgressService;
+    private final Clock clock;
+
+    public ApplicantApplicationWorkspaceService(
+            ApplicationRepository applicationRepository,
+            ApplicantRepository applicantRepository,
+            ApplicationPaymentReferenceRepository paymentReferenceRepository,
+            ApplicationProgrammeChoiceRepository programmeChoiceRepository,
+            ApplicationTypeSectionRepository sectionDefinitionRepository,
+            ApplicationSectionRepository sectionRepository,
+            ApplicationTypeDocumentRequirementRepository documentRequirementRepository,
+            ApplicantNextOfKinRepository nextOfKinRepository,
+            ApplicantEmploymentHistoryRepository employmentRepository,
+            ApplicantRefereeRepository refereeRepository,
+            ApplicantRefereeInvitationService refereeInvitationService,
+            ApplicantQualificationSittingRepository qualificationSittingRepository,
+            ApplicantQualificationResultRepository qualificationResultRepository,
+            ExamBodyRepository examBodyRepository,
+            AdmissionSubjectRepository subjectRepository,
+            AdmissionsDocumentService documentService,
+            ApplicationPaymentSubmissionReadinessService paymentSubmissionReadinessService,
+            QualificationEligibilityService qualificationEligibilityService,
+            AcademicSetupCatalogueClient academicSetupCatalogueClient,
+            AdmissionsApplicationWorkflowProgressService workflowProgressService,
+            Clock clock) {
+        this.applicationRepository = applicationRepository;
+        this.applicantRepository = applicantRepository;
+        this.paymentReferenceRepository = paymentReferenceRepository;
+        this.programmeChoiceRepository = programmeChoiceRepository;
+        this.sectionDefinitionRepository = sectionDefinitionRepository;
+        this.sectionRepository = sectionRepository;
+        this.documentRequirementRepository = documentRequirementRepository;
+        this.nextOfKinRepository = nextOfKinRepository;
+        this.employmentRepository = employmentRepository;
+        this.refereeRepository = refereeRepository;
+        this.refereeInvitationService = refereeInvitationService;
+        this.qualificationSittingRepository = qualificationSittingRepository;
+        this.qualificationResultRepository = qualificationResultRepository;
+        this.examBodyRepository = examBodyRepository;
+        this.subjectRepository = subjectRepository;
+        this.documentService = documentService;
+        this.paymentSubmissionReadinessService = paymentSubmissionReadinessService;
+        this.qualificationEligibilityService = qualificationEligibilityService;
+        this.academicSetupCatalogueClient = academicSetupCatalogueClient;
+        this.workflowProgressService = workflowProgressService;
+        this.clock = clock;
+    }
+
+    @Transactional
+    public void initializeSections(Application application) {
+        if (!sectionRepository.findAllByApplicationIdAndDeletedAtIsNullOrderBySortOrderAsc(application.getId()).isEmpty()) {
+            return;
+        }
+        List<ApplicationTypeSection> definitions = ensureDefinitions(application.getApplicationType());
+        boolean documentsRequired = documentRequirementRepository
+                .findAllByApplicationTypeIdAndActiveTrueAndDeletedAtIsNullOrderBySortOrderAscRequirementCodeAsc(
+                        application.getApplicationType().getId())
+                .stream().anyMatch(ApplicationTypeDocumentRequirement::isRequired);
+        List<ApplicationSection> sections = definitions.stream()
+                .map(definition -> new ApplicationSection(
+                        application,
+                        definition,
+                        switch (definition.getSectionCode()) {
+                            case "DOCUMENTS" -> documentsRequired;
+                            case "PAYMENT" -> application.isPaymentRequired();
+                            default -> definition.isRequired();
+                        }))
+                .toList();
+        sectionRepository.saveAllAndFlush(sections);
+        refreshSectionProgress(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace applicantWorkspace(UUID applicationId, UUID applicantUserId) {
+        Application application = requireOwnedApplication(applicationId, applicantUserId);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace staffWorkspace(UUID applicationId) {
+        return workspace(requireApplication(applicationId));
+    }
+
+    @Transactional
+    public ApplicationWorkspace saveOwnProfile(
+            UUID applicationId,
+            UUID applicantUserId,
+            UpdateApplicantProfileCommand command) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        Applicant applicant = application.getApplicant();
+        assertIdentityAvailable(applicant, command.nationalIdNumber(), command.passportNumber());
+        applicant.correctProfile(command);
+        applicantRepository.saveAndFlush(applicant);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace saveNextOfKin(
+            UUID applicationId,
+            UUID applicantUserId,
+            UUID nextOfKinId,
+            String fullName,
+            String relationshipCode,
+            String phoneNumber,
+            String email,
+            String address,
+            boolean primary,
+            long expectedVersion) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        Applicant applicant = application.getApplicant();
+        if (primary) {
+            nextOfKinRepository.findAllByApplicantIdAndDeletedAtIsNullOrderByPrimaryDescFullNameAsc(applicant.getId())
+                    .stream().filter(ApplicantNextOfKin::isPrimary)
+                    .filter(existing -> nextOfKinId == null || !existing.getId().equals(nextOfKinId))
+                    .forEach(existing -> existing.update(existing.getFullName(), existing.getRelationshipCode(),
+                            existing.getPhoneNumber(), existing.getEmail(), existing.getAddress(), false));
+        }
+        ApplicantNextOfKin nextOfKin;
+        if (nextOfKinId == null) {
+            nextOfKin = new ApplicantNextOfKin(applicant, fullName, relationshipCode, phoneNumber, email, address, primary);
+        } else {
+            nextOfKin = nextOfKinRepository.findByIdAndApplicantIdAndDeletedAtIsNull(nextOfKinId, applicant.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Next-of-kin record was not found."));
+            assertVersion(nextOfKin.getVersion(), expectedVersion, "Next-of-kin record");
+            nextOfKin.update(fullName, relationshipCode, phoneNumber, email, address, primary);
+        }
+        nextOfKinRepository.saveAndFlush(nextOfKin);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace deleteNextOfKin(UUID applicationId, UUID applicantUserId, UUID nextOfKinId, long expectedVersion) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        ApplicantNextOfKin nextOfKin = nextOfKinRepository
+                .findByIdAndApplicantIdAndDeletedAtIsNull(nextOfKinId, application.getApplicant().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Next-of-kin record was not found."));
+        assertVersion(nextOfKin.getVersion(), expectedVersion, "Next-of-kin record");
+        nextOfKin.markDeleted(applicantUserId);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace saveEmployment(
+            UUID applicationId,
+            UUID applicantUserId,
+            UUID employmentId,
+            String employerName,
+            String positionTitle,
+            java.time.LocalDate startedOn,
+            java.time.LocalDate endedOn,
+            boolean current,
+            String responsibilities,
+            long expectedVersion) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        ApplicantEmploymentHistory employment;
+        if (employmentId == null) {
+            employment = new ApplicantEmploymentHistory(application.getApplicant(), employerName, positionTitle,
+                    startedOn, endedOn, current, responsibilities);
+        } else {
+            employment = employmentRepository.findByIdAndApplicantIdAndDeletedAtIsNull(
+                            employmentId, application.getApplicant().getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Employment record was not found."));
+            assertVersion(employment.getVersion(), expectedVersion, "Employment record");
+            employment.update(employerName, positionTitle, startedOn, endedOn, current, responsibilities);
+        }
+        employmentRepository.saveAndFlush(employment);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace deleteEmployment(UUID applicationId, UUID applicantUserId, UUID employmentId, long expectedVersion) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        ApplicantEmploymentHistory employment = employmentRepository.findByIdAndApplicantIdAndDeletedAtIsNull(
+                        employmentId, application.getApplicant().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Employment record was not found."));
+        assertVersion(employment.getVersion(), expectedVersion, "Employment record");
+        employment.markDeleted(applicantUserId);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace saveReferee(
+            UUID applicationId,
+            UUID applicantUserId,
+            UUID refereeId,
+            String fullName,
+            String title,
+            String organisation,
+            String positionTitle,
+            String email,
+            String phoneNumber,
+            long expectedVersion) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        ApplicantReferee referee;
+        String previousEmail = null;
+        if (refereeId == null) {
+            referee = new ApplicantReferee(application.getApplicant(), fullName, title, organisation,
+                    positionTitle, email, phoneNumber);
+        } else {
+            referee = refereeRepository.findByIdAndApplicantIdAndDeletedAtIsNull(refereeId, application.getApplicant().getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Referee record was not found."));
+            assertVersion(referee.getVersion(), expectedVersion, "Referee record");
+            previousEmail = referee.getEmail();
+            referee.update(fullName, title, organisation, positionTitle, email, phoneNumber);
+        }
+        refereeRepository.saveAndFlush(referee);
+        if (refereeId == null || !referee.getEmail().equalsIgnoreCase(previousEmail)) {
+            refereeInvitationService.issueInvitation(application, referee);
+        }
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace resendRefereeInvitation(
+            UUID applicationId, UUID applicantUserId, UUID refereeId, long expectedVersion) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        ApplicantReferee referee = refereeRepository.findByIdAndApplicantIdAndDeletedAtIsNull(
+                        refereeId, application.getApplicant().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Referee record was not found."));
+        assertVersion(referee.getVersion(), expectedVersion, "Referee record");
+        refereeInvitationService.issueInvitation(application, referee);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace deleteReferee(UUID applicationId, UUID applicantUserId, UUID refereeId, long expectedVersion) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        ApplicantReferee referee = refereeRepository.findByIdAndApplicantIdAndDeletedAtIsNull(
+                        refereeId, application.getApplicant().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Referee record was not found."));
+        assertVersion(referee.getVersion(), expectedVersion, "Referee record");
+        refereeInvitationService.revokeInvitations(applicationId, refereeId);
+        referee.markDeleted(applicantUserId);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace saveQualificationSitting(
+            UUID applicationId,
+            UUID applicantUserId,
+            UUID sittingId,
+            String levelCode,
+            UUID examBodyId,
+            String institutionName,
+            String centreNumber,
+            String candidateNumber,
+            Integer yearWritten,
+            UUID countryId,
+            UUID documentId,
+            long expectedVersion) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        QualificationLevel level = qualificationLevel(levelCode);
+        ExamBody examBody = examBodyId == null ? null : examBodyRepository.findById(examBodyId)
+                .filter(value -> value.isActive() && !value.isDeleted())
+                .orElseThrow(() -> new IllegalArgumentException("Exam body was not found."));
+        if ((level == QualificationLevel.O_LEVEL || level == QualificationLevel.A_LEVEL) && examBody == null) {
+            throw new IllegalArgumentException("Exam body is required for O Level and A Level qualifications.");
+        }
+        ApplicantQualificationSitting sitting;
+        if (sittingId == null) {
+            sitting = new ApplicantQualificationSitting(application, level, examBody, institutionName,
+                    centreNumber, candidateNumber, yearWritten, countryId, documentId);
+        } else {
+            sitting = qualificationSittingRepository.findByIdAndApplicationIdAndDeletedAtIsNull(sittingId, applicationId)
+                    .orElseThrow(() -> new IllegalArgumentException("Qualification sitting was not found."));
+            assertVersion(sitting.getVersion(), expectedVersion, "Qualification sitting");
+            if (sitting.getLevel() != level) {
+                throw new IllegalArgumentException("Qualification level cannot change after the sitting is created.");
+            }
+            sitting.update(examBody, institutionName, centreNumber, candidateNumber, yearWritten, countryId, documentId);
+        }
+        qualificationSittingRepository.saveAndFlush(sitting);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace deleteQualificationSitting(
+            UUID applicationId, UUID applicantUserId, UUID sittingId, long expectedVersion) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        ApplicantQualificationSitting sitting = qualificationSittingRepository
+                .findByIdAndApplicationIdAndDeletedAtIsNull(sittingId, applicationId)
+                .orElseThrow(() -> new IllegalArgumentException("Qualification sitting was not found."));
+        assertVersion(sitting.getVersion(), expectedVersion, "Qualification sitting");
+        qualificationResultRepository.findAllByQualificationSittingIdAndDeletedAtIsNullOrderBySubjectNameSnapshotAsc(sittingId)
+                .forEach(result -> result.markDeleted(applicantUserId));
+        sitting.markDeleted(applicantUserId);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace addQualificationResults(
+            UUID applicationId,
+            UUID applicantUserId,
+            UUID sittingId,
+            List<CreateQualificationResultCommand> commands) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        ApplicantQualificationSitting sitting = qualificationSittingRepository
+                .findByIdAndApplicationIdAndDeletedAtIsNull(sittingId, applicationId)
+                .orElseThrow(() -> new IllegalArgumentException("Qualification sitting was not found."));
+        if (commands == null || commands.isEmpty()) {
+            throw new IllegalArgumentException("Add at least one qualification result.");
+        }
+
+        List<UUID> requestedSubjectIds = commands.stream()
+                .map(CreateQualificationResultCommand::subjectId)
+                .toList();
+        if (new LinkedHashSet<>(requestedSubjectIds).size() != requestedSubjectIds.size()) {
+            throw new IllegalArgumentException("The same subject cannot be added more than once.");
+        }
+        LinkedHashSet<UUID> existingSubjectIds = new LinkedHashSet<>(
+                qualificationResultRepository.findActiveSubjectIdsByQualificationSittingId(sittingId));
+        if (requestedSubjectIds.stream().anyMatch(existingSubjectIds::contains)) {
+            throw new IllegalArgumentException("One or more selected subjects have already been captured for this sitting.");
+        }
+
+        Map<UUID, AdmissionSubject> subjectsById = subjectRepository.findAllById(requestedSubjectIds).stream()
+                .filter(subject -> subject.isActive() && !subject.isDeleted())
+                .collect(Collectors.toMap(AdmissionSubject::getId, Function.identity()));
+        if (subjectsById.size() != requestedSubjectIds.size()) {
+            throw new IllegalArgumentException("One or more admission subjects were not found.");
+        }
+
+        List<ApplicantQualificationResult> results = commands.stream().map(command -> {
+            AdmissionSubject subject = subjectsById.get(command.subjectId());
+            validateSubjectLevel(sitting.getLevel(), subject);
+            return new ApplicantQualificationResult(
+                    sitting,
+                    subject,
+                    subject.getName(),
+                    command.grade().trim().toUpperCase(Locale.ROOT),
+                    null,
+                    null,
+                    command.principalSubject());
+        }).toList();
+        qualificationResultRepository.saveAllAndFlush(results);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace saveQualificationResult(
+            UUID applicationId,
+            UUID applicantUserId,
+            UUID sittingId,
+            UUID resultId,
+            UUID subjectId,
+            String grade,
+            Boolean principalSubject,
+            long expectedVersion) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        ApplicantQualificationSitting sitting = qualificationSittingRepository
+                .findByIdAndApplicationIdAndDeletedAtIsNull(sittingId, applicationId)
+                .orElseThrow(() -> new IllegalArgumentException("Qualification sitting was not found."));
+        AdmissionSubject subject = subjectRepository.findById(subjectId)
+                .filter(value -> value.isActive() && !value.isDeleted())
+                .orElseThrow(() -> new IllegalArgumentException("Admission subject was not found."));
+        validateSubjectLevel(sitting.getLevel(), subject);
+        ApplicantQualificationResult result;
+        if (resultId == null) {
+            result = new ApplicantQualificationResult(sitting, subject,
+                    subject.getName(), grade.trim().toUpperCase(Locale.ROOT),
+                    null, null, principalSubject);
+        } else {
+            result = qualificationResultRepository.findByIdAndQualificationSittingIdAndDeletedAtIsNull(resultId, sittingId)
+                    .orElseThrow(() -> new IllegalArgumentException("Qualification result was not found."));
+            assertVersion(result.getVersion(), expectedVersion, "Qualification result");
+            if (result.getSubject() == null || !result.getSubject().getId().equals(subjectId)) {
+                throw new IllegalArgumentException("Subject cannot change after a result is created.");
+            }
+            result.update(grade, null, null, principalSubject);
+        }
+        qualificationResultRepository.saveAndFlush(result);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace deleteQualificationResult(
+            UUID applicationId, UUID applicantUserId, UUID sittingId, UUID resultId, long expectedVersion) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        qualificationSittingRepository.findByIdAndApplicationIdAndDeletedAtIsNull(sittingId, applicationId)
+                .orElseThrow(() -> new IllegalArgumentException("Qualification sitting was not found."));
+        ApplicantQualificationResult result = qualificationResultRepository
+                .findByIdAndQualificationSittingIdAndDeletedAtIsNull(resultId, sittingId)
+                .orElseThrow(() -> new IllegalArgumentException("Qualification result was not found."));
+        assertVersion(result.getVersion(), expectedVersion, "Qualification result");
+        result.markDeleted(applicantUserId);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public void reopenQualificationsForApplicantCorrection(UUID applicationId) {
+        qualificationSittingRepository
+                .findAllByApplicationIdAndDeletedAtIsNullOrderByYearWrittenDesc(applicationId)
+                .forEach(sitting -> {
+                    sitting.reopenForApplicantCorrection();
+                    qualificationResultRepository
+                            .findAllByQualificationSittingIdAndDeletedAtIsNullOrderBySubjectNameSnapshotAsc(sitting.getId())
+                            .forEach(ApplicantQualificationResult::reopenForApplicantCorrection);
+                });
+    }
+
+    @Transactional
+    public ApplicationWorkspace replaceProgrammeChoices(
+            UUID applicationId,
+            UUID actorUserId,
+            List<UUID> programmeIds,
+            boolean staffAmendment,
+            String changeReason) {
+        Application application = staffAmendment
+                ? requireDraft(requireApplication(applicationId))
+                : requireOwnedDraft(applicationId, actorUserId);
+        if (staffAmendment && (changeReason == null || changeReason.trim().length() < 10)) {
+            throw new IllegalArgumentException("A staff programme-choice amendment reason is required.");
+        }
+        List<ProgrammeSelectionSnapshot> selections = validateProgrammeSelections(application, programmeIds);
+        List<ApplicationProgrammeChoice> currentChoices = programmeChoiceRepository
+                .findAllByApplicationIdOrderByChoiceRankAsc(applicationId).stream()
+                .filter(choice -> !choice.isDeleted()).toList();
+        currentChoices.forEach(choice -> choice.markDeleted(actorUserId));
+        programmeChoiceRepository.saveAllAndFlush(currentChoices);
+        List<ApplicationProgrammeChoice> replacements = new ArrayList<>();
+        for (int index = 0; index < selections.size(); index++) {
+            replacements.add(new ApplicationProgrammeChoice(application, selections.get(index), index + 1));
+        }
+        programmeChoiceRepository.saveAllAndFlush(replacements);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace acceptDeclaration(UUID applicationId, UUID applicantUserId, boolean accepted, String version) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        if (!accepted) {
+            application.invalidateDeclaration();
+            return workspace(application);
+        }
+        refreshSectionProgress(application);
+        List<ApplicationSection> blockers = sectionRepository
+                .findAllByApplicationIdAndDeletedAtIsNullOrderBySortOrderAsc(applicationId).stream()
+                .filter(ApplicationSection::isRequired)
+                .filter(section -> !"REVIEW_DECLARATION".equals(section.getSectionCode()))
+                .filter(section -> !section.isComplete())
+                .toList();
+        if (!blockers.isEmpty()) {
+            throw new IllegalStateException("Complete all required application sections before accepting the declaration.");
+        }
+        if (!CURRENT_DECLARATION_VERSION.equals(version)) {
+            throw new IllegalArgumentException("The declaration has changed. Refresh and review the current declaration.");
+        }
+        application.acceptDeclaration(applicantUserId, version, clock.instant());
+        return workspace(application);
+    }
+
+    @Transactional
+    public void assertReadyForSubmission(Application application) {
+        refreshSectionProgress(application);
+        if (!application.isSectionsComplete()) {
+            List<String> missing = missingRequirements(application);
+            throw new IllegalStateException("Application is incomplete: " + String.join("; ", missing));
+        }
+    }
+
+    @Transactional
+    public QualificationSittingSummary recordQualificationDecision(
+            UUID applicationId, UUID sittingId, UUID actorUserId, String decision, String reason, long expectedVersion) {
+        ApplicantQualificationSitting sitting = qualificationSittingRepository
+                .findByIdAndApplicationIdAndDeletedAtIsNull(sittingId, applicationId)
+                .orElseThrow(() -> new IllegalArgumentException("Qualification sitting was not found."));
+        assertVersion(sitting.getVersion(), expectedVersion, "Qualification sitting");
+        List<ApplicantQualificationResult> results = qualificationResultRepository
+                .findAllByQualificationSittingIdAndDeletedAtIsNullOrderBySubjectNameSnapshotAsc(sittingId);
+        if (results.isEmpty()) throw new IllegalStateException("A qualification sitting without results cannot be verified.");
+        if ("VERIFIED".equalsIgnoreCase(decision)) {
+            sitting.verify(actorUserId, clock.instant());
+            results.forEach(ApplicantQualificationResult::verify);
+        } else if ("REJECTED".equalsIgnoreCase(decision)) {
+            sitting.reject(actorUserId, reason, clock.instant());
+            results.forEach(ApplicantQualificationResult::reject);
+        } else {
+            throw new IllegalArgumentException("Qualification decision must be VERIFIED or REJECTED.");
+        }
+        qualificationResultRepository.saveAll(results);
+        qualificationSittingRepository.saveAndFlush(sitting);
+        refreshSectionProgress(sitting.getApplication());
+        return qualificationSummary(sitting);
+    }
+
+    @Transactional
+    public VerificationQueue verificationQueue() {
+        List<Application> applications = applicationRepository.findAll().stream()
+                .filter(application -> !application.isDeleted())
+                .filter(application -> application.getStatus() == ApplicationStatus.SUBMITTED
+                        || application.getStatus() == ApplicationStatus.UNDER_REVIEW)
+                .toList();
+        List<ApplicationSectionVerificationRow> sectionRows = new ArrayList<>();
+        List<QualificationSittingVerificationRow> qualificationRows = new ArrayList<>();
+        List<ApplicationDocumentVerificationRow> documentRows = new ArrayList<>();
+        for (Application application : applications) {
+            refreshSectionProgress(application);
+            sectionRepository.findAllByApplicationIdAndDeletedAtIsNullOrderBySortOrderAsc(application.getId()).stream()
+                    .filter(ApplicationSection::isRequired)
+                    .forEach(section -> sectionRows.add(new ApplicationSectionVerificationRow(
+                            application.getId(), application.getApplicationNumber(), application.getApplicant().getDisplayName(),
+                            section.getSectionCode(), section.getSectionName(), section.getStatus().name(),
+                            section.getCompletionSummary(), section.getVersion())));
+            qualificationSittingRepository.findAllByApplicationIdAndDeletedAtIsNullOrderByYearWrittenDesc(application.getId())
+                    .stream().filter(sitting -> sitting.getVerificationStatus() != QualificationResultStatus.VERIFIED)
+                    .forEach(sitting -> qualificationRows.add(new QualificationSittingVerificationRow(
+                            application.getId(), application.getApplicationNumber(), application.getApplicant().getDisplayName(),
+                            qualificationSummary(sitting))));
+            ApplicationDocumentRegister register = documentService.staffRegister(application.getId());
+            if (!register.pendingRequirementCodes().isEmpty() || !register.rejectedRequirementCodes().isEmpty()) {
+                documentRows.add(new ApplicationDocumentVerificationRow(
+                        application.getId(), application.getApplicationNumber(), application.getApplicant().getDisplayName(), register));
+            }
+        }
+        return new VerificationQueue(sectionRows, qualificationRows, documentRows);
+    }
+
+    private ApplicationWorkspace workspace(Application application) {
+        initializeSections(application);
+        synchronizeQualificationPoints(application);
+        List<ApplicationSection> sections = refreshSectionProgress(application);
+        Applicant applicant = application.getApplicant();
+        Map<UUID, ApplicantRefereeInvitation> latestRefereeInvitations =
+                refereeInvitationService.latestInvitations(application.getId());
+        ApplicationDocumentRegister documents = documentService.staffRegister(application.getId());
+        List<ApplicationProgrammeChoice> choices = activeProgrammeChoices(application.getId());
+        ApplicationSummary summary = ApplicationSummary.from(application,
+                paymentReferenceRepository.findByApplicationIdAndDeletedAtIsNull(application.getId()).orElse(null), choices);
+        List<String> missing = missingRequirements(sections);
+        return new ApplicationWorkspace(
+                summary,
+                ApplicantProfileAssembler.profile(applicant),
+                sections.stream().map(ApplicationSectionSummary::from).toList(),
+                nextOfKinRepository.findAllByApplicantIdAndDeletedAtIsNullOrderByPrimaryDescFullNameAsc(applicant.getId())
+                        .stream().map(NextOfKinSummary::from).toList(),
+                employmentRepository.findAllByApplicantIdAndDeletedAtIsNullOrderByStartedOnDesc(applicant.getId())
+                        .stream().map(EmploymentHistorySummary::from).toList(),
+                refereeRepository.findAllByApplicantIdAndDeletedAtIsNullOrderByFullNameAsc(applicant.getId())
+                        .stream().map(referee -> RefereeSummary.from(
+                                referee, latestRefereeInvitations.get(referee.getId()))).toList(),
+                qualificationSittingRepository.findAllByApplicationIdAndDeletedAtIsNullOrderByYearWrittenDesc(application.getId())
+                        .stream().map(this::qualificationSummary).toList(),
+                documents,
+                application.canSubmit(),
+                missing,
+                application.getDeclarationAcceptedAt(),
+                application.getDeclarationVersion(),
+                workflowProgressService.progress(application.getId()));
+    }
+
+    private List<ApplicationSection> refreshSectionProgress(Application application) {
+        List<ApplicationSection> sections = sectionRepository
+                .findAllByApplicationIdAndDeletedAtIsNullOrderBySortOrderAsc(application.getId());
+        if (sections.isEmpty()) {
+            initializeSections(application);
+            sections = sectionRepository.findAllByApplicationIdAndDeletedAtIsNullOrderBySortOrderAsc(application.getId());
+        }
+        Map<String, ApplicationSection> byCode = sections.stream()
+                .collect(Collectors.toMap(ApplicationSection::getSectionCode, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+        Applicant applicant = application.getApplicant();
+        Instant now = clock.instant();
+        var profile = ApplicantProfileAssembler.profile(applicant);
+        updateSection(byCode.get("PERSONAL_DETAILS"), profile.missingRequiredFields().isEmpty(),
+                profile.missingRequiredFields().isEmpty() ? "Applicant details complete." : String.join(", ", profile.missingRequiredFields()), now);
+        updateCountSection(byCode.get("NEXT_OF_KIN"), nextOfKinRepository.countByApplicantIdAndDeletedAtIsNull(applicant.getId()), now);
+        long completeSittings = qualificationSittingRepository
+                .findAllByApplicationIdAndDeletedAtIsNullOrderByYearWrittenDesc(application.getId()).stream()
+                .filter(sitting -> qualificationResultRepository.countByQualificationSittingIdAndDeletedAtIsNull(sitting.getId()) > 0)
+                .count();
+        updateCountSection(byCode.get("QUALIFICATIONS"), completeSittings, now);
+        updateCountSection(byCode.get("EMPLOYMENT_HISTORY"), employmentRepository.countByApplicantIdAndDeletedAtIsNull(applicant.getId()), now);
+        updateCountSection(byCode.get("REFEREES"), refereeRepository.countByApplicantIdAndDeletedAtIsNull(applicant.getId()), now);
+        updateCountSection(byCode.get("PROGRAMME_CHOICES"), activeProgrammeChoices(application.getId()).size(), now);
+        ApplicationDocumentRegister documents = documentService.staffRegister(application.getId());
+        updateSection(byCode.get("DOCUMENTS"), documents.requiredDocumentsUploaded(),
+                documents.requiredDocumentsUploaded() ? "Required documents uploaded." : "Required documents are missing or rejected.", now);
+        var paymentReadiness = paymentSubmissionReadinessService.evaluate(application);
+        updateSection(byCode.get("PAYMENT"), paymentReadiness.readyForSubmission(),
+                paymentReadiness.summary(), now);
+        updateSection(byCode.get("REVIEW_DECLARATION"), application.isDeclarationAccepted(),
+                application.isDeclarationAccepted() ? "Applicant declaration accepted." : "Review and accept the applicant declaration.", now);
+        sectionRepository.saveAll(sections);
+        boolean complete = sections.stream().filter(ApplicationSection::isRequired).allMatch(ApplicationSection::isComplete);
+        application.recordSectionCompleteness(complete);
+        applicationRepository.save(application);
+        return sections;
+    }
+
+    private void synchronizeQualificationPoints(Application application) {
+        var pointsSnapshot = qualificationEligibilityService.recalculateApplicationPoints(application.getId());
+        if (application.getCalculatedTotalPoints() == null
+                || application.getCalculatedTotalPoints().compareTo(pointsSnapshot.totalPoints()) != 0) {
+            application.recordCalculatedPoints(pointsSnapshot.totalPoints(), clock.instant());
+            applicationRepository.save(application);
+        }
+    }
+
+    private void updateCountSection(ApplicationSection section, long count, Instant now) {
+        if (section == null) return;
+        int minimum = Math.max(1, section.getMinimumRecords());
+        updateSection(section, count >= minimum, count + " of " + minimum + " required record(s) captured.", now);
+    }
+
+    private void updateSection(ApplicationSection section, boolean complete, String summary, Instant now) {
+        if (section == null) return;
+        if (!section.isRequired() && !complete) {
+            section.recordStatus(ApplicationSectionStatus.COMPLETE, "Not required for this application route.", now);
+        } else {
+            section.recordStatus(complete ? ApplicationSectionStatus.COMPLETE : ApplicationSectionStatus.IN_PROGRESS, summary, now);
+        }
+    }
+
+    private List<String> missingRequirements(Application application) {
+        return missingRequirements(sectionRepository.findAllByApplicationIdAndDeletedAtIsNullOrderBySortOrderAsc(application.getId()));
+    }
+
+    private List<String> missingRequirements(List<ApplicationSection> sections) {
+        return sections.stream().filter(ApplicationSection::isRequired).filter(section -> !section.isComplete())
+                .map(section -> section.getSectionName() + ": " +
+                        (section.getCompletionSummary() == null ? "Incomplete" : section.getCompletionSummary()))
+                .toList();
+    }
+
+    private List<ApplicationTypeSection> ensureDefinitions(ApplicationType applicationType) {
+        List<ApplicationTypeSection> definitions = sectionDefinitionRepository
+                .findAllByApplicationTypeIdAndActiveTrueAndDeletedAtIsNullOrderBySortOrderAsc(applicationType.getId());
+        if (!definitions.isEmpty()) return definitions;
+        List<ApplicationTypeSection> defaults = ApplicationSectionTemplate.defaults(applicationType).stream()
+                .map(template -> new ApplicationTypeSection(
+                        applicationType,
+                        template.code(),
+                        template.name(),
+                        template.required(),
+                        template.repeatable(),
+                        template.minimumRecords(),
+                        template.sortOrder()))
+                .toList();
+        return sectionDefinitionRepository.saveAllAndFlush(defaults);
+    }
+
+    private QualificationSittingSummary qualificationSummary(ApplicantQualificationSitting sitting) {
+        ReferenceOption examBody = sitting.getExamBody() == null ? null : new ReferenceOption(
+                sitting.getExamBody().getId(), sitting.getExamBody().getCode(), sitting.getExamBody().getName(), null);
+        List<QualificationResultSummary> results = qualificationResultRepository
+                .findAllByQualificationSittingIdAndDeletedAtIsNullOrderBySubjectNameSnapshotAsc(sitting.getId()).stream()
+                .map(result -> new QualificationResultSummary(
+                        result.getId(),
+                        result.getSubject() == null ? null : new ReferenceOption(
+                                result.getSubject().getId(), result.getSubject().getCode(), result.getSubject().getName(),
+                                result.getSubject().isScienceSubject()),
+                        result.getSubjectNameSnapshot(), result.getGrade(), result.getMark(), result.getPoints(),
+                        result.getPrincipalSubject(), result.getResultStatus().name(), result.getVersion()))
+                .toList();
+        return new QualificationSittingSummary(
+                sitting.getId(), sitting.getLevel().name(), examBody, sitting.getInstitutionName(),
+                sitting.getCentreNumber(), sitting.getCandidateNumber(), sitting.getYearWritten(), sitting.getCountryId(),
+                sitting.getDocumentId(), sitting.getVerificationStatus().name(), sitting.getVerifiedByUserId(),
+                sitting.getVerifiedAt(), sitting.getRejectionReason(), results, sitting.getVersion());
+    }
+
+    private List<ApplicationProgrammeChoice> activeProgrammeChoices(UUID applicationId) {
+        return programmeChoiceRepository.findAllByApplicationIdOrderByChoiceRankAsc(applicationId).stream()
+                .filter(choice -> !choice.isDeleted()).toList();
+    }
+
+    private List<ProgrammeSelectionSnapshot> validateProgrammeSelections(Application application, List<UUID> programmeIds) {
+        if (programmeIds == null || programmeIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one programme choice is required.");
+        }
+        if (programmeIds.size() > application.getAdmissionCycle().getMaximumProgrammeChoices()) {
+            throw new IllegalArgumentException("This intake allows a maximum of "
+                    + application.getAdmissionCycle().getMaximumProgrammeChoices() + " programme choices.");
+        }
+        if (new LinkedHashSet<>(programmeIds).size() != programmeIds.size()) {
+            throw new IllegalArgumentException("The same programme cannot be selected more than once.");
+        }
+        Map<UUID, AcademicProgrammeOption> available = academicSetupCatalogueClient.getAdmissionsCatalogue(
+                        application.getAdmissionCycle().getAcademicYearId(), application.getAdmissionCycle().getIntakeId())
+                .programmes().stream().collect(Collectors.toMap(AcademicProgrammeOption::programmeId, Function.identity()));
+        return programmeIds.stream().map(programmeId -> {
+            AcademicProgrammeOption option = available.get(programmeId);
+            if (option == null) throw new IllegalArgumentException("Selected programme is not available for this intake: " + programmeId);
+            return ProgrammeSelectionSnapshot.from(option);
+        }).toList();
+    }
+
+    private void validateSubjectLevel(QualificationLevel level, AdmissionSubject subject) {
+        if (subject == null) return;
+        SubjectLevel expected = switch (level) {
+            case O_LEVEL -> SubjectLevel.O_LEVEL;
+            case A_LEVEL -> SubjectLevel.A_LEVEL;
+            default -> SubjectLevel.OTHER;
+        };
+        if (subject.getLevel() != expected) {
+            throw new IllegalArgumentException("Selected subject does not belong to the qualification level.");
+        }
+    }
+
+    private QualificationLevel qualificationLevel(String value) {
+        try {
+            return QualificationLevel.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("Unsupported qualification level: " + value, exception);
+        }
+    }
+
+    private void assertIdentityAvailable(Applicant applicant, String nationalId, String passport) {
+        if (nationalId != null && !nationalId.isBlank()) {
+            applicantRepository.findByNationalIdNumberIgnoreCaseAndDeletedAtIsNull(nationalId.trim())
+                    .filter(existing -> !existing.getId().equals(applicant.getId()))
+                    .ifPresent(existing -> { throw new IllegalStateException("This national ID is already linked to another applicant account."); });
+        }
+        if (passport != null && !passport.isBlank()) {
+            applicantRepository.findByPassportNumberIgnoreCaseAndDeletedAtIsNull(passport.trim())
+                    .filter(existing -> !existing.getId().equals(applicant.getId()))
+                    .ifPresent(existing -> { throw new IllegalStateException("This passport is already linked to another applicant account."); });
+        }
+    }
+
+    private Application requireOwnedApplication(UUID applicationId, UUID applicantUserId) {
+        Application application = requireApplication(applicationId);
+        if (!application.getApplicant().getUserId().equals(applicantUserId)) {
+            throw new IllegalArgumentException("Application not found.");
+        }
+        return application;
+    }
+
+    private Application requireOwnedDraft(UUID applicationId, UUID applicantUserId) {
+        return requireDraft(requireOwnedApplication(applicationId, applicantUserId));
+    }
+
+    private Application requireDraft(Application application) {
+        if (application.getStatus() != ApplicationStatus.DRAFT) {
+            throw new IllegalStateException("Submitted applications cannot be edited by the applicant.");
+        }
+        return application;
+    }
+
+    private Application requireApplication(UUID applicationId) {
+        return applicationRepository.findById(applicationId)
+                .filter(application -> !application.isDeleted())
+                .orElseThrow(() -> new IllegalArgumentException("Application not found."));
+    }
+
+    private void invalidateDeclaration(Application application) {
+        application.invalidateDeclaration();
+        applicationRepository.save(application);
+    }
+
+    private void assertVersion(long actual, long expected, String recordName) {
+        if (actual != expected) throw new IllegalStateException(recordName + " was changed. Refresh before retrying.");
+    }
+}

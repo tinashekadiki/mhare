@@ -1,0 +1,29 @@
+server:
+  port: ${SERVER_PORT:8090}
+
+spring:
+  config:
+    import: classpath:emhare-service-common.yml
+  application:
+    name: documents-reporting-service
+  datasource:
+    url: ${DOCUMENTS_REPORTING_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_documents_reporting}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}
+  servlet:
+    multipart:
+      max-file-size: ${DOCUMENT_MAX_UPLOAD_SIZE:10MB}
+      max-request-size: ${DOCUMENT_MAX_UPLOAD_SIZE:10MB}
+
+emhare:
+  documents:
+    generation-interval-ms: ${DOCUMENT_GENERATION_INTERVAL_MS:1000}
+    storage:
+      endpoint: ${DOCUMENT_STORAGE_ENDPOINT:http://localhost:9000}
+      region: ${DOCUMENT_STORAGE_REGION:us-east-1}
+      access-key: ${DOCUMENT_STORAGE_ACCESS_KEY:emhare-dev-access}
+      secret-key: ${DOCUMENT_STORAGE_SECRET_KEY:emhare-dev-secret-change-me}
+      bucket: ${DOCUMENT_STORAGE_BUCKET:emhare-official-documents}
+      path-style-access: ${DOCUMENT_STORAGE_PATH_STYLE_ACCESS:true}
+      download-url-validity-seconds: ${DOCUMENT_DOWNLOAD_URL_VALIDITY_SECONDS:300}
+      maximum-upload-bytes: ${DOCUMENT_MAX_UPLOAD_BYTES:10485760}

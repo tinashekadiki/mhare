@@ -1,0 +1,9 @@
+{
+  "name": "@emhare/portal-shell",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "oidc-client-ts": "^3.5.0",
+    "sweetalert2": "^11.26.25"
+  }
+}
