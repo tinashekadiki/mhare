@@ -368,6 +368,8 @@ Examples: undergraduate, postgraduate, transfer, mature entry, RPL, HEXCO, forei
 - `notes`
 - unique `intake_id`, `programme_id`, `quota_type_code`
 
+Per ADR-0014, `admission_quotas` is retained only for institutional capacity planning and reporting. No eligibility evaluation, academic recommendation, or admission decision may read or gate on this table.
+
 ### Applicant Profile
 
 `applicants`
