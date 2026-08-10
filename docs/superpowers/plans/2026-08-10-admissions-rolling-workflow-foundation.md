@@ -839,6 +839,67 @@ Summarize which of Steps 1–4 passed or failed. Do not proceed to any downstrea
 
 ---
 
+### Task 12: Close residual stale references found during Task 11's self-review
+
+**Added 2026-08-10, mid-execution.** Task 11's Step 1 grep, run across the *whole* functional-requirements document rather than just the sections Tasks 2–6 edited, found two live (non-superseded) requirements in Section 10.1 and one now-moot open question in Section 34 that still describe selection rounds and offer batches as active concepts. None of these were in the original Task 2–6 scope — they were missed when this plan was first written. This is a real documentation-consistency gap, not a contestable style choice: FR-ADM-004 in particular flatly contradicts the rewritten Section 14.3/16 by stating selection/offer lifecycle states "belong to selection rounds, offer batches, and offers," which is no longer true after ADR-0014.
+
+**Files:**
+- Modify: `fresh-design/new-emhare-functional-requirements.md`
+
+**Interfaces:**
+- Consumes: ADR-0014, and the exact successor-table vocabulary from Task 9 (`academic_reviews`, `academic_recommendations`, `programme_choice_decisions`).
+- Produces: none (leaf documentation change).
+
+- [ ] **Step 1: Amend FR-ADM-002**
+
+Find this exact text:
+
+```
+**FR-ADM-002:** Every intake shall belong to an academic year and shall directly scope applications, requirements, quotas, selection rounds, and offers.
+```
+
+Replace it with:
+
+```
+**FR-ADM-002:** Every intake shall belong to an academic year and shall directly scope applications, requirements, quotas, and offers. Per ADR-0014, admissions processing (verification, eligibility, academic review, admission decision) is scoped directly to the application and programme choice, not to an intake-scoped selection round.
+```
+
+- [ ] **Step 2: Amend FR-ADM-004**
+
+Find this exact text:
+
+```
+**FR-ADM-004:** Intakes shall support draft, open, closed, and archived statuses. Selection and offer lifecycle states shall belong to selection rounds, offer batches, and offers.
+```
+
+Replace it with:
+
+```
+**FR-ADM-004:** Intakes shall support draft, open, closed, and archived statuses. Per ADR-0014, selection and offer lifecycle states shall belong to academic reviews, academic recommendations, programme choice decisions, and offers — not to selection rounds or offer batches, which are retired and preserved only as historical records.
+```
+
+- [ ] **Step 3: Resolve the stale open question in Section 34**
+
+Find this exact text:
+
+```
+- Which staff roles approve offer batches in the first implementation?
+```
+
+Replace it with:
+
+```
+- *(Resolved by ADR-0014: offer batches are retired; there is no batch approval step.)*
+```
+
+- [ ] **Step 4: Verify**
+
+Run:
+```bash
+grep -n "selection round\|offer batch\|shortlist\|waitlist" fresh-design/new-emhare-functional-requirements.md | grep -vi "superseded\|retired\|historical\|resolved by adr-0014"
+```
+Expected: no output, except the already-known negation-clause uses inside FR-SEL-020, FR-SEL-022, FR-SEL-027, and FR-OFFER-001 (these are correct as specified in Tasks 3 and 4 — they describe what no longer happens, not stale live functionality). If any other line appears, stop and report it rather than fixing it inline.
+
 ## What This Plan Deliberately Does Not Do
 
 - It does not write any migration, entity, controller, or Vue file. Those belong to the five downstream plans this Foundation plan unblocks (Admissions backend; Documents backend; Notifications backend; admin-portal frontend; applicant-portal frontend), each to be scoped and written separately once this plan is reviewed and accepted.
