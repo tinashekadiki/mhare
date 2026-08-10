@@ -524,7 +524,7 @@ The applicant's first and last name shall be sourced from the authenticated acco
 
 ### 16.1 Offer Generation
 
-**FR-OFFER-001:** The system shall generate offers from approved selection decisions.
+**FR-OFFER-001:** Per ADR-0014, the system shall generate one offer directly from an approved admission decision on a programme choice, without an offer batch.
 
 **FR-OFFER-002:** Offers shall include application, selected programme choice, programme, intake, offer type, conditions, registration date, orientation date, commencement date, and acceptance deadline.
 
@@ -534,13 +534,13 @@ The applicant's first and last name shall be sourced from the authenticated acco
 
 **FR-OFFER-005:** Offer numbers shall be unique.
 
-### 16.2 Offer Batches
+### 16.2 Offer Batches (Retired)
 
-**FR-OFFER-010:** The system shall support offer batches by intake and selection round.
+**FR-OFFER-010:** *(Superseded by ADR-0014. Offer batches are retired as an active concept; the system no longer supports creating, approving, or dispatching an offer batch.)*
 
-**FR-OFFER-011:** Offer batches shall support institution, academic-unit, and programme scopes.
+**FR-OFFER-011:** *(Superseded by ADR-0014.)*
 
-**FR-OFFER-012:** Offer batches shall support approval before dispatch.
+**FR-OFFER-012:** *(Superseded by ADR-0014.)* Historical `offer_batches` records remain visible in audit and case history only.
 
 ### 16.3 Offer Documents And Dispatch
 
@@ -560,7 +560,25 @@ The applicant's first and last name shall be sourced from the authenticated acco
 
 **FR-OFFER-032:** Only accepted offers shall be eligible for student conversion.
 
-**FR-OFFER-033:** Declined offers shall release the occupied place for selection or waitlist processing according to institution rules.
+**FR-OFFER-033:** Declined offers shall release the occupied place according to institution rules.
+
+### 16.5 Programme Offer-Letter Export
+
+**FR-OFFER-040:** The Admissions table shall provide a `Print offer letters` action that opens a modal requiring an intake and a programme before export.
+
+**FR-OFFER-041:** The export modal shall show the number of eligible published letters for the selected intake and programme before download.
+
+**FR-OFFER-042:** Export shall include only the latest published document version for each current offer in the selected intake and programme. Drafts, generating or failed documents, withdrawn offers, superseded document versions, and deleted records shall be excluded.
+
+**FR-OFFER-043:** Sent, accepted, declined, expired, and converted offers shall be treated as published records for export purposes. Email delivery failure shall not exclude an otherwise portal-published offer.
+
+**FR-OFFER-044:** The system shall support exporting the selected offer letters as one merged, print-ready PDF ordered by applicant name and application number, or as one ZIP containing the individual PDFs with entries named using the application and offer numbers.
+
+**FR-OFFER-045:** Programme offer-letter export is a read-only reporting operation. It shall never create, approve, decide, or dispatch an offer, change an offer or application status, publish a document, send an email, or introduce a batch lifecycle.
+
+**FR-OFFER-046:** Every export shall record the requesting user, intake, programme, format, included document count, and timestamp as audit evidence.
+
+**FR-OFFER-047:** Documents and Reporting shall maintain a programme, intake, publication timestamp, applicant ownership, and latest-version projection from an offer-publication event, so exports can be served without querying Admissions directly.
 
 ## 17. Applicant-To-Student Conversion Requirements
 
