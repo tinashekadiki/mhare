@@ -14,7 +14,7 @@
 - New ADRs in this project are written directly as `Status: Accepted` (see ADR-0012, ADR-0013) — this project's ADR process is single-architect authorship, not a multi-stakeholder proposal/review cycle. Do not write ADR-0014 as "Proposed."
 - Do not edit any existing migration file. This plan creates no migrations; downstream backend plans must run `mvn flyway:info` against a live database before authoring new ones (current confirmed baselines: admissions-service V33, documents-reporting-service V5, notifications-service V7).
 - Do not delete historical requirement or data-model content. Superseded items are marked superseded in place (with a one-line pointer to ADR-0014) so requirement IDs and traceability remain stable; they are not renumbered or removed.
-- Do not commit any change. Per project convention, commits happen only when the user explicitly asks — leave all edits staged/unstaged for review at the end of this plan.
+- Local commits per task are allowed and expected: this plan is executed via superpowers:subagent-driven-development, whose review mechanism depends on one commit per task (resolved with the user 2026-08-10 — choosing subagent-driven execution is the explicit ask). No push, PR, or remote operation of any kind.
 - Do not create new `.md` files beyond the one ADR this plan requires (`fresh-design/adrs/0014-rolling-per-applicant-admissions-processing.md`). All other changes are edits to existing files.
 - Preserve `Module` terminology (never `Course`) and UZ terminology conventions already used throughout `fresh-design/`.
 
