@@ -516,7 +516,7 @@ The applicant's first and last name shall be sourced from the authenticated acco
 
 **FR-PAY-008:** The system shall issue or link receipts for confirmed payments.
 
-**FR-PAY-009:** Applications that require a fee shall not enter admissions review, eligibility evaluation, or selection until payment is confirmed or an authorised waiver/override is recorded.
+**FR-PAY-009:** Applications that require a fee shall not enter admissions review, eligibility evaluation, or academic review until payment is confirmed or an authorised waiver/override is recorded.
 
 **FR-PAY-010:** The applicant portal shall show the fee amount, payment reference, payment status, and next action before submission.
 

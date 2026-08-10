@@ -447,7 +447,7 @@ Constraint: `user_id` is required because applicants must sign up or log in befo
 - `payment_confirmed_at` nullable
 - `payment_override_by_user_id` nullable
 - `payment_override_reason` nullable
-- `status` enum: `DRAFT`, `SUBMITTED`, `PAYMENT_PENDING`, `UNDER_REVIEW`, `INCOMPLETE`, `NOT_ELIGIBLE`, `UNDER_ACADEMIC_REVIEW`, `ADMITTED`, `REJECTED`, `OFFERED`, `ACCEPTED`, `DECLINED`, `WITHDRAWN`, `CONVERTED` (per ADR-0014: `SHORTLISTED` and `SELECTED` are retired; `UNDER_ACADEMIC_REVIEW` and `ADMITTED` replace them)
+- `status` enum: `DRAFT`, `SUBMITTED`, `PAYMENT_PENDING`, `UNDER_REVIEW`, `INCOMPLETE`, `ELIGIBLE`, `NOT_ELIGIBLE`, `UNDER_ACADEMIC_REVIEW`, `ADMITTED`, `REJECTED`, `OFFERED`, `ACCEPTED`, `DECLINED`, `WITHDRAWN`, `CONVERTED` (per ADR-0014: `SHORTLISTED` and `SELECTED` are retired; `UNDER_ACADEMIC_REVIEW`, `ADMITTED`, and `REJECTED` are new — `ADMITTED` replaces `SELECTED`, and `REJECTED` is now reachable at the application level alongside the existing `NOT_ELIGIBLE`)
 - `status_reason`
 - `verified_by_user_id`
 - `verified_at`
@@ -455,7 +455,7 @@ Constraint: `user_id` is required because applicants must sign up or log in befo
 - unique `application_number`
 - unique active application guard as appropriate for `intake_id`, `applicant_id`, `application_type_id`
 
-Constraint: fee-required applications cannot move to `UNDER_REVIEW`, evaluation, or selection unless `payment_confirmed_at` is present or a payment override is recorded.
+Constraint: fee-required applications cannot move to `UNDER_REVIEW`, evaluation, or academic review unless `payment_confirmed_at` is present or a payment override is recorded.
 
 `application_status_events`
 - `id`
@@ -471,7 +471,7 @@ Constraint: fee-required applications cannot move to `UNDER_REVIEW`, evaluation,
 - `application_id`
 - `programme_id`
 - `choice_rank`
-- `choice_status` enum: `PENDING`, `ELIGIBLE`, `INELIGIBLE`, `REQUIRES_REVIEW`, `UNDER_ACADEMIC_REVIEW`, `ADMITTED`, `REJECTED`, `OFFERED` (per ADR-0014: `SHORTLISTED` and `SELECTED` are retired; `REQUIRES_REVIEW` and `UNDER_ACADEMIC_REVIEW` are new, `ADMITTED` replaces `SELECTED`)
+- `choice_status` enum: `PENDING`, `ELIGIBLE`, `CONDITIONALLY_ELIGIBLE`, `INELIGIBLE`, `REQUIRES_REVIEW`, `UNDER_ACADEMIC_REVIEW`, `ADMITTED`, `REJECTED`, `OFFERED` (per ADR-0014: `SHORTLISTED` and `SELECTED` are retired; `CONDITIONALLY_ELIGIBLE`, `REQUIRES_REVIEW`, and `UNDER_ACADEMIC_REVIEW` are new, aligning with the four `application_evaluations.status` outcomes; `ADMITTED` replaces `SELECTED`)
 - `evaluation_summary`
 - `decision_reason`
 - unique `application_id`, `choice_rank`
@@ -694,7 +694,7 @@ These four tables are preserved exactly as-is for audit and case history per ADR
 - `completed_at`
 - unique `application_id`, `programme_choice_id`
 
-The successor to `academic_review_assignments`, scoped directly to the application and programme choice instead of a `selection_round_id`. Created automatically per FR-SEL-027 as soon as a choice becomes eligible, not released as part of a round batch. The owning leaf and resolved highest unit remain immutable workflow snapshots; recommendation authority still requires an active staff assignment at the exact `recommendation_academic_unit_id`.
+The successor to `academic_review_assignments`, scoped directly to the application and programme choice instead of a `selection_round_id`. Created automatically per FR-SEL-027 as soon as a choice becomes eligible, not released as part of a round batch. The owning leaf and resolved highest unit remain immutable workflow snapshots; recommendation authority still requires an active staff assignment at the exact `recommendation_academic_unit_id`. `status: CANCELLED` covers a review whose application or programme choice is withdrawn before completion.
 
 `academic_recommendations`
 - `id`
@@ -706,9 +706,8 @@ The successor to `academic_review_assignments`, scoped directly to the applicati
 - `recommended_at`
 - `review_status` enum: `PENDING`, `APPROVED`, `RETURNED`, `OVERRIDDEN`
 - `reviewed_by_user_id`, `reviewed_at`, `review_reason`
-- `final_decision_id` nullable, references `programme_choice_decisions.id`
 
-The successor to `academic_unit_recommendations`, referencing `academic_reviews` instead of `academic_review_assignments`. `rank_position` and `quota_type_code` are dropped — per ADR-0014, ranking and quota category no longer factor into a recommendation. Recommendations remain advisory.
+The successor to `academic_unit_recommendations`, referencing `academic_reviews` instead of `academic_review_assignments`. `rank_position` and `quota_type_code` are dropped — per ADR-0014, ranking and quota category no longer factor into a recommendation. Recommendations remain advisory. Returning a recommendation for reconsideration (`review_status: RETURNED`) is a workflow action distinct from the two admission-decision actions in ADR-0014 (`Approve admission` and `Reject`); it sends the choice back to the academic unit rather than admitting or rejecting the applicant.
 
 `programme_choice_decisions`
 - `id`
@@ -755,7 +754,7 @@ The successor to `selection_decisions`, scoped directly to the application and p
 
 If a ZWG application payment has no effective exchange rate, `base_amount` stays null and the payment remains unrated for finance review.
 
-Payment ownership note: Finance owns payment references, payment confirmations, receipts, exchange rates, and posting. Admissions consumes payment status before submission/review/selection.
+Payment ownership note: Finance owns payment references, payment confirmations, receipts, exchange rates, and posting. Admissions consumes payment status before submission/review/academic review.
 
 ### Offers and Conversion
 
