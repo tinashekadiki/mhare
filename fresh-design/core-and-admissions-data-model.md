@@ -759,7 +759,7 @@ Payment ownership note: Finance owns payment references, payment confirmations, 
 
 ### Offers and Conversion
 
-`offer_batches`
+`offer_batches` (historical — read-only from ADR-0014 onward)
 - `id`
 - `intake_id`
 - `selection_round_id`
@@ -770,11 +770,13 @@ Payment ownership note: Finance owns payment references, payment confirmations, 
 - `approved_by_user_id`
 - `approved_at`
 
+Preserved for audit and case history; no new offer batch is created after ADR-0014.
+
 `offers`
 - `id`
 - `application_id`
 - `programme_choice_id`
-- `offer_batch_id` nullable
+- `offer_batch_id` nullable — always null for offers created after ADR-0014; retained only so historical batch-scoped offers keep their link
 - `programme_id`
 - `intake_id`
 - `offer_number`
@@ -785,9 +787,11 @@ Payment ownership note: Finance owns payment references, payment confirmations, 
 - `registration_date`
 - `orientation_date`
 - `commencement_date`
-- `generated_document_id`
+- `generated_document_id` — references the latest published document version projected from Documents and Reporting; full version history is owned by Documents and Reporting, not Admissions
 - unique `offer_number`
 - unique active offer guard on `application_id`, `programme_id`
+
+Per ADR-0014, an offer is created directly from an `ADMIT` `programme_choice_decisions` row, with no `offer_batch_id`. Regenerating the offer letter creates a new document version in Documents and Reporting and republishes `generated_document_id` to point at it; it does not create a new `offers` row. Publishing an offer emits an offer-publication event so Documents and Reporting can maintain its own programme/intake/publication-timestamp/applicant-ownership/latest-version export projection without querying Admissions directly (see FR-OFFER-047).
 
 `offer_dispatches`
 - `id`
@@ -837,7 +841,7 @@ The conversion service should atomically mark the offer accepted/converted, crea
 5. Applicant profile and applications.
 6. Programme choices with both uniqueness constraints.
 7. Qualification sittings/results and document links.
-8. Requirement sets, subject requirements, evaluations, selection rounds/decisions.
+8. Requirement sets, subject requirements, evaluations, academic reviews/recommendations, programme choice decisions (selection rounds/decisions preserved as historical predecessor tables per ADR-0014, not part of new implementation work).
 9. Payment references/payments.
 10. Offers, dispatch, responses, students, and student programme enrolments.
 
