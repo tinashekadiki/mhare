@@ -304,9 +304,9 @@ The new eMhare shall be organised into these product modules:
 
 **FR-ADM-020:** The system shall maintain application fees by application type, applicant category, currency, and effective date.
 
-**FR-ADM-021:** The system shall support admission quotas by cycle, programme, quota type, capacity, and reserved capacity.
+**FR-ADM-021:** Per ADR-0014, the system may retain admission quotas by intake, programme, quota type, capacity, and reserved capacity for institutional planning and reporting only. Quotas shall not gate eligibility evaluation, academic recommendation, or admission decisions.
 
-**FR-ADM-022:** Quotas shall support local categories such as disability, sport, staff dependent, international, or institution-defined categories.
+**FR-ADM-022:** Where retained, quotas shall support local categories such as disability, sport, staff dependent, international, or institution-defined categories, for reporting purposes only.
 
 ### 10.4 Subject And Grade Setup
 
