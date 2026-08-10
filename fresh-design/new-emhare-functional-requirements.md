@@ -464,37 +464,39 @@ The applicant's first and last name shall be sourced from the authenticated acco
 
 **FR-SEL-016:** Final application submission shall calculate and persist the applicant's total points and calculation timestamp from captured qualification results. Eligibility officers shall use this server-calculated value and shall not enter or override total points manually.
 
-### 14.3 Selection
+### 14.3 Rolling Admissions Processing
 
-**FR-SEL-020:** The system shall support selection rounds per intake.
+**FR-SEL-020:** Per ADR-0014, the system shall process each submitted, payment-cleared programme choice individually while its intake is open, through Verification, Eligibility, Academic review, Admission decision, Offer, and Response stages. There is no administrator-opened selection round gating this processing.
 
-**FR-SEL-021:** Selection rounds shall support draft, open, approved, and closed states.
+**FR-SEL-021:** *(Superseded by FR-SEL-020 and ADR-0014. Selection-round draft/open/approved/closed states are retained only on historical `selection_rounds` records and are not used by new processing.)*
 
-**FR-SEL-022:** The system shall rank eligible applicants by programme choice, score, quota category, and institution-defined criteria.
+**FR-SEL-022:** Eligibility evaluation shall determine whether a programme choice is eligible, conditionally eligible, not eligible, or requires review, using the applicable requirement set. Ranking, quota category, and other institution-defined comparative criteria shall not determine an eligibility outcome or an admission decision.
 
-**FR-SEL-023:** Active staff assigned directly to the programme's highest academic-unit ancestor immediately below the institution shall be able to record an advisory shortlist, select, reject, or waitlist recommendation for programmes owned anywhere in that unit's descendant tree.
+**FR-SEL-023:** Active staff assigned directly to the programme's highest academic-unit ancestor immediately below the institution shall be able to record an advisory `Recommend admission` or `Recommend rejection` for programme choices owned anywhere in that unit's descendant tree.
 
-**FR-SEL-024:** Selection decisions shall record rank position, quota type, reason, actor, and timestamp.
+**FR-SEL-024:** Academic recommendations and admission decisions shall record the acting user and timestamp, and a reason where the outcome is a rejection or an override of the recommendation.
 
-**FR-SEL-025:** The system shall support batch review and approval of selected applicants.
+**FR-SEL-025:** *(Superseded by FR-SEL-020 and ADR-0014. There is no batch review or approval step; each programme choice reaches its own admission decision independently.)*
 
 **FR-SEL-026:** Admissions shall confirm payment or waiver, required sections, required documents, qualifications, and duplicate checks in a separate audited application-clearance record while retaining the internal under-review application status.
 
-**FR-SEL-027:** Admissions shall release the highest-ranked eligible, unblocked programme choice into an open selection round and shall resolve its recommendation unit from the programme-owning leaf to the root academic unit whose parent is null.
+**FR-SEL-027:** The system shall automatically create an academic review for the highest-ranked eligible, unblocked programme choice as soon as it becomes eligible, and shall resolve its recommendation unit from the programme-owning leaf to the root academic unit whose parent is null. This creation is automatic, not a manual "release" action, and does not depend on an open selection round.
 
-**FR-SEL-028:** The release assignment shall snapshot the owning leaf, resolved highest academic unit, and full ancestor path so later hierarchy changes do not silently move active work.
+**FR-SEL-028:** The academic review shall snapshot the owning leaf, resolved highest academic unit, and full ancestor path so later hierarchy changes do not silently move active work.
 
-**FR-SEL-029:** Recommendation authority shall belong to every active staff member assigned directly to the snapshotted highest academic unit. A recommendation shall remain advisory and shall neither select the application nor create an offer.
+**FR-SEL-029:** Recommendation authority shall belong to every active staff member assigned directly to the snapshotted highest academic unit. A recommendation shall remain advisory and shall neither admit the application nor create an offer.
 
-**FR-SEL-030:** Admissions shall approve a recommendation, return it for reconsideration, or record a different final decision with a mandatory override reason. Only this reviewed outcome shall create the selection decision.
+**FR-SEL-030:** Admissions shall approve admission or reject each programme choice directly against its academic recommendation, recording a mandatory reason for a rejection or for any override of the recommendation. Only this admission decision creates the record that can generate an offer.
 
-**FR-SEL-031:** Programme choices shall be processed sequentially by applicant preference rank. A shortlist, selection, or waitlist shall block lower choices; an Admissions-approved rejection or explicit waitlist release shall open the next eligible choice; selection shall close all lower choices.
+**FR-SEL-031:** Programme choices shall be processed sequentially by applicant preference rank. An open academic review or an admitted decision on a choice shall block lower-ranked choices; an approved rejection on a choice shall automatically open the next eligible choice for academic review.
 
 **FR-SEL-032:** Spreadsheet export shall be an audited reporting option and shall not serve as a workflow handoff or application status.
 
 **FR-SEL-033:** Every Admissions workflow stage shall show a compact applicant identity summary containing the full display name, applicant number, and application number, with a direct action to open the consolidated applicant profile. Academic-unit access to that profile shall remain read-only and scoped to an active assignment at the exact snapshotted highest academic unit.
 
-**FR-SEL-034:** The consolidated applicant profile shall show a vertical five-stage workflow tracker for confirmation, academic release, academic-unit recommendation, Admissions final decision, and offer processing. Each stage shall derive its completed, current, pending, or not-applicable state from the persisted workflow records and show the relevant programme, academic unit, outcome, and event timestamp where available.
+**FR-SEL-034:** The consolidated applicant profile shall show a vertical six-stage workflow tracker for Verification, Eligibility, Academic review, Admission decision, Offer, and Response. Each stage shall derive its completed, current, pending, or not-applicable state from the persisted workflow records and show the relevant programme, academic unit, outcome, and event timestamp where available.
+
+**FR-SEL-035:** The admin portal shall present a single compact Admissions table with columns for Applicant, Application, Intake/type, Programme, Points, Payment, Stage, Updated, and Open, supporting server-side search, pagination, and filters for stage, intake, application type, programme, and outcome. Separate pages for verification, evaluation, selection, academic release, recommendations, decisions, and offers are retired; their routes redirect to this table filtered to the equivalent stage.
 
 ## 15. Application Payment Requirements
 
