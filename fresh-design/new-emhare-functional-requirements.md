@@ -861,8 +861,8 @@ Release 1 should include:
 - Application payment reference and confirmation.
 - Staff verification.
 - Eligibility evaluation.
-- Selection rounds.
-- Offer generation and response.
+- Rolling per-applicant academic review and admission decisions (ADR-0014).
+- Offer generation, response, and programme offer-letter export.
 - Applicant-to-student conversion.
 - Generated offer documents.
 - Audit events and core reports.
