@@ -21,6 +21,7 @@ This folder records the architecture decisions for the new eMhare before impleme
 | [ADR-0011](0011-object-storage-reference-implementation.md) | Object storage reference implementation | Accepted |
 | [ADR-0012](0012-intakes-as-the-sole-admissions-window.md) | Intakes as the sole admissions window | Accepted |
 | [ADR-0013](0013-application-payment-evidence-and-hosted-card-payments.md) | Application payment evidence and hosted card payments | Accepted |
+| [ADR-0014](0014-rolling-per-applicant-admissions-processing.md) | Rolling per-applicant admissions processing | Accepted |
 
 ## Rules
 
