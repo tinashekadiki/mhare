@@ -631,7 +631,7 @@ Approval of a replacement requirement set retires overlapping approved versions 
 
 This is the audited evidence behind the user-facing “Confirmed by Admissions” state; the application retains its internal `UNDER_REVIEW` status.
 
-`selection_rounds`
+`selection_rounds` (historical — read-only from ADR-0014 onward)
 - `id`
 - `intake_id`
 - `code`
@@ -640,7 +640,7 @@ This is the audited evidence behind the user-facing “Confirmed by Admissions�
 - `started_at`
 - `closed_at`
 
-`selection_decisions`
+`selection_decisions` (historical — read-only from ADR-0014 onward)
 - `id`
 - `selection_round_id`
 - `programme_choice_id`
@@ -652,7 +652,7 @@ This is the audited evidence behind the user-facing “Confirmed by Admissions�
 - `decided_at`
 - unique `selection_round_id`, `programme_choice_id`
 
-`academic_review_assignments`
+`academic_review_assignments` (historical — read-only from ADR-0014 onward)
 - `id`
 - `selection_round_id`
 - `application_id`
@@ -665,9 +665,7 @@ This is the audited evidence behind the user-facing “Confirmed by Admissions�
 - `release_attempt`
 - release, claim, completion actors and timestamps
 
-The owning leaf and resolved highest unit are immutable workflow snapshots. Recommendation authority requires an active staff assignment at the exact `recommendation_academic_unit_id`.
-
-`academic_unit_recommendations`
+`academic_unit_recommendations` (historical — read-only from ADR-0014 onward)
 - `id`
 - `academic_review_assignment_id`
 - `recommendation_sequence`
@@ -681,7 +679,49 @@ The owning leaf and resolved highest unit are immutable workflow snapshots. Reco
 - `reviewed_by_user_id`, `reviewed_at`, `review_reason`
 - `final_decision` nullable
 
-Recommendations are advisory. Only Admissions review creates a `selection_decision`; only an approved `SELECT` decision can create an offer.
+These four tables are preserved exactly as-is for audit and case history per ADR-0014. No new row is ever written to any of them after this ADR; new academic review, recommendation, and decision processing uses the three tables below instead.
+
+`academic_reviews`
+- `id`
+- `application_id`
+- `programme_choice_id`
+- `owning_academic_unit_id`, `owning_academic_unit_code`, `owning_academic_unit_name`
+- `recommendation_academic_unit_id`, `recommendation_academic_unit_code`, `recommendation_academic_unit_name`
+- `hierarchy_path_json`
+- `choice_rank`
+- `status` enum: `OPEN`, `CLAIMED`, `RECOMMENDED`, `RETURNED`, `COMPLETED`, `CANCELLED`
+- `claimed_by_user_id`, `claimed_at`
+- `completed_at`
+- unique `application_id`, `programme_choice_id`
+
+The successor to `academic_review_assignments`, scoped directly to the application and programme choice instead of a `selection_round_id`. Created automatically per FR-SEL-027 as soon as a choice becomes eligible, not released as part of a round batch. The owning leaf and resolved highest unit remain immutable workflow snapshots; recommendation authority still requires an active staff assignment at the exact `recommendation_academic_unit_id`.
+
+`academic_recommendations`
+- `id`
+- `academic_review_id`
+- `recommendation_sequence`
+- `recommendation` enum: `RECOMMEND_ADMIT`, `RECOMMEND_REJECT`
+- `reason`
+- `recommended_by_user_id`
+- `recommended_at`
+- `review_status` enum: `PENDING`, `APPROVED`, `RETURNED`, `OVERRIDDEN`
+- `reviewed_by_user_id`, `reviewed_at`, `review_reason`
+- `final_decision_id` nullable, references `programme_choice_decisions.id`
+
+The successor to `academic_unit_recommendations`, referencing `academic_reviews` instead of `academic_review_assignments`. `rank_position` and `quota_type_code` are dropped — per ADR-0014, ranking and quota category no longer factor into a recommendation. Recommendations remain advisory.
+
+`programme_choice_decisions`
+- `id`
+- `application_id`
+- `programme_choice_id`
+- `decision` enum: `ADMIT`, `REJECT`
+- `reason`
+- `source_recommendation_id` nullable, references `academic_recommendations.id`
+- `decided_by_user_id`
+- `decided_at`
+- unique `programme_choice_id`
+
+The successor to `selection_decisions`, scoped directly to the application and programme choice instead of a `selection_round_id`, with no `rank_position` or `quota_type_code`. Only Admissions review creates a `programme_choice_decision`; only an `ADMIT` decision can create an offer.
 
 ### Payments
 
