@@ -132,24 +132,6 @@ public class AdmissionsSelectionOfferController {
         return workflowService.createSelectionRound(request.intakeId(), request.code(), request.name());
     }
 
-    @PostMapping("/selection-rounds/{selectionRoundId}/open")
-    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_APPLICATION_REVIEW')")
-    public SelectionRoundSummary openSelectionRound(@PathVariable("selectionRoundId") UUID selectionRoundId) {
-        return workflowService.openSelectionRound(selectionRoundId);
-    }
-
-    @PostMapping("/selection-rounds/{selectionRoundId}/approve")
-    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_SELECTION_APPROVE')")
-    public SelectionRoundSummary approveSelectionRound(Authentication authentication, @PathVariable("selectionRoundId") UUID selectionRoundId) {
-        return workflowService.approveSelectionRound(selectionRoundId, currentUser(authentication).user().id());
-    }
-
-    @PostMapping("/selection-rounds/{selectionRoundId}/close")
-    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_SELECTION_APPROVE')")
-    public SelectionRoundSummary closeSelectionRound(@PathVariable("selectionRoundId") UUID selectionRoundId) {
-        return workflowService.closeSelectionRound(selectionRoundId);
-    }
-
     @GetMapping("/selection-rounds/{selectionRoundId}/decisions")
     @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_APPLICATION_REVIEW')")
     public List<SelectionDecisionSummary> selectionDecisions(@PathVariable("selectionRoundId") UUID selectionRoundId) {
@@ -169,24 +151,6 @@ public class AdmissionsSelectionOfferController {
         return workflowService.createOfferBatch(
                 request.intakeId(), request.selectionRoundId(), request.code(), request.name(),
                 request.scopeType(), request.scopeId());
-    }
-
-    @PostMapping("/offer-batches/{offerBatchId}/approve")
-    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_APPROVE')")
-    public OfferBatchSummary approveOfferBatch(Authentication authentication, @PathVariable("offerBatchId") UUID offerBatchId) {
-        return workflowService.approveOfferBatch(offerBatchId, currentUser(authentication).user().id());
-    }
-
-    @PostMapping("/offer-batches/{offerBatchId}/dispatch")
-    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_DISPATCH')")
-    public OfferBatchSummary dispatchOfferBatch(@PathVariable("offerBatchId") UUID offerBatchId) {
-        return workflowService.markOfferBatchDispatched(offerBatchId);
-    }
-
-    @PostMapping("/offer-batches/{offerBatchId}/close")
-    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_MANAGE')")
-    public OfferBatchSummary closeOfferBatch(@PathVariable("offerBatchId") UUID offerBatchId) {
-        return workflowService.closeOfferBatch(offerBatchId);
     }
 
     @GetMapping("/offers")

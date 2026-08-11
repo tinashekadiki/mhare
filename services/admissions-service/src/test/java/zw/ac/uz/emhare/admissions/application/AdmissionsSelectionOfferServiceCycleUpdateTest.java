@@ -2,11 +2,6 @@ package zw.ac.uz.emhare.admissions.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,7 +10,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -58,7 +52,12 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
     private AdmissionsSelectionOfferService service;
 
     @Test
-    void createsAndApprovesOfferBatchForApprovedRoundWhileIntakeRemainsOpen() {
+    void createsOfferBatchForApprovedSelectionRoundWhileIntakeRemainsOpen() {
+        // NB: this used to also approve the created batch via the now-retired
+        // AdmissionsSelectionOfferService.approveOfferBatch (ADR-0014 hard cutover,
+        // 2026-08-11 admissions backend rolling-workflow plan, Task 4). createOfferBatch
+        // itself is unchanged and still in scope, so this test was trimmed rather than
+        // deleted.
         UUID intakeId = UUID.randomUUID();
         UUID admissionCycleId = UUID.randomUUID();
         UUID selectionRoundId = UUID.randomUUID();
@@ -76,25 +75,19 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
         ReflectionTestUtils.setField(selectionRound, "id", selectionRoundId);
         selectionRound.open(now);
         selectionRound.approve(actorUserId, now);
-        AtomicReference<OfferBatch> savedBatch = new AtomicReference<>();
 
         when(admissionsIntakeProjectionService.requireProjection(intakeId)).thenReturn(admissionCycle);
         when(selectionRoundRepository.findById(selectionRoundId)).thenReturn(Optional.of(selectionRound));
-        when(offerBatchRepository.save(any(OfferBatch.class))).thenAnswer(invocation -> {
+        when(offerBatchRepository.save(org.mockito.ArgumentMatchers.any(OfferBatch.class))).thenAnswer(invocation -> {
             OfferBatch batch = invocation.getArgument(0);
             ReflectionTestUtils.setField(batch, "id", offerBatchId);
-            savedBatch.set(batch);
             return batch;
         });
-        when(clock.instant()).thenReturn(now);
 
         OfferBatchSummary created = service.createOfferBatch(
                 intakeId, selectionRoundId, "2027-R1-OFFERS", "First merit offers", "INSTITUTION", null);
-        when(offerBatchRepository.findById(offerBatchId)).thenReturn(Optional.of(savedBatch.get()));
-        OfferBatchSummary approved = service.approveOfferBatch(offerBatchId, actorUserId);
 
         assertThat(created.status()).isEqualTo("DRAFT");
-        assertThat(approved.status()).isEqualTo("APPROVED");
         assertThat(admissionCycle.getStatus()).isEqualTo(AdmissionCycleStatus.OPEN);
     }
 
@@ -248,76 +241,5 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
         assertThat(approved.requiresMathematicsOrScience()).isTrue();
         assertThat(previous.getStatus()).isEqualTo(RequirementSetStatus.RETIRED);
         verify(requirementSetRepository).saveAllAndFlush(List.of(previous));
-    }
-
-    @Test
-    void flushesSelectionDecisionBeforeChangingEligibleChoiceStatus() {
-        UUID admissionCycleId = UUID.randomUUID();
-        UUID selectionRoundId = UUID.randomUUID();
-        UUID applicationId = UUID.randomUUID();
-        UUID programmeChoiceId = UUID.randomUUID();
-        UUID actorUserId = UUID.randomUUID();
-        Instant decisionTime = Instant.parse("2027-01-15T10:00:00Z");
-
-        AdmissionCycle admissionCycle = mock(AdmissionCycle.class);
-        SelectionRound selectionRound = mock(SelectionRound.class);
-        Application application = mock(Application.class);
-        ApplicationProgrammeChoice programmeChoice = mock(ApplicationProgrammeChoice.class);
-        AtomicReference<ProgrammeChoiceStatus> choiceStatus =
-                new AtomicReference<>(ProgrammeChoiceStatus.ELIGIBLE);
-        AtomicReference<ApplicationStatus> applicationStatus =
-                new AtomicReference<>(ApplicationStatus.ELIGIBLE);
-
-        when(admissionCycle.getId()).thenReturn(admissionCycleId);
-        when(selectionRound.getId()).thenReturn(selectionRoundId);
-        when(selectionRound.getAdmissionCycle()).thenReturn(admissionCycle);
-        when(selectionRound.getStatus()).thenReturn(SelectionRoundStatus.OPEN);
-        when(selectionRoundRepository.findById(selectionRoundId)).thenReturn(Optional.of(selectionRound));
-        when(programmeChoice.getId()).thenReturn(programmeChoiceId);
-        when(programmeChoice.getApplication()).thenReturn(application);
-        when(programmeChoice.getChoiceRank()).thenReturn(1);
-        when(programmeChoice.getProgrammeCode()).thenReturn("HSC");
-        when(programmeChoice.getProgrammeName()).thenReturn("Bachelor of Science Computer Science");
-        when(programmeChoice.getChoiceStatus()).thenAnswer(ignored -> choiceStatus.get());
-        doAnswer(ignored -> {
-            choiceStatus.set(ProgrammeChoiceStatus.SELECTED);
-            return null;
-        }).when(programmeChoice).recordSelectionDecision(eq(SelectionDecisionType.SELECT), anyString());
-        when(programmeChoiceRepository.findById(programmeChoiceId)).thenReturn(Optional.of(programmeChoice));
-        when(programmeChoiceRepository.findAllByApplicationIdOrderByChoiceRankAsc(applicationId))
-                .thenReturn(List.of(programmeChoice));
-        when(application.getId()).thenReturn(applicationId);
-        when(application.getAdmissionCycle()).thenReturn(admissionCycle);
-        when(application.getApplicationNumber()).thenReturn("EMH-FEB2027-00000762");
-        when(application.getStatus()).thenAnswer(ignored -> applicationStatus.get());
-        doAnswer(ignored -> {
-            applicationStatus.set(ApplicationStatus.SELECTED);
-            return null;
-        }).when(application).markSelected(anyString());
-        when(selectionDecisionRepository.findBySelectionRoundIdAndProgrammeChoiceIdAndDeletedAtIsNull(
-                selectionRoundId, programmeChoiceId)).thenReturn(Optional.empty());
-        when(selectionDecisionRepository.countOtherSelectionsForApplication(applicationId, programmeChoiceId))
-                .thenReturn(0L);
-        when(clock.instant()).thenReturn(decisionTime);
-        when(selectionDecisionRepository.saveAndFlush(any(SelectionDecision.class))).thenAnswer(invocation -> {
-            assertThat(choiceStatus.get()).isEqualTo(ProgrammeChoiceStatus.ELIGIBLE);
-            SelectionDecision savedDecision = invocation.getArgument(0);
-            ReflectionTestUtils.setField(savedDecision, "id", UUID.randomUUID());
-            return savedDecision;
-        });
-
-        SelectionDecisionSummary result = service.recordSelectionDecision(
-                selectionRoundId,
-                programmeChoiceId,
-                "SELECT",
-                null,
-                null,
-                "Admissions approved the academic-unit recommendation.",
-                actorUserId);
-
-        assertThat(result.decision()).isEqualTo("SELECT");
-        assertThat(choiceStatus.get()).isEqualTo(ProgrammeChoiceStatus.SELECTED);
-        assertThat(applicationStatus.get()).isEqualTo(ApplicationStatus.SELECTED);
-        verify(selectionDecisionRepository).saveAndFlush(any(SelectionDecision.class));
     }
 }

@@ -72,7 +72,7 @@ class SelectionOfferMigrationTest {
     void rejectsOfferUntilBatchAndSelectionRoundAreApproved() throws SQLException {
         WorkflowFixture fixture = createWorkflowFixture();
         insertSelectionDecision(fixture.selectionRoundId(), fixture.firstChoiceId());
-        markApplicationAndChoiceSelected(fixture.applicationId(), fixture.firstChoiceId());
+        markApplicationAndChoiceAdmitted(fixture.applicationId(), fixture.firstChoiceId());
         UUID batchId = insertOfferBatch(fixture, "DRAFT");
 
         SQLException exception = assertThrows(
@@ -86,7 +86,7 @@ class SelectionOfferMigrationTest {
     void rejectsOfferOutsideProgrammeScopedBatch() throws SQLException {
         WorkflowFixture fixture = createWorkflowFixture();
         insertSelectionDecision(fixture.selectionRoundId(), fixture.firstChoiceId());
-        markApplicationAndChoiceSelected(fixture.applicationId(), fixture.firstChoiceId());
+        markApplicationAndChoiceAdmitted(fixture.applicationId(), fixture.firstChoiceId());
         approveSelectionRound(fixture.selectionRoundId());
         UUID batchId = insertOfferBatch(fixture, "APPROVED", "PROGRAMME", UUID.randomUUID());
 
@@ -101,7 +101,7 @@ class SelectionOfferMigrationTest {
     void acceptsResponseOnlyForSentOfferAndMakesItImmutable() throws SQLException {
         WorkflowFixture fixture = createWorkflowFixture();
         insertSelectionDecision(fixture.selectionRoundId(), fixture.firstChoiceId());
-        markApplicationAndChoiceSelected(fixture.applicationId(), fixture.firstChoiceId());
+        markApplicationAndChoiceAdmitted(fixture.applicationId(), fixture.firstChoiceId());
         approveSelectionRound(fixture.selectionRoundId());
         UUID batchId = insertOfferBatch(fixture, "APPROVED");
         UUID prematureOfferId = insertOffer(fixture, batchId);
@@ -112,7 +112,7 @@ class SelectionOfferMigrationTest {
 
         fixture = createWorkflowFixture();
         insertSelectionDecision(fixture.selectionRoundId(), fixture.firstChoiceId());
-        markApplicationAndChoiceSelected(fixture.applicationId(), fixture.firstChoiceId());
+        markApplicationAndChoiceAdmitted(fixture.applicationId(), fixture.firstChoiceId());
         approveSelectionRound(fixture.selectionRoundId());
         batchId = insertOfferBatch(fixture, "APPROVED");
         UUID offerId = insertOffer(fixture, batchId);
@@ -142,7 +142,7 @@ class SelectionOfferMigrationTest {
     void makesResolvedOfferConditionsFinal() throws SQLException {
         WorkflowFixture fixture = createWorkflowFixture();
         insertSelectionDecision(fixture.selectionRoundId(), fixture.firstChoiceId());
-        markApplicationAndChoiceSelected(fixture.applicationId(), fixture.firstChoiceId());
+        markApplicationAndChoiceAdmitted(fixture.applicationId(), fixture.firstChoiceId());
         approveSelectionRound(fixture.selectionRoundId());
         UUID batchId = insertOfferBatch(fixture, "APPROVED");
         UUID offerId = insertOffer(fixture, batchId);
@@ -168,7 +168,7 @@ class SelectionOfferMigrationTest {
     void requiresExpiryEvidenceForExpiredOffers() throws SQLException {
         WorkflowFixture fixture = createWorkflowFixture();
         insertSelectionDecision(fixture.selectionRoundId(), fixture.firstChoiceId());
-        markApplicationAndChoiceSelected(fixture.applicationId(), fixture.firstChoiceId());
+        markApplicationAndChoiceAdmitted(fixture.applicationId(), fixture.firstChoiceId());
         approveSelectionRound(fixture.selectionRoundId());
         UUID batchId = insertOfferBatch(fixture, "APPROVED");
         UUID offerId = insertOffer(fixture, batchId);
@@ -210,7 +210,7 @@ class SelectionOfferMigrationTest {
     @Test
     void permitsGovernedChoiceLifecycleButKeepsSubmittedCatalogueSnapshotImmutable() throws SQLException {
         WorkflowFixture fixture = createWorkflowFixture();
-        execute("UPDATE application_programme_choices SET choice_status = 'SHORTLISTED' WHERE id = ?", fixture.firstChoiceId());
+        execute("UPDATE application_programme_choices SET choice_status = 'UNDER_ACADEMIC_REVIEW' WHERE id = ?", fixture.firstChoiceId());
 
         SQLException exception = assertThrows(
                 SQLException.class,
@@ -224,7 +224,7 @@ class SelectionOfferMigrationTest {
     void permitsOfferDispatchAfterApplicationAdvancesButKeepsOfferSourceImmutable() throws SQLException {
         WorkflowFixture fixture = createWorkflowFixture();
         insertSelectionDecision(fixture.selectionRoundId(), fixture.firstChoiceId());
-        markApplicationAndChoiceSelected(fixture.applicationId(), fixture.firstChoiceId());
+        markApplicationAndChoiceAdmitted(fixture.applicationId(), fixture.firstChoiceId());
         approveSelectionRound(fixture.selectionRoundId());
         UUID batchId = insertOfferBatch(fixture, "APPROVED");
         UUID offerId = insertOffer(fixture, batchId);
@@ -314,9 +314,13 @@ class SelectionOfferMigrationTest {
                 """, UUID.randomUUID(), selectionRoundId, choiceId, UUID.randomUUID());
     }
 
-    private void markApplicationAndChoiceSelected(UUID applicationId, UUID choiceId) throws SQLException {
-        execute("UPDATE application_programme_choices SET choice_status = 'SELECTED' WHERE id = ?", choiceId);
-        execute("UPDATE applications SET status = 'SELECTED' WHERE id = ?", applicationId);
+    private void markApplicationAndChoiceAdmitted(UUID applicationId, UUID choiceId) throws SQLException {
+        // ADR-0014 retired the SELECTED status in favour of ADMITTED (2026-08-11 admissions
+        // backend rolling-workflow plan, Task 3/4); the governance trigger installed by V34 only
+        // permits reaching ADMITTED via UNDER_ACADEMIC_REVIEW, so this is a two-step transition.
+        execute("UPDATE application_programme_choices SET choice_status = 'UNDER_ACADEMIC_REVIEW' WHERE id = ?", choiceId);
+        execute("UPDATE application_programme_choices SET choice_status = 'ADMITTED' WHERE id = ?", choiceId);
+        execute("UPDATE applications SET status = 'ADMITTED' WHERE id = ?", applicationId);
     }
 
     private void approveSelectionRound(UUID selectionRoundId) throws SQLException {

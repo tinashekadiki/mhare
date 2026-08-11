@@ -266,13 +266,15 @@ public class AdmissionsSelectionOfferService {
                 applications.size(),
                 countAtLeast(byStatus, ApplicationStatus.SUBMITTED, ApplicationStatus.PAYMENT_PENDING,
                         ApplicationStatus.UNDER_REVIEW, ApplicationStatus.INCOMPLETE, ApplicationStatus.ELIGIBLE,
-                        ApplicationStatus.NOT_ELIGIBLE, ApplicationStatus.SHORTLISTED, ApplicationStatus.SELECTED,
+                        ApplicationStatus.NOT_ELIGIBLE, ApplicationStatus.UNDER_ACADEMIC_REVIEW,
+                        ApplicationStatus.ADMITTED, ApplicationStatus.REJECTED,
                         ApplicationStatus.OFFERED, ApplicationStatus.ACCEPTED, ApplicationStatus.DECLINED,
                         ApplicationStatus.WITHDRAWN, ApplicationStatus.CONVERTED),
-                countAtLeast(byStatus, ApplicationStatus.ELIGIBLE, ApplicationStatus.SHORTLISTED,
-                        ApplicationStatus.SELECTED, ApplicationStatus.OFFERED, ApplicationStatus.ACCEPTED,
-                        ApplicationStatus.DECLINED, ApplicationStatus.WITHDRAWN, ApplicationStatus.CONVERTED),
-                countAtLeast(byStatus, ApplicationStatus.SELECTED, ApplicationStatus.OFFERED,
+                countAtLeast(byStatus, ApplicationStatus.ELIGIBLE, ApplicationStatus.UNDER_ACADEMIC_REVIEW,
+                        ApplicationStatus.ADMITTED, ApplicationStatus.REJECTED, ApplicationStatus.OFFERED,
+                        ApplicationStatus.ACCEPTED, ApplicationStatus.DECLINED, ApplicationStatus.WITHDRAWN,
+                        ApplicationStatus.CONVERTED),
+                countAtLeast(byStatus, ApplicationStatus.ADMITTED, ApplicationStatus.OFFERED,
                         ApplicationStatus.ACCEPTED, ApplicationStatus.DECLINED, ApplicationStatus.WITHDRAWN,
                         ApplicationStatus.CONVERTED),
                 countAtLeast(byStatus, ApplicationStatus.OFFERED, ApplicationStatus.ACCEPTED,
@@ -422,97 +424,10 @@ public class AdmissionsSelectionOfferService {
     }
 
     @Transactional
-    public SelectionRoundSummary openSelectionRound(UUID selectionRoundId) {
-        SelectionRound selectionRound = selectionRound(selectionRoundId);
-        selectionRound.open(clock.instant());
-        return SelectionRoundSummary.from(selectionRound);
-    }
-
-    @Transactional
-    public SelectionRoundSummary approveSelectionRound(UUID selectionRoundId, UUID actorUserId) {
-        SelectionRound selectionRound = selectionRound(selectionRoundId);
-        if (academicReviewAssignmentRepository.countBySelectionRoundIdAndStatusInAndDeletedAtIsNull(
-                selectionRoundId, List.of(AcademicReviewAssignmentStatus.OPEN,
-                        AcademicReviewAssignmentStatus.CLAIMED, AcademicReviewAssignmentStatus.RECOMMENDED,
-                        AcademicReviewAssignmentStatus.RETURNED)) > 0) {
-            throw new IllegalStateException("All released academic-unit recommendations must be resolved before round approval.");
-        }
-        if (selectionDecisionRepository.countBySelectionRoundIdAndDeletedAtIsNull(selectionRoundId) == 0) {
-            throw new IllegalStateException("A selection round cannot be approved without recorded decisions.");
-        }
-        selectionRound.approve(actorUserId, clock.instant());
-        return SelectionRoundSummary.from(selectionRound);
-    }
-
-    @Transactional
-    public SelectionRoundSummary closeSelectionRound(UUID selectionRoundId) {
-        SelectionRound selectionRound = selectionRound(selectionRoundId);
-        selectionRound.close(clock.instant());
-        return SelectionRoundSummary.from(selectionRound);
-    }
-
-    @Transactional
     public List<SelectionRoundSummary> listSelectionRounds() {
         return selectionRoundRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
                 .map(SelectionRoundSummary::from)
                 .toList();
-    }
-
-    @Transactional
-    public SelectionDecisionSummary recordSelectionDecision(
-            UUID selectionRoundId,
-            UUID programmeChoiceId,
-            String decisionCode,
-            Integer rankPosition,
-            String quotaTypeCode,
-            String reason,
-            UUID actorUserId) {
-        SelectionRound selectionRound = selectionRound(selectionRoundId);
-        if (selectionRound.getStatus() != SelectionRoundStatus.OPEN) {
-            throw new IllegalStateException("Selection decisions can only be recorded in an open selection round.");
-        }
-        ApplicationProgrammeChoice choice = programmeChoice(programmeChoiceId);
-        Application application = choice.getApplication();
-        if (!application.getAdmissionCycle().getId().equals(selectionRound.getAdmissionCycle().getId())) {
-            throw new IllegalArgumentException("Programme choice is outside this selection round's intake.");
-        }
-        if (selectionDecisionRepository
-                .findBySelectionRoundIdAndProgrammeChoiceIdAndDeletedAtIsNull(selectionRoundId, programmeChoiceId)
-                .isPresent()) {
-            throw new IllegalStateException("A decision already exists for this programme choice in the selection round.");
-        }
-
-        SelectionDecisionType decision = parseEnum(SelectionDecisionType.class, decisionCode, "selection decision");
-        if (decision == SelectionDecisionType.SELECT
-                && selectionDecisionRepository.countOtherSelectionsForApplication(application.getId(), choice.getId()) > 0) {
-            throw new IllegalStateException("An application can only have one selected programme choice.");
-        }
-        if (decision != SelectionDecisionType.REJECT
-                && choice.getChoiceStatus() != ProgrammeChoiceStatus.ELIGIBLE
-                && choice.getChoiceStatus() != ProgrammeChoiceStatus.SHORTLISTED
-                && choice.getChoiceStatus() != ProgrammeChoiceStatus.WAITLISTED) {
-            throw new IllegalStateException("Only an eligible programme choice can receive this selection decision.");
-        }
-
-        String decisionReason = requiredText(reason, "Selection decision reason");
-        SelectionDecision savedDecision = selectionDecisionRepository.saveAndFlush(new SelectionDecision(
-                selectionRound, choice, decision, rankPosition, quotaTypeCode,
-                decisionReason, actorUserId, clock.instant()));
-
-        ApplicationStatus previousApplicationStatus = application.getStatus();
-        choice.recordSelectionDecision(decision, decisionReason);
-        if (decision == SelectionDecisionType.SELECT) {
-            application.markSelected(decisionReason);
-            programmeChoiceRepository.findAllByApplicationIdOrderByChoiceRankAsc(application.getId()).stream()
-                    .filter(lowerChoice -> lowerChoice.getChoiceRank() > choice.getChoiceRank())
-                    .forEach(lowerChoice -> lowerChoice.closeAfterHigherRankSelection(
-                            "Closed because higher-ranked choice " + choice.getProgrammeCode() + " was selected."));
-        } else if ((decision == SelectionDecisionType.SHORTLIST || decision == SelectionDecisionType.WAITLIST)
-                && application.getStatus() == ApplicationStatus.ELIGIBLE) {
-            application.markShortlisted(decisionReason);
-        }
-        recordApplicationStatusChange(application, previousApplicationStatus, decisionReason, actorUserId);
-        return SelectionDecisionSummary.from(savedDecision);
     }
 
     @Transactional
@@ -538,40 +453,6 @@ public class AdmissionsSelectionOfferService {
         OfferBatchScopeType scopeType = parseEnum(OfferBatchScopeType.class, scopeTypeCode, "offer batch scope");
         return OfferBatchSummary.from(offerBatchRepository.save(
                 new OfferBatch(cycle, selectionRound, code, name, scopeType, scopeId)));
-    }
-
-    @Transactional
-    public OfferBatchSummary approveOfferBatch(UUID offerBatchId, UUID actorUserId) {
-        OfferBatch batch = offerBatch(offerBatchId);
-        batch.approve(actorUserId, clock.instant());
-        AdmissionCycle admissionCycle = batch.getAdmissionCycle();
-        if (admissionCycle.getStatus() == AdmissionCycleStatus.SELECTION) {
-            admissionCycle.beginOffers();
-        }
-        return OfferBatchSummary.from(batch);
-    }
-
-    @Transactional
-    public OfferBatchSummary markOfferBatchDispatched(UUID offerBatchId) {
-        OfferBatch batch = offerBatch(offerBatchId);
-        List<AdmissionOffer> batchOffers = offerRepository.findAllByOfferBatchIdAndDeletedAtIsNull(offerBatchId);
-        if (batchOffers.isEmpty()) {
-            throw new IllegalStateException("An offer batch cannot be dispatched without offers.");
-        }
-        boolean hasUnsentOffers = batchOffers.stream()
-                .anyMatch(offer -> offer.getStatus() == OfferStatus.DRAFT || offer.getStatus() == OfferStatus.APPROVED);
-        if (hasUnsentOffers) {
-            throw new IllegalStateException("Every active offer must be dispatched or resolved before dispatching the batch.");
-        }
-        batch.markDispatched(clock.instant());
-        return OfferBatchSummary.from(batch);
-    }
-
-    @Transactional
-    public OfferBatchSummary closeOfferBatch(UUID offerBatchId) {
-        OfferBatch batch = offerBatch(offerBatchId);
-        batch.close(clock.instant());
-        return OfferBatchSummary.from(batch);
     }
 
     @Transactional
