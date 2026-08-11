@@ -130,27 +130,33 @@ public class ApplicationProgrammeChoice extends AuditableEntity {
 
     public void recordEvaluation(EvaluationStatus evaluationStatus, String summary) {
         choiceStatus = switch (evaluationStatus) {
-            case ELIGIBLE, CONDITIONALLY_ELIGIBLE -> ProgrammeChoiceStatus.ELIGIBLE;
+            case ELIGIBLE -> ProgrammeChoiceStatus.ELIGIBLE;
+            case CONDITIONALLY_ELIGIBLE -> ProgrammeChoiceStatus.CONDITIONALLY_ELIGIBLE;
             case NOT_ELIGIBLE -> ProgrammeChoiceStatus.INELIGIBLE;
             case REQUIRES_REVIEW -> ProgrammeChoiceStatus.REQUIRES_REVIEW;
         };
         evaluationSummary = summary;
     }
 
-    public void recordSelectionDecision(SelectionDecisionType decision, String reason) {
-        choiceStatus = switch (decision) {
-            case SHORTLIST -> ProgrammeChoiceStatus.SHORTLISTED;
-            case SELECT -> ProgrammeChoiceStatus.SELECTED;
-            case REJECT -> ProgrammeChoiceStatus.REJECTED;
-            case WAITLIST -> ProgrammeChoiceStatus.WAITLISTED;
-        };
+    public void enterAcademicReview() {
+        if (choiceStatus != ProgrammeChoiceStatus.ELIGIBLE && choiceStatus != ProgrammeChoiceStatus.CONDITIONALLY_ELIGIBLE) {
+            throw new IllegalStateException("Only an eligible programme choice can enter academic review.");
+        }
+        choiceStatus = ProgrammeChoiceStatus.UNDER_ACADEMIC_REVIEW;
+    }
+
+    public void recordDecision(DecisionOutcome decision, String reason) {
+        if (choiceStatus != ProgrammeChoiceStatus.UNDER_ACADEMIC_REVIEW) {
+            throw new IllegalStateException("Only a programme choice under academic review can receive an admission decision.");
+        }
+        choiceStatus = decision == DecisionOutcome.ADMIT ? ProgrammeChoiceStatus.ADMITTED : ProgrammeChoiceStatus.REJECTED;
         decisionReason = reason;
     }
 
-    public void closeAfterHigherRankSelection(String reason) {
+    public void closeAfterHigherRankAdmission(String reason) {
         if (choiceStatus == ProgrammeChoiceStatus.ELIGIBLE
-                || choiceStatus == ProgrammeChoiceStatus.SHORTLISTED
-                || choiceStatus == ProgrammeChoiceStatus.WAITLISTED
+                || choiceStatus == ProgrammeChoiceStatus.CONDITIONALLY_ELIGIBLE
+                || choiceStatus == ProgrammeChoiceStatus.UNDER_ACADEMIC_REVIEW
                 || choiceStatus == ProgrammeChoiceStatus.REQUIRES_REVIEW
                 || choiceStatus == ProgrammeChoiceStatus.PENDING) {
             choiceStatus = ProgrammeChoiceStatus.REJECTED;
@@ -158,17 +164,9 @@ public class ApplicationProgrammeChoice extends AuditableEntity {
         }
     }
 
-    public void releaseWaitlist(String reason) {
-        if (choiceStatus != ProgrammeChoiceStatus.WAITLISTED) {
-            throw new IllegalStateException("Only a waitlisted programme choice can be released.");
-        }
-        choiceStatus = ProgrammeChoiceStatus.REJECTED;
-        decisionReason = reason;
-    }
-
     public void markOffered(String reason) {
-        if (choiceStatus != ProgrammeChoiceStatus.SELECTED) {
-            throw new IllegalStateException("Only a selected programme choice can receive an offer.");
+        if (choiceStatus != ProgrammeChoiceStatus.ADMITTED) {
+            throw new IllegalStateException("Only an admitted programme choice can receive an offer.");
         }
         choiceStatus = ProgrammeChoiceStatus.OFFERED;
         decisionReason = reason;
@@ -194,9 +192,9 @@ public class ApplicationProgrammeChoice extends AuditableEntity {
 
     public void reopenAfterOfferClosed(String reason) {
         if (choiceStatus != ProgrammeChoiceStatus.OFFERED) {
-            throw new IllegalStateException("Only an offered programme choice can return to selected status.");
+            throw new IllegalStateException("Only an offered programme choice can return to admitted status.");
         }
-        choiceStatus = ProgrammeChoiceStatus.SELECTED;
+        choiceStatus = ProgrammeChoiceStatus.ADMITTED;
         decisionReason = reason;
     }
 

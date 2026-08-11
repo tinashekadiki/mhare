@@ -186,25 +186,25 @@ public class Application extends AuditableEntity {
         statusReason = reason;
     }
 
-    public void markSelected(String reason) {
-        if (status != ApplicationStatus.ELIGIBLE && status != ApplicationStatus.SHORTLISTED) {
-            throw new IllegalStateException("Only an eligible or shortlisted application can be selected.");
+    public void enterAcademicReview(String reason) {
+        if (status != ApplicationStatus.ELIGIBLE) {
+            throw new IllegalStateException("Only an eligible application can enter academic review.");
         }
-        status = ApplicationStatus.SELECTED;
+        status = ApplicationStatus.UNDER_ACADEMIC_REVIEW;
         statusReason = reason;
     }
 
-    public void markShortlisted(String reason) {
-        if (status != ApplicationStatus.ELIGIBLE) {
-            throw new IllegalStateException("Only an eligible application can be shortlisted.");
+    public void recordChoiceDecision(DecisionOutcome decision, String reason) {
+        if (status != ApplicationStatus.UNDER_ACADEMIC_REVIEW) {
+            throw new IllegalStateException("Only an application under academic review can receive an admission decision.");
         }
-        status = ApplicationStatus.SHORTLISTED;
+        status = decision == DecisionOutcome.ADMIT ? ApplicationStatus.ADMITTED : ApplicationStatus.REJECTED;
         statusReason = reason;
     }
 
     public void markOffered(String reason) {
-        if (status != ApplicationStatus.SELECTED) {
-            throw new IllegalStateException("Only a selected application can receive an offer.");
+        if (status != ApplicationStatus.ADMITTED) {
+            throw new IllegalStateException("Only an admitted application can receive an offer.");
         }
         status = ApplicationStatus.OFFERED;
         statusReason = reason;
@@ -220,9 +220,9 @@ public class Application extends AuditableEntity {
 
     public void reopenAfterOfferClosed(String reason) {
         if (status != ApplicationStatus.OFFERED) {
-            throw new IllegalStateException("Only an offered application can return to selected status.");
+            throw new IllegalStateException("Only an offered application can return to admitted status.");
         }
-        status = ApplicationStatus.SELECTED;
+        status = ApplicationStatus.ADMITTED;
         statusReason = reason;
     }
 
