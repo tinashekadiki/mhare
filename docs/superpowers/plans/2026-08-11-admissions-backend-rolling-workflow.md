@@ -1235,6 +1235,14 @@ public class AdmissionsRollingWorkflowService {
         choice.recordEvaluation(outcome, outcome == EvaluationStatus.ELIGIBLE
                 ? "Automatically evaluated as eligible."
                 : "Automatically evaluated as not eligible: " + String.join(", ", evaluation.missingRequirements()));
+        // Flush now, before any further mutation of `choice` in this same transaction. Without this,
+        // Hibernate's dirty-checking coalesces this mutation with enterAcademicReview()'s mutation
+        // below into a single UPDATE at end-of-transaction flush, so the database would see one jump
+        // straight from the choice's pre-evaluation status to UNDER_ACADEMIC_REVIEW — a transition the
+        // governance trigger (migration V34) does not and should not allow, since it validates one
+        // legal step at a time. Flushing here makes each step its own UPDATE, matching the trigger's
+        // one-step-at-a-time contract exactly.
+        programmeChoiceRepository.saveAndFlush(choice);
         evaluationRepository.save(new ApplicationEvaluation(
                 application, choice, requirementSet.get(), outcome,
                 evaluation.totalPoints(), null,
