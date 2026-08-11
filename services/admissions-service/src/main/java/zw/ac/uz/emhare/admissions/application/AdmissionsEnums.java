@@ -48,6 +48,25 @@ enum AcademicRecommendationReviewStatus {
     OVERRIDDEN
 }
 
+enum AcademicReviewStatus {
+    OPEN,
+    CLAIMED,
+    RECOMMENDED,
+    RETURNED,
+    COMPLETED,
+    CANCELLED
+}
+
+enum RecommendationOutcome {
+    RECOMMEND_ADMIT,
+    RECOMMEND_REJECT
+}
+
+enum DecisionOutcome {
+    ADMIT,
+    REJECT
+}
+
 enum ProgrammeChoiceStatus {
     PENDING,
     ELIGIBLE,
