@@ -68,8 +68,10 @@ BEGIN
            OR (OLD.choice_status = 'WAITLISTED' AND NEW.choice_status IN ('SELECTED', 'REJECTED'))
            OR (OLD.choice_status = 'SELECTED' AND NEW.choice_status = 'OFFERED')
            OR (OLD.choice_status = 'OFFERED' AND NEW.choice_status IN ('SELECTED', 'CONVERTED', 'REJECTED'))
-           -- ADR-0014 rolling-workflow hard-cutover backfill transitions (V34): retired legacy
-           -- states collapse onto their nearest rolling-workflow equivalent.
+           -- ADR-0014 rolling-workflow hard-cutover backfill transitions (V34, transitional only —
+           -- see the second CREATE OR REPLACE FUNCTION below, which drops these once the backfill
+           -- has run and these source values can never occur again): retired legacy states collapse
+           -- onto their nearest rolling-workflow equivalent.
            OR (OLD.choice_status IN ('SHORTLISTED', 'WAITLISTED') AND NEW.choice_status = 'ELIGIBLE')
            OR (OLD.choice_status = 'SELECTED' AND NEW.choice_status = 'ADMITTED')
        ) THEN
@@ -92,6 +94,82 @@ UPDATE application_programme_choices SET choice_status = 'ADMITTED' WHERE choice
 -- application_programme_choices), so its backfill needs no corresponding fix.
 UPDATE applications SET status = 'ELIGIBLE' WHERE status = 'SHORTLISTED';
 UPDATE applications SET status = 'ADMITTED' WHERE status = 'SELECTED';
+
+-- Now that the backfill above has run, SHORTLISTED/WAITLISTED/SELECTED can never again appear as
+-- OLD.choice_status (no row can carry them any more) and, once the CHECK constraint below is
+-- tightened, can never again appear as NEW.choice_status either (the constraint rejects them
+-- outright). Replace the trigger a second time with the permanent ADR-0014 rolling-workflow
+-- transition graph — this is Task 3/Task 6 of this plan's actual entity/service call graph
+-- (ApplicationProgrammeChoice.recordEvaluation/enterAcademicReview/recordDecision/
+-- closeAfterHigherRankAdmission/markOffered/reopenAfterOfferClosed/markConverted/
+-- recordOfferResponse, driven by AdmissionsRollingWorkflowService), not a guess: every clause
+-- below traces to exactly one of those methods, and every reachable OLD -> NEW pair those methods
+-- produce is covered. The transitional legacy clauses above are intentionally not carried forward.
+DROP TRIGGER trg_application_programme_choice_governance ON application_programme_choices;
+
+CREATE OR REPLACE FUNCTION enforce_application_programme_choice_governance()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    application_status varchar(30);
+    maximum_choices integer;
+    capture_snapshot_changed boolean;
+BEGIN
+    SELECT application.status, cycle.maximum_programme_choices
+      INTO application_status, maximum_choices
+      FROM applications application
+      JOIN admission_cycles cycle ON cycle.id = application.admission_cycle_id
+     WHERE application.id = NEW.application_id
+       AND application.deleted_at IS NULL
+       AND cycle.deleted_at IS NULL;
+
+    IF application_status IS NULL THEN
+        RAISE EXCEPTION 'Application or admission cycle is unavailable for programme choice governance.';
+    END IF;
+
+    capture_snapshot_changed := TG_OP = 'INSERT' OR (
+        OLD.application_id IS DISTINCT FROM NEW.application_id
+        OR OLD.programme_id IS DISTINCT FROM NEW.programme_id
+        OR OLD.programme_version_id IS DISTINCT FROM NEW.programme_version_id
+        OR OLD.programme_code IS DISTINCT FROM NEW.programme_code
+        OR OLD.programme_name IS DISTINCT FROM NEW.programme_name
+        OR OLD.award_name IS DISTINCT FROM NEW.award_name
+        OR OLD.owning_academic_unit_id IS DISTINCT FROM NEW.owning_academic_unit_id
+        OR OLD.owning_academic_unit_name IS DISTINCT FROM NEW.owning_academic_unit_name
+        OR OLD.programme_version_code IS DISTINCT FROM NEW.programme_version_code
+        OR OLD.catalogue_snapshot_status IS DISTINCT FROM NEW.catalogue_snapshot_status
+        OR OLD.choice_rank IS DISTINCT FROM NEW.choice_rank
+    );
+
+    IF capture_snapshot_changed AND application_status <> 'DRAFT' THEN
+        RAISE EXCEPTION 'Programme choice capture snapshots can only change while the application is in DRAFT status.';
+    END IF;
+    IF NEW.choice_rank < 1 OR NEW.choice_rank > maximum_choices THEN
+        RAISE EXCEPTION 'Programme choice rank % exceeds the configured cycle maximum of %.', NEW.choice_rank, maximum_choices;
+    END IF;
+
+    IF TG_OP = 'UPDATE'
+       AND OLD.choice_status IS DISTINCT FROM NEW.choice_status
+       AND NOT (
+           (OLD.choice_status = 'PENDING' AND NEW.choice_status IN ('ELIGIBLE', 'CONDITIONALLY_ELIGIBLE', 'INELIGIBLE', 'REQUIRES_REVIEW', 'REJECTED'))
+           OR (OLD.choice_status = 'REQUIRES_REVIEW' AND NEW.choice_status IN ('ELIGIBLE', 'CONDITIONALLY_ELIGIBLE', 'INELIGIBLE', 'REQUIRES_REVIEW', 'REJECTED'))
+           OR (OLD.choice_status = 'INELIGIBLE' AND NEW.choice_status IN ('ELIGIBLE', 'CONDITIONALLY_ELIGIBLE', 'INELIGIBLE', 'REQUIRES_REVIEW'))
+           OR (OLD.choice_status IN ('ELIGIBLE', 'CONDITIONALLY_ELIGIBLE') AND NEW.choice_status IN ('UNDER_ACADEMIC_REVIEW', 'REJECTED'))
+           OR (OLD.choice_status = 'UNDER_ACADEMIC_REVIEW' AND NEW.choice_status IN ('ADMITTED', 'REJECTED'))
+           OR (OLD.choice_status = 'ADMITTED' AND NEW.choice_status = 'OFFERED')
+           OR (OLD.choice_status = 'OFFERED' AND NEW.choice_status IN ('ADMITTED', 'CONVERTED', 'REJECTED'))
+       ) THEN
+        RAISE EXCEPTION 'Invalid programme choice transition from % to %.', OLD.choice_status, NEW.choice_status;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_application_programme_choice_governance
+BEFORE INSERT OR UPDATE ON application_programme_choices
+FOR EACH ROW
+EXECUTE FUNCTION enforce_application_programme_choice_governance();
 
 ALTER TABLE application_programme_choices DROP CONSTRAINT IF EXISTS ck_application_programme_choice_status;
 ALTER TABLE application_programme_choices ADD CONSTRAINT ck_application_programme_choice_status CHECK (
