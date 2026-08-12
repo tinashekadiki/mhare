@@ -188,6 +188,9 @@ Fresh model implications:
 - Allow an applicant to have multiple applications across cycles.
 - Store draft progress and completeness by section.
 - Link documents to both applicant and application context.
+- Require authentication before application creation; unauthenticated legacy application entry is retired.
+- Govern sections per application type and snapshot them at draft creation; legacy skippable evidence is retired.
+- Treat duplicate education forms as normalized qualification sittings rather than reproducing parallel legacy records.
 
 Admissions entities:
 
@@ -243,6 +246,8 @@ Fresh model implications:
 - Enforce uniqueness by application plus rank and application plus programme.
 - Use a proper evaluation table that records eligible, conditionally eligible, not eligible, missing subjects, missing points, and review notes.
 - Keep selection decisions separately from evaluation results.
+- Retire faculty-code route inference, including Education faculty code `F`; MBA and Education are explicit programme mappings.
+- Retire batch selection and preserve the rolling application/choice workflow through clearance, eligibility, recommendation, decision, stored offer, response, and idempotent student conversion.
 
 Admissions entities:
 

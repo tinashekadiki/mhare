@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.finance.catalogue;
 
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeCatalogue;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceStudentDiscountRule;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeCatalogueRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceStudentDiscountRuleRepository;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Comparator;
@@ -9,12 +14,12 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.finance.catalogue.FinanceStudentDiscountContracts.AppliedDiscount;
-import zw.ac.uz.emhare.finance.catalogue.FinanceStudentDiscountContracts.CreateDiscount;
-import zw.ac.uz.emhare.finance.catalogue.FinanceStudentDiscountContracts.DiscountDecision;
-import zw.ac.uz.emhare.finance.catalogue.FinanceStudentDiscountContracts.DiscountRegister;
-import zw.ac.uz.emhare.finance.catalogue.FinanceStudentDiscountContracts.DiscountSummary;
-import zw.ac.uz.emhare.finance.catalogue.FinanceStudentDiscountContracts.ResolveDiscount;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.AppliedStudentDiscount;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceStudentDiscountApiModels.CreateDiscount;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceStudentDiscountApiModels.DiscountDecision;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceStudentDiscountApiModels.DiscountRegister;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceStudentDiscountApiModels.DiscountSummary;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceStudentDiscountApiModels.ResolveDiscount;
 
 /** Resolves one discount from explicit student and programme applicability fields. @author Tinashe K */
 @Service
@@ -77,7 +82,7 @@ public class GovernedFinanceStudentDiscountService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<AppliedDiscount> resolve(ResolveDiscount command) {
+    public Optional<AppliedStudentDiscount> resolve(ResolveDiscount command) {
         List<DiscountMatch> matches = discountRepository
                 .findAllByStatusAndDeletedAtIsNull(FinanceStudentDiscountRule.Status.ACTIVE).stream()
                 .filter(rule -> rule.appliesAt(command.effectiveAt()))
@@ -100,7 +105,8 @@ public class GovernedFinanceStudentDiscountService {
                     "Multiple active student discounts have equal priority. Finance must retire the overlap.");
         }
         FinanceStudentDiscountRule winner = winners.getFirst().rule();
-        return Optional.of(new AppliedDiscount(winner.getId(), winner.getCode(), winner.getDiscountPercentage()));
+        return Optional.of(new AppliedStudentDiscount(
+                winner.getId(), winner.getCode(), winner.getDiscountPercentage()));
     }
 
     private boolean programmeLevelMatches(FinanceStudentDiscountRule rule, ResolveDiscount command) {

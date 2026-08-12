@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.finance.integration;
 
+import zw.ac.uz.emhare.finance.payment.application.command.*;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import org.springframework.amqp.core.Message;
@@ -10,7 +12,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.ApplicationFeeRequiredEvent;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
-import zw.ac.uz.emhare.finance.payment.CreateApplicationPaymentReferenceCommand;
+import zw.ac.uz.emhare.finance.payment.application.command.CreateApplicationPaymentReferenceCommand;
 import zw.ac.uz.emhare.finance.payment.FinanceApplicationPaymentService;
 
 /** @author Tinashe K */

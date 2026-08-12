@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 

@@ -1,5 +1,15 @@
 package zw.ac.uz.emhare.accommodation.operations;
 
+import zw.ac.uz.emhare.accommodation.operations.domain.model.AccommodationApplication;
+import zw.ac.uz.emhare.accommodation.operations.domain.model.AccommodationRate;
+import zw.ac.uz.emhare.accommodation.operations.domain.model.AccommodationWaitlistEntry;
+import zw.ac.uz.emhare.accommodation.operations.domain.model.RoomAllocation;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationApplicationPeriod;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationPremise;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationRoom;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationRoomType;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.ResidenceHall;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;

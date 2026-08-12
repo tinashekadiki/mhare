@@ -1,5 +1,19 @@
 package zw.ac.uz.emhare.assessmentresults.progression;
 
+import zw.ac.uz.emhare.assessmentresults.progression.domain.model.ProgressionRuleOutcome;
+import zw.ac.uz.emhare.assessmentresults.progression.domain.model.ProgressionRuleSet;
+import zw.ac.uz.emhare.assessmentresults.progression.domain.model.StudentOverallDecision;
+import zw.ac.uz.emhare.assessmentresults.progression.domain.model.StudentOverallDecisionEvent;
+import zw.ac.uz.emhare.assessmentresults.progression.domain.model.StudentOverallDecisionResult;
+import zw.ac.uz.emhare.assessmentresults.progression.infrastructure.persistence.ProgressionPublishedResultRepository;
+import zw.ac.uz.emhare.assessmentresults.progression.infrastructure.persistence.ProgressionRosterEntryRepository;
+import zw.ac.uz.emhare.assessmentresults.progression.infrastructure.persistence.ProgressionRosterImportRepository;
+import zw.ac.uz.emhare.assessmentresults.progression.infrastructure.persistence.ProgressionRuleOutcomeRepository;
+import zw.ac.uz.emhare.assessmentresults.progression.infrastructure.persistence.ProgressionRuleSetRepository;
+import zw.ac.uz.emhare.assessmentresults.progression.infrastructure.persistence.StudentOverallDecisionEventRepository;
+import zw.ac.uz.emhare.assessmentresults.progression.infrastructure.persistence.StudentOverallDecisionRepository;
+import zw.ac.uz.emhare.assessmentresults.progression.infrastructure.persistence.StudentOverallDecisionResultRepository;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -11,18 +25,18 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zw.ac.uz.emhare.assessmentresults.integration.AssessmentResultsIntegrationOutboxService;
-import zw.ac.uz.emhare.assessmentresults.progression.ProgressionCommands.CalculateDecision;
-import zw.ac.uz.emhare.assessmentresults.progression.ProgressionCommands.CreateRuleSet;
-import zw.ac.uz.emhare.assessmentresults.progression.ProgressionCommands.Outcome;
-import zw.ac.uz.emhare.assessmentresults.progression.ProgressionCommands.WorkflowDecision;
-import zw.ac.uz.emhare.assessmentresults.progression.ProgressionViews.DecisionResultSummary;
-import zw.ac.uz.emhare.assessmentresults.progression.ProgressionViews.DecisionSummary;
-import zw.ac.uz.emhare.assessmentresults.progression.ProgressionViews.OutcomeSummary;
-import zw.ac.uz.emhare.assessmentresults.progression.ProgressionViews.RosterSummary;
-import zw.ac.uz.emhare.assessmentresults.progression.ProgressionViews.RuleSetSummary;
-import zw.ac.uz.emhare.assessmentresults.result.ModuleResult;
-import zw.ac.uz.emhare.assessmentresults.result.PublishedResult;
-import zw.ac.uz.emhare.assessmentresults.roster.RegistrationRosterImport;
+import zw.ac.uz.emhare.assessmentresults.progression.api.model.ProgressionRequests.CalculateDecision;
+import zw.ac.uz.emhare.assessmentresults.progression.api.model.ProgressionRequests.CreateRuleSet;
+import zw.ac.uz.emhare.assessmentresults.progression.api.model.ProgressionRequests.Outcome;
+import zw.ac.uz.emhare.assessmentresults.progression.api.model.ProgressionRequests.WorkflowDecision;
+import zw.ac.uz.emhare.assessmentresults.progression.api.model.ProgressionResponses.DecisionResultSummary;
+import zw.ac.uz.emhare.assessmentresults.progression.api.model.ProgressionResponses.DecisionSummary;
+import zw.ac.uz.emhare.assessmentresults.progression.api.model.ProgressionResponses.OutcomeSummary;
+import zw.ac.uz.emhare.assessmentresults.progression.api.model.ProgressionResponses.RosterSummary;
+import zw.ac.uz.emhare.assessmentresults.progression.api.model.ProgressionResponses.RuleSetSummary;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.ModuleResult;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.PublishedResult;
+import zw.ac.uz.emhare.assessmentresults.roster.domain.model.RegistrationRosterImport;
 
 /** @author Tinashe K */
 @Service

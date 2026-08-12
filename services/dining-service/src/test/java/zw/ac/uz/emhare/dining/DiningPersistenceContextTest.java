@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.dining;
 
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningHall;
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningPlanMeal;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.persistence.EntityManagerFactory;

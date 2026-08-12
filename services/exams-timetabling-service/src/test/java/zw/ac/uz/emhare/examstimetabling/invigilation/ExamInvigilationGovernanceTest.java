@@ -1,13 +1,17 @@
 package zw.ac.uz.emhare.examstimetabling.invigilation;
 
+import zw.ac.uz.emhare.examstimetabling.invigilation.domain.model.ExamAttendanceRecord;
+import zw.ac.uz.emhare.examstimetabling.invigilation.domain.model.ExamAttendanceSession;
+import zw.ac.uz.emhare.examstimetabling.invigilation.domain.model.ExamIncidentReport;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import zw.ac.uz.emhare.examstimetabling.timetable.ExamStudentTimetableEntry;
-import zw.ac.uz.emhare.examstimetabling.timetable.ExamTimetableVenueAllocation;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamStudentTimetableEntry;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamTimetableVenueAllocation;
 
 /** @author Tinashe K */
 class ExamInvigilationGovernanceTest {

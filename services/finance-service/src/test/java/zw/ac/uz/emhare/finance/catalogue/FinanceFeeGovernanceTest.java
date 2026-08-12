@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.finance.catalogue;
 
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeCatalogue;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeRule;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 
@@ -7,7 +10,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import zw.ac.uz.emhare.finance.payment.ExchangeRate;
+import zw.ac.uz.emhare.finance.payment.domain.model.ExchangeRate;
 
 /** @author Tinashe K */
 class FinanceFeeGovernanceTest {

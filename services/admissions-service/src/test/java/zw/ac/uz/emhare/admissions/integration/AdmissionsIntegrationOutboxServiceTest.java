@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.admissions.integration;
 
+import zw.ac.uz.emhare.admissions.infrastructure.messaging.model.AdmissionsOutboxEvent;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.messaging.AdmissionsOutboxEventRepository;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -17,11 +20,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 import tools.jackson.databind.ObjectMapper;
-import zw.ac.uz.emhare.admissions.application.AdmissionCycle;
-import zw.ac.uz.emhare.admissions.application.Applicant;
-import zw.ac.uz.emhare.admissions.application.Application;
-import zw.ac.uz.emhare.admissions.application.ApplicationType;
-import zw.ac.uz.emhare.admissions.application.ApplicantReferee;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantReferee;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.NotificationRequestedEvent;
 import zw.ac.uz.emhare.common.messaging.MissingApplicationDocumentWorkflowRequestedEvent;

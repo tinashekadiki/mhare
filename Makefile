@@ -8,7 +8,8 @@ BACKEND_SERVICES := core-identity-service academic-setup-service admissions-serv
 	finance-service student-records-service assessment-results-service \
 	exams-timetabling-service accommodation-service dining-service \
 	documents-reporting-service notifications-service
-SERVICES := $(BACKEND_SERVICES) api-gateway
+DISCOVERY_SERVICE := discovery-server
+SERVICES := $(DISCOVERY_SERVICE) $(BACKEND_SERVICES) api-gateway
 FRONTENDS := admin-portal applicant-portal student-portal
 
 DB_HOST ?= localhost
@@ -20,7 +21,7 @@ export EMHARE_STARTUP_TIMEOUT_SECONDS
 
 .PHONY: help doctor ports \
 	infra-up infra-wait keycloak-provisioner-config infra-down infra-restart infra-status infra-logs \
-	build-commons build-all backend-validate backend-test frontend-install frontend-typecheck frontend-build test \
+	build-commons build-all template-validate backend-validate backend-test frontend-install frontend-typecheck frontend-build test \
 	db-info db-migrate migrate \
 	services-up services-down services-restart services-status backend-health \
 	frontends-up frontends-down frontends-restart frontends-status frontend-health \
@@ -74,6 +75,8 @@ ports: ## Show canonical local ports
 	@printf '%-32s %s\n' 'Valkey' '6379'
 	@printf '%-32s %s\n' 'RustFS API / console' '9000 / 9001'
 	@printf '%-32s %s\n' 'Keycloak' '8099'
+	@printf '%-32s %s\n' 'Mailpit SMTP / UI' '1025 / 8025'
+	@printf '%-32s %s\n' 'Eureka Discovery' '8761'
 	@printf '%-32s %s\n' 'API Gateway' '8080'
 	@printf '%-32s %s\n' 'Core Identity' '8081'
 	@printf '%-32s %s\n' 'Academic Setup' '8082'
@@ -90,8 +93,8 @@ ports: ## Show canonical local ports
 
 # Infrastructure
 
-infra-up: doctor ## Start PostgreSQL, RabbitMQ, Valkey, RustFS, and Keycloak
-	docker compose up -d postgres rabbitmq valkey rustfs keycloak
+infra-up: doctor ## Start PostgreSQL, RabbitMQ, Valkey, RustFS, Keycloak, and Mailpit
+	docker compose up -d postgres rabbitmq valkey rustfs keycloak mailpit
 	@$(MAKE) infra-wait
 	@$(MAKE) keycloak-provisioner-config
 
@@ -132,7 +135,7 @@ infra-logs: ## Follow infrastructure logs; optionally set SERVICE=postgres
 # Builds and tests
 
 build-commons: ## Install the shared Java library into the local Maven repository
-	mvn -pl libraries/service-common -am install -DskipTests
+	mvn -pl libraries/service-common,libraries/service-foundation,libraries/persistence-audit,libraries/integration-contracts,libraries/test-support -am install -DskipTests
 
 build-all: ## Build installable modules and executable service jars without tests
 	mvn -DskipTests install
@@ -141,6 +144,10 @@ build-all: ## Build installable modules and executable service jars without test
 		echo "== packaging executable jar: $$service_name =="; \
 		mvn -q -f "services/$$service_name/pom.xml" -DskipTests package spring-boot:repackage; \
 	done
+
+template-validate: ## Build and test the canonical Spring service template
+	mvn -pl libraries/service-foundation,libraries/test-support -am install -DskipTests
+	mvn -f templates/spring-service/pom.xml test
 
 backend-validate: ## Validate all Maven modules
 	mvn -DskipTests validate
@@ -198,6 +205,7 @@ services-up: ## Start and await every backend, or SERVICE=<name>
 	@set -euo pipefail; \
 	port_for() { \
 		case "$$1" in \
+			discovery-server) echo 8761 ;; \
 			api-gateway) echo 8080 ;; core-identity-service) echo 8081 ;; academic-setup-service) echo 8082 ;; \
 			admissions-service) echo 8083 ;; finance-service) echo 8084 ;; student-records-service) echo 8085 ;; \
 			assessment-results-service) echo 8086 ;; exams-timetabling-service) echo 8087 ;; accommodation-service) echo 8088 ;; \
@@ -210,6 +218,9 @@ services-up: ## Start and await every backend, or SERVICE=<name>
 		'$(PROCESS_MANAGER)' start backend '$(SERVICE)' "$$service_port"; \
 		'$(PROCESS_MANAGER)' wait backend '$(SERVICE)' "$$service_port"; \
 	else \
+		service_port="$$(port_for discovery-server)"; \
+		'$(PROCESS_MANAGER)' start backend discovery-server "$$service_port"; \
+		'$(PROCESS_MANAGER)' wait backend discovery-server "$$service_port"; \
 		for service_name in $(BACKEND_SERVICES); do \
 			service_port="$$(port_for "$$service_name")"; \
 			'$(PROCESS_MANAGER)' start backend "$$service_name" "$$service_port"; \
@@ -224,8 +235,8 @@ services-up: ## Start and await every backend, or SERVICE=<name>
 
 services-down: ## Stop Make-managed backends, or SERVICE=<name>
 	@set -euo pipefail; \
-	port_for() { case "$$1" in api-gateway) echo 8080;; core-identity-service) echo 8081;; academic-setup-service) echo 8082;; admissions-service) echo 8083;; finance-service) echo 8084;; student-records-service) echo 8085;; assessment-results-service) echo 8086;; exams-timetabling-service) echo 8087;; accommodation-service) echo 8088;; dining-service) echo 8089;; documents-reporting-service) echo 8090;; notifications-service) echo 8091;; *) return 1;; esac; }; \
-	services='$(if $(SERVICE),$(SERVICE),api-gateway $(BACKEND_SERVICES))'; \
+	port_for() { case "$$1" in discovery-server) echo 8761;; api-gateway) echo 8080;; core-identity-service) echo 8081;; academic-setup-service) echo 8082;; admissions-service) echo 8083;; finance-service) echo 8084;; student-records-service) echo 8085;; assessment-results-service) echo 8086;; exams-timetabling-service) echo 8087;; accommodation-service) echo 8088;; dining-service) echo 8089;; documents-reporting-service) echo 8090;; notifications-service) echo 8091;; *) return 1;; esac; }; \
+	services='$(if $(SERVICE),$(SERVICE),api-gateway $(BACKEND_SERVICES) discovery-server)'; \
 	for service_name in $$services; do \
 		service_port="$$(port_for "$$service_name")" || { echo "Unknown service: $$service_name" >&2; exit 2; }; \
 		'$(PROCESS_MANAGER)' stop backend "$$service_name" "$$service_port"; \
@@ -237,6 +248,7 @@ services-restart: ## Restart backends, or SERVICE=<name>
 
 services-status: ## Show backend status
 	@set -euo pipefail; \
+	'$(PROCESS_MANAGER)' status backend discovery-server 8761; \
 	port=8080; for service_name in api-gateway $(BACKEND_SERVICES); do \
 		'$(PROCESS_MANAGER)' status backend "$$service_name" "$$port"; \
 		port=$$((port + 1)); \

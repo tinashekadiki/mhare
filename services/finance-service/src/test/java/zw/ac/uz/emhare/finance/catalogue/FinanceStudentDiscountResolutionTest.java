@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.finance.catalogue;
 
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeCatalogue;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceStudentDiscountRule;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeCatalogueRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceStudentDiscountRuleRepository;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -14,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
-import zw.ac.uz.emhare.finance.catalogue.FinanceStudentDiscountContracts.ResolveDiscount;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceStudentDiscountApiModels.ResolveDiscount;
 
 /** @author Tinashe K */
 class FinanceStudentDiscountResolutionTest {

@@ -11,6 +11,9 @@ spring:
           issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8099/realms/emhare}
   cloud:
     gateway:
+      discovery:
+        locator:
+          enabled: false
       server:
         webmvc:
           globalcors:
@@ -36,47 +39,47 @@ spring:
                 allow-credentials: true
           routes:
             - id: core-identity-service
-              uri: ${emhare.gateway.upstream-health.services.core-identity}
+              uri: lb://core-identity-service
               predicates:
                 - Path=/api/core/**,/api/identity/**
             - id: academic-setup-service
-              uri: ${emhare.gateway.upstream-health.services.academic-setup}
+              uri: lb://academic-setup-service
               predicates:
                 - Path=/api/academic/**
             - id: admissions-service
-              uri: ${emhare.gateway.upstream-health.services.admissions}
+              uri: lb://admissions-service
               predicates:
                 - Path=/api/admissions/**,/api/applicant/**
             - id: finance-service
-              uri: ${emhare.gateway.upstream-health.services.finance}
+              uri: lb://finance-service
               predicates:
                 - Path=/api/finance/**
             - id: student-records-service
-              uri: ${emhare.gateway.upstream-health.services.student-records}
+              uri: lb://student-records-service
               predicates:
                 - Path=/api/student-records/**,/api/students/**,/api/registration/**
             - id: assessment-results-service
-              uri: ${emhare.gateway.upstream-health.services.assessment-results}
+              uri: lb://assessment-results-service
               predicates:
                 - Path=/api/assessment/**,/api/results/**,/api/assessment-results/**
             - id: exams-timetabling-service
-              uri: ${emhare.gateway.upstream-health.services.exams-timetabling}
+              uri: lb://exams-timetabling-service
               predicates:
                 - Path=/api/exams/**,/api/timetabling/**
             - id: accommodation-service
-              uri: ${emhare.gateway.upstream-health.services.accommodation}
+              uri: lb://accommodation-service
               predicates:
                 - Path=/api/accommodation/**
             - id: dining-service
-              uri: ${emhare.gateway.upstream-health.services.dining}
+              uri: lb://dining-service
               predicates:
                 - Path=/api/dining/**
             - id: documents-reporting-service
-              uri: ${emhare.gateway.upstream-health.services.documents-reporting}
+              uri: lb://documents-reporting-service
               predicates:
                 - Path=/api/documents/**,/api/reports/**
             - id: notifications-service
-              uri: ${emhare.gateway.upstream-health.services.notifications}
+              uri: lb://notifications-service
               predicates:
                 - Path=/api/notifications/**
 
@@ -91,26 +94,39 @@ management:
         enabled: true
       group:
         readiness:
-          include: readinessState,upstreamServices
+          include: readinessState
+
+eureka:
+  client:
+    enabled: ${EUREKA_CLIENT_ENABLED:true}
+    healthcheck:
+      enabled: true
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://emhare-discovery:emhare-discovery-dev@localhost:8761/eureka/}
+  instance:
+    instance-id: ${spring.application.name}:${SERVER_PORT:${server.port}}:${random.value}
+    prefer-ip-address: ${EUREKA_PREFER_IP_ADDRESS:false}
 
 emhare:
   gateway:
-    upstream-health:
-      enabled: ${GATEWAY_UPSTREAM_HEALTH_ENABLED:true}
-      timeout: ${GATEWAY_UPSTREAM_HEALTH_TIMEOUT:2s}
-      services:
-        core-identity: ${CORE_IDENTITY_SERVICE_URL:http://localhost:8081}
-        academic-setup: ${ACADEMIC_SETUP_SERVICE_URL:http://localhost:8082}
-        admissions: ${ADMISSIONS_SERVICE_URL:http://localhost:8083}
-        finance: ${FINANCE_SERVICE_URL:http://localhost:8084}
-        student-records: ${STUDENT_RECORDS_SERVICE_URL:http://localhost:8085}
-        assessment-results: ${ASSESSMENT_RESULTS_SERVICE_URL:http://localhost:8086}
-        exams-timetabling: ${EXAMS_TIMETABLING_SERVICE_URL:http://localhost:8087}
-        accommodation: ${ACCOMMODATION_SERVICE_URL:http://localhost:8088}
-        dining: ${DINING_SERVICE_URL:http://localhost:8089}
-        documents-reporting: ${DOCUMENTS_REPORTING_SERVICE_URL:http://localhost:8090}
-        notifications: ${NOTIFICATIONS_SERVICE_URL:http://localhost:8091}
+    service-topology:
+      enabled: ${GATEWAY_SERVICE_TOPOLOGY_ENABLED:true}
+      expected-service-ids:
+        - core-identity-service
+        - academic-setup-service
+        - admissions-service
+        - finance-service
+        - student-records-service
+        - assessment-results-service
+        - exams-timetabling-service
+        - accommodation-service
+        - dining-service
+        - documents-reporting-service
+        - notifications-service
 
 logging:
+  structured:
+    format:
+      console: ${EMHARE_STRUCTURED_LOG_FORMAT:logstash}
   pattern:
-    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-},%X{correlationId:-}]"

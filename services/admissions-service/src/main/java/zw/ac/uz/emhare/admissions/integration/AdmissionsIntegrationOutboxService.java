@@ -1,10 +1,15 @@
 package zw.ac.uz.emhare.admissions.integration;
 
+import zw.ac.uz.emhare.admissions.infrastructure.messaging.model.AdmissionsOutboxEvent;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.messaging.AdmissionsOutboxEventRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeEntryOptionSelectionRepository;
+
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
@@ -14,14 +19,18 @@ import zw.ac.uz.emhare.common.messaging.AcceptedOfferReadyForConversionEvent;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.NotificationRequestedEvent;
 import zw.ac.uz.emhare.common.messaging.MissingApplicationDocumentWorkflowRequestedEvent;
-import zw.ac.uz.emhare.admissions.application.AdmissionOffer;
-import zw.ac.uz.emhare.admissions.application.Application;
-import zw.ac.uz.emhare.admissions.application.ApplicantReferee;
-import zw.ac.uz.emhare.admissions.application.AcademicReviewAssignment;
-import zw.ac.uz.emhare.admissions.application.AcademicUnitRecommendation;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionOffer;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantReferee;
+import zw.ac.uz.emhare.admissions.domain.model.AcademicReviewAssignment;
+import zw.ac.uz.emhare.admissions.domain.model.AcademicUnitRecommendation;
 import zw.ac.uz.emhare.common.messaging.AcademicReviewReleasedEvent;
 import zw.ac.uz.emhare.common.messaging.AcademicRecommendationRecordedEvent;
 import zw.ac.uz.emhare.common.messaging.OfferLetterRequestedEvent;
+import zw.ac.uz.emhare.common.messaging.NotificationAttachmentReference;
+import zw.ac.uz.emhare.common.messaging.OfferPublicationEvent;
+import zw.ac.uz.emhare.admissions.domain.model.OfferDispatch;
+import zw.ac.uz.emhare.admissions.domain.model.OfferPublication;
 
 /** @author Tinashe K */
 @Service
@@ -30,14 +39,25 @@ public class AdmissionsIntegrationOutboxService {
     private final AdmissionsOutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final ApplicationProgrammeEntryOptionSelectionRepository entryOptionSelectionRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AdmissionsIntegrationOutboxService(
             AdmissionsOutboxEventRepository outboxEventRepository,
             ObjectMapper objectMapper,
-            Clock clock) {
+            Clock clock,
+            ApplicationProgrammeEntryOptionSelectionRepository entryOptionSelectionRepository) {
         this.outboxEventRepository = outboxEventRepository;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.entryOptionSelectionRepository = entryOptionSelectionRepository;
+    }
+
+    AdmissionsIntegrationOutboxService(
+            AdmissionsOutboxEventRepository outboxEventRepository,
+            ObjectMapper objectMapper,
+            Clock clock) {
+        this(outboxEventRepository, objectMapper, clock, null);
     }
 
     public void enqueueApplicationFeeRequired(
@@ -99,7 +119,12 @@ public class AdmissionsIntegrationOutboxService {
     }
 
     public void enqueueOfferLetterRequested(AdmissionOffer offer, UUID requestedByUserId) {
-        UUID eventId = UUID.nameUUIDFromBytes(("offer-letter:" + offer.getId() + ":" + offer.getVersion())
+        enqueueOfferLetterRequested(offer, 1, requestedByUserId);
+    }
+
+    public void enqueueOfferLetterRequested(AdmissionOffer offer, int documentVersion, UUID requestedByUserId) {
+        UUID eventId = UUID.nameUUIDFromBytes(("offer-letter:v" + OfferLetterRequestedEvent.CURRENT_SCHEMA_VERSION
+                + ":" + offer.getId() + ":" + documentVersion + ":" + offer.getVersion())
                 .getBytes(StandardCharsets.UTF_8));
         if (outboxEventRepository.existsById(eventId)) return;
         Instant occurredAt = clock.instant();
@@ -107,9 +132,10 @@ public class AdmissionsIntegrationOutboxService {
         var applicant = application.getApplicant();
         OfferLetterRequestedEvent event = new OfferLetterRequestedEvent(
                 eventId, OfferLetterRequestedEvent.CURRENT_SCHEMA_VERSION, occurredAt,
-                offer.getId(), offer.getVersion(), offer.getOfferNumber(), application.getId(),
+                offer.getId(), offer.getVersion(), documentVersion, offer.getOfferNumber(), application.getId(),
                 application.getApplicationNumber(), applicant.getApplicantNumber(), applicant.getDisplayName(),
-                applicant.getPrimaryEmail(), offer.getProgrammeId(), offer.getProgrammeCode(), offer.getProgrammeName(),
+                applicant.getPrimaryEmail(), applicant.getUserId(), offer.getProgrammeId(), offer.getProgrammeCode(), offer.getProgrammeName(),
+                offer.getIntakeId(),
                 offer.getOfferTypeCode(), offer.getConditionsText(), offer.getAcceptanceDeadline(),
                 offer.getRegistrationDate(), offer.getOrientationDate(), offer.getCommencementDate(), requestedByUserId);
         outboxEventRepository.save(new AdmissionsOutboxEvent(eventId,
@@ -142,7 +168,14 @@ public class AdmissionsIntegrationOutboxService {
                 offer.getProgrammeCode(),
                 offer.getProgrammeName(),
                 offer.getIntakeId(),
-                offer.getCommencementDate());
+                offer.getCommencementDate(),
+                entryOptionSelectionRepository == null ? List.of() : entryOptionSelectionRepository
+                        .findAllByProgrammeChoice_IdAndDeletedAtIsNullOrderByPreferenceRankAsc(
+                                offer.getProgrammeChoice().getId()).stream()
+                        .map(selection -> new AcceptedOfferReadyForConversionEvent.EntryOptionPreference(
+                                selection.getEntryOptionId(), selection.getEntryOptionCode(),
+                                selection.getEntryOptionName(), selection.getPreferenceRank()))
+                        .toList());
         outboxEventRepository.save(new AdmissionsOutboxEvent(
                 eventId,
                 EmhareMessagingTopology.ACCEPTED_OFFER_READY_FOR_CONVERSION_EVENT,
@@ -290,6 +323,70 @@ public class AdmissionsIntegrationOutboxService {
                         "firstName", offer.getApplication().getApplicant().getFirstName(),
                         "offerNumber", offer.getOfferNumber(),
                         "response", offer.getStatusCode()));
+    }
+
+    public void enqueueOfferPublication(OfferPublication publication, OfferDispatch dispatch) {
+        AdmissionOffer offer = publication.getOffer();
+        var application = offer.getApplication();
+        UUID publicationEventId = UUID.nameUUIDFromBytes(("offer-publication:" + publication.getId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = clock.instant();
+        if (!outboxEventRepository.existsById(publicationEventId)) {
+            OfferPublicationEvent event = new OfferPublicationEvent(publicationEventId,
+                    OfferPublicationEvent.CURRENT_SCHEMA_VERSION, occurredAt, publication.getId(), offer.getId(),
+                    offer.getStatusCode(), publication.getDocumentVersion().getGeneratedDocumentId(),
+                    publication.getDocumentVersion().getDocumentVersion(), offer.getOfferNumber(), application.getId(),
+                    application.getApplicationNumber(), application.getApplicant().getUserId(),
+                    application.getApplicant().getDisplayName(), offer.getIntakeId(), offer.getProgrammeId(),
+                    offer.getProgrammeCode(), offer.getProgrammeName(), publication.getPortalPublishedAt(), true, null);
+            outboxEventRepository.save(new AdmissionsOutboxEvent(publicationEventId,
+                    EmhareMessagingTopology.OFFER_PUBLICATION_EVENT,
+                    EmhareMessagingTopology.OFFER_PUBLICATION_EVENT, serialize(event), occurredAt));
+        }
+        enqueueOfferEmail(publication, dispatch);
+    }
+
+    public void enqueueCurrentOfferPublicationStatus(AdmissionOffer offer) {
+        OfferPublication publication = offer.getCurrentPublication();
+        if (publication == null) return;
+        UUID eventId = UUID.nameUUIDFromBytes(("offer-publication-status:" + offer.getId() + ":"
+                + offer.getStatusCode()).getBytes(StandardCharsets.UTF_8));
+        if (outboxEventRepository.existsById(eventId)) return;
+        Instant occurredAt = clock.instant();
+        var application = offer.getApplication();
+        var document = publication.getDocumentVersion();
+        OfferPublicationEvent event = new OfferPublicationEvent(eventId,
+                OfferPublicationEvent.CURRENT_SCHEMA_VERSION, occurredAt, publication.getId(), offer.getId(),
+                offer.getStatusCode(), document.getGeneratedDocumentId(), document.getDocumentVersion(),
+                offer.getOfferNumber(), application.getId(), application.getApplicationNumber(),
+                application.getApplicant().getUserId(), application.getApplicant().getDisplayName(),
+                offer.getIntakeId(), offer.getProgrammeId(), offer.getProgrammeCode(), offer.getProgrammeName(),
+                publication.getPortalPublishedAt(), true, null);
+        outboxEventRepository.save(new AdmissionsOutboxEvent(eventId,
+                EmhareMessagingTopology.OFFER_PUBLICATION_EVENT,
+                EmhareMessagingTopology.OFFER_PUBLICATION_EVENT, serialize(event), occurredAt));
+    }
+
+    public void enqueueOfferEmail(OfferPublication publication, OfferDispatch dispatch) {
+        UUID eventId = dispatch.getNotificationEventId();
+        if (outboxEventRepository.existsById(eventId)) return;
+        AdmissionOffer offer = publication.getOffer();
+        var document = publication.getDocumentVersion();
+        var applicant = offer.getApplication().getApplicant();
+        String idempotencyKey = "admissions:offer-publication:" + publication.getId()
+                + ":email-attempt:" + dispatch.getAttemptNumber();
+        NotificationRequestedEvent notification = new NotificationRequestedEvent(eventId,
+                NotificationRequestedEvent.CURRENT_SCHEMA_VERSION, clock.instant(), "admissions-service", eventId,
+                idempotencyKey, "ADMISSION_OFFER_PUBLISHED", "ADMISSION_OFFER_PUBLISHED_EMAIL", "EMAIL", "en-ZW",
+                applicant.getUserId(), applicant.getUserId().toString(), applicant.getPrimaryEmail(), "HIGH", null, 1,
+                Map.of("applicantName", applicant.getDisplayName(), "offerNumber", offer.getOfferNumber(),
+                        "programmeName", offer.getProgrammeName(), "acceptanceDeadline", offer.getAcceptanceDeadline().toString()),
+                List.of(new NotificationAttachmentReference(document.getGeneratedDocumentId(), document.getDocumentNumber(),
+                        document.getStorageBucket(), document.getStorageKey(), document.getChecksumSha256(),
+                        offer.getApplication().getApplicationNumber() + "-" + offer.getOfferNumber() + ".pdf", "application/pdf")));
+        outboxEventRepository.save(new AdmissionsOutboxEvent(eventId,
+                EmhareMessagingTopology.NOTIFICATION_REQUESTED_EVENT,
+                EmhareMessagingTopology.NOTIFICATION_REQUESTED_EVENT, serialize(notification), clock.instant()));
     }
 
     public void enqueueStudentConversionNotification(AdmissionOffer offer) {

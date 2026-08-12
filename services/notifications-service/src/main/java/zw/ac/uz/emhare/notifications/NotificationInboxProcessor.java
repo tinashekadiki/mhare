@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.notifications;
 
+import zw.ac.uz.emhare.notifications.domain.model.NotificationEventInbox;
+import zw.ac.uz.emhare.notifications.domain.model.NotificationRequest;
+import zw.ac.uz.emhare.notifications.domain.model.NotificationTemplate;
+import zw.ac.uz.emhare.notifications.infrastructure.persistence.NotificationEventInboxRepository;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
@@ -10,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.NotificationRequestedEvent;
-import zw.ac.uz.emhare.notifications.NotificationContracts.QueueNotification;
+import zw.ac.uz.emhare.notifications.api.model.NotificationApiModels.QueueNotification;
 
 /** Converts durable integration events into governed, rendered notification requests. @author Tinashe K */
 @Component
@@ -99,7 +104,8 @@ public class NotificationInboxProcessor {
                 priority(event.priority()),
                 event.scheduledAt(),
                 event.maximumAttempts(),
-                event.variables() == null ? Map.of() : event.variables());
+                event.variables() == null ? Map.of() : event.variables(),
+                event.attachments() == null ? java.util.List.of() : event.attachments());
     }
 
     private NotificationTemplate.Channel channel(String value) {

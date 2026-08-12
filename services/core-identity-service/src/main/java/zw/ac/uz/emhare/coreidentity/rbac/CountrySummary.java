@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.coreidentity.rbac;
 
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.Country;
+
 import java.util.UUID;
 
 public record CountrySummary(UUID id, String iso2Code, String iso3Code, String name, String nationalityName) {

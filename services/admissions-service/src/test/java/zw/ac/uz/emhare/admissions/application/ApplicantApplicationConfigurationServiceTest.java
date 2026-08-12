@@ -1,5 +1,15 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationFee;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeProgrammeMapping;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationFeeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeSectionRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeProgrammeMappingRepository;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -20,6 +30,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import zw.ac.uz.emhare.admissions.integration.AcademicSetupCatalogueClient.AcademicAdmissionsIntake;
+import zw.ac.uz.emhare.admissions.integration.AcademicSetupCatalogueClient.AcademicProgrammeOption;
 import zw.ac.uz.emhare.admissions.integration.FinanceCatalogueClient;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +49,9 @@ class ApplicantApplicationConfigurationServiceTest {
     private ApplicationTypeSectionRepository applicationTypeSectionRepository;
 
     @Mock
+    private ApplicationTypeProgrammeMappingRepository programmeMappingRepository;
+
+    @Mock
     private FinanceCatalogueClient financeCatalogueClient;
 
     private final Instant currentInstant = Instant.parse("2027-01-15T10:00:00Z");
@@ -51,6 +65,7 @@ class ApplicantApplicationConfigurationServiceTest {
                 applicationTypeRepository,
                 applicationFeeRepository,
                 applicationTypeSectionRepository,
+                programmeMappingRepository,
                 financeCatalogueClient,
                 clock);
     }
@@ -147,6 +162,36 @@ class ApplicantApplicationConfigurationServiceTest {
     }
 
     @Test
+    void getStartOptions_shouldExposeOnlyConfiguredRouteAndIntakeProgrammeIntersections() {
+        AdmissionCycle openCycle = cycle(
+                "2027-AUG", "August 2027", currentInstant.minusSeconds(60), currentInstant.plusSeconds(3600));
+        openCycle.open(currentInstant);
+        ApplicationType mba = new ApplicationType("MBA", "MBA", true, true);
+        ReflectionTestUtils.setField(mba, "id", UUID.randomUUID());
+        UUID mbaProgrammeId = UUID.randomUUID();
+        UUID unrelatedProgrammeId = UUID.randomUUID();
+        AcademicProgrammeOption mbaProgramme = academicProgramme(mbaProgrammeId, "MBA");
+        AcademicProgrammeOption unrelatedProgramme = academicProgramme(unrelatedProgrammeId, "MSC");
+        ApplicationTypeProgrammeMapping mapping = new ApplicationTypeProgrammeMapping(
+                mba, mbaProgrammeId, "MBA", "Master of Business Administration");
+
+        when(admissionsIntakeProjectionService.openIntakes())
+                .thenReturn(List.of(academicIntake(openCycle, List.of(mbaProgramme, unrelatedProgramme))));
+        when(applicationTypeRepository.findAll()).thenReturn(List.of(mba));
+        when(applicationFeeRepository.findEffectiveFees(mba.getId(), "LOCAL", LocalDate.now(clock))).thenReturn(List.of());
+        when(programmeMappingRepository
+                .findAllByApplicationTypeIdAndActiveTrueAndDeletedAtIsNullOrderByProgrammeCodeAsc(mba.getId()))
+                .thenReturn(List.of(mapping));
+
+        ApplicationStartOptionsSummary summary = configurationService.getStartOptions("LOCAL");
+
+        assertEquals(1, summary.routes().size());
+        assertEquals("MBA", summary.routes().getFirst().applicationTypeCode());
+        assertEquals(List.of(mbaProgrammeId),
+                summary.routes().getFirst().programmes().stream().map(programme -> programme.id()).toList());
+    }
+
+    @Test
     void getStartOptions_shouldRejectAmbiguousEffectiveFees() {
         ApplicationType applicationType = new ApplicationType("UNDERGRAD", "Undergraduate", false, false);
         ReflectionTestUtils.setField(applicationType, "id", UUID.randomUUID());
@@ -180,9 +225,20 @@ class ApplicantApplicationConfigurationServiceTest {
     }
 
     private AcademicAdmissionsIntake academicIntake(AdmissionCycle projection) {
+        return academicIntake(projection, List.of());
+    }
+
+    private AcademicAdmissionsIntake academicIntake(
+            AdmissionCycle projection, List<AcademicProgrammeOption> programmes) {
         return new AcademicAdmissionsIntake(
                 projection.getIntakeId(), projection.getAcademicYearId(), "2027",
                 projection.getCode(), projection.getName(), LocalDate.parse("2027-01-01"),
-                LocalDate.parse("2027-12-31"), "OPEN", 3, List.of());
+                LocalDate.parse("2027-12-31"), "OPEN", 3, programmes);
+    }
+
+    private AcademicProgrammeOption academicProgramme(UUID programmeId, String programmeCode) {
+        return new AcademicProgrammeOption(
+                programmeId, programmeCode, programmeCode, programmeCode,
+                UUID.randomUUID(), "2027", UUID.randomUUID(), "Faculty", 4, 4);
     }
 }

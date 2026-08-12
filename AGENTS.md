@@ -116,3 +116,15 @@ Keep each service's database private to that service. Cross-service access must 
 - Add tests proportional to risk and service boundary impact.
 - For service integrations, include contract tests or explicit API/event schema validation.
 - Before claiming completion, run the narrowest meaningful verification available and report exactly what was and was not verified.
+
+## Engineering Quality Standard
+
+- Follow the professional discipline described in [*The Clean Coder*](https://github.com/efeozazar/oop-books/blob/main/The%20Clean%20Coder-A%20Code%20of%20Conduct%20for%20Professional%20Programmers.pdf): make evidence-based commitments, keep the build releasable, communicate risks early, and never claim unverified work as complete.
+- Apply SOLID at service, class, component, and composable boundaries. Keep responsibilities cohesive, depend on explicit contracts, and extend behaviour without weakening established service ownership.
+- Apply DRY to stable, proven duplication. Do not introduce speculative abstractions merely to remove superficial similarity.
+- Use red-green-refactor TDD for new behaviour: write a focused failing test, implement the smallest correct change, then improve the design under green tests.
+- Begin every defect fix with a test that reproduces the failure. Refactors must start and finish with the relevant regression suite green.
+- Prefer focused unit and domain tests, then add integration or contract tests at persistence and service boundaries. Add Playwright coverage whenever a critical browser journey changes.
+- Changed executable backend and frontend code must maintain at least 90% line coverage and 90% branch coverage. Lines without executable statements and files without branches are not penalised.
+- Playwright is a separate acceptance gate and is not counted toward the numerical unit/integration coverage percentage.
+- Run `npm run quality` before declaring a change ready. Use `QUALITY_BASE_REF` when the comparison base is not `HEAD`.

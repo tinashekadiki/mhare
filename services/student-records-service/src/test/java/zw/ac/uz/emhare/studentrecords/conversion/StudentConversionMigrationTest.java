@@ -114,6 +114,20 @@ class StudentConversionMigrationTest {
     }
 
     @Test
+    void preservesAcceptedEntryOptionPreferencesAsAuditedSnapshots() throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT count(*) FROM information_schema.tables
+                WHERE table_schema = 'public'
+                  AND table_name IN ('student_entry_option_preferences', 'student_entry_option_preferences_aud')
+                """)) {
+            try (var results = statement.executeQuery()) {
+                results.next();
+                assertEquals(2, results.getInt(1));
+            }
+        }
+    }
+
+    @Test
     void rejectsRegistrationWhenStudentAndProgrammeEnrolmentDoNotMatch() throws SQLException {
         ConversionFixture first = createConversionFixture();
         ConversionFixture second = createConversionFixture();

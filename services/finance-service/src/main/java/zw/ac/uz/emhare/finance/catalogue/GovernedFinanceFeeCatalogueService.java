@@ -1,13 +1,20 @@
 package zw.ac.uz.emhare.finance.catalogue;
 
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeCatalogue;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeRule;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeRuleScope;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeCatalogueRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeRuleRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeRuleScopeRepository;
+import zw.ac.uz.emhare.finance.payment.infrastructure.persistence.ExchangeRateRepository;
+
 import java.math.*;
 import java.time.Clock;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeCatalogueContracts.*;
-import zw.ac.uz.emhare.finance.payment.ExchangeRate;
-import zw.ac.uz.emhare.finance.payment.ExchangeRateRepository;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeCatalogueApiModels.*;
+import zw.ac.uz.emhare.finance.payment.domain.model.ExchangeRate;
 
 /** Versioned institutional fee pricing with maker-checker approval and USD rating evidence. @author Tinashe K */
 @Service

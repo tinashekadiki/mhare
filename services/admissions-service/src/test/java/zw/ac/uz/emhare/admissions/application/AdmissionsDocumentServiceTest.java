@@ -1,8 +1,23 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationDocument;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeChoice;
+import zw.ac.uz.emhare.admissions.domain.model.ProgrammeSelectionSnapshot;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeDocumentRequirement;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationDocumentRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeChoiceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeDocumentRequirementRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationDocumentRequirementSnapshotRepository;
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,6 +37,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import zw.ac.uz.emhare.admissions.integration.AdmissionsIntegrationOutboxService;
 import zw.ac.uz.emhare.admissions.integration.DocumentsReportingClient;
 import zw.ac.uz.emhare.common.messaging.DocumentVerificationChangedEvent;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRepository;
 
 /** @author Tinashe K */
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +45,7 @@ class AdmissionsDocumentServiceTest {
     @Mock private ApplicationRepository applicationRepository;
     @Mock private ApplicationTypeRepository applicationTypeRepository;
     @Mock private ApplicationTypeDocumentRequirementRepository requirementRepository;
+    @Mock private ApplicationDocumentRequirementSnapshotRepository requirementSnapshotRepository;
     @Mock private ApplicationDocumentRepository documentRepository;
     @Mock private ApplicationProgrammeChoiceRepository programmeChoiceRepository;
     @Mock private DocumentsReportingClient documentsReportingClient;
@@ -43,7 +60,7 @@ class AdmissionsDocumentServiceTest {
     @BeforeEach
     void setUp() {
         service = new AdmissionsDocumentService(
-                applicationRepository, applicationTypeRepository, requirementRepository, documentRepository,
+                applicationRepository, applicationTypeRepository, requirementRepository, requirementSnapshotRepository, documentRepository,
                 programmeChoiceRepository, documentsReportingClient, integrationOutboxService,
                 Clock.fixed(now, ZoneOffset.UTC));
         applicationType = new ApplicationType("UNDERGRAD", "Undergraduate", false, false);
@@ -104,10 +121,12 @@ class AdmissionsDocumentServiceTest {
                 application.getId())).thenReturn(List.of(pending));
         assertDoesNotThrow(() -> service.assertReadyForSubmission(application));
         assertThrows(IllegalStateException.class, () -> service.assertReadyForReview(application));
+        assertFalse(service.isReadyForReview(application));
 
         DocumentVerificationChangedEvent verifiedEvent = verificationEvent(pending, "VERIFIED", null, 1);
         pending.applyVerification(verifiedEvent);
         assertDoesNotThrow(() -> service.assertReadyForReview(application));
+        assertTrue(service.isReadyForReview(application));
     }
 
     @Test

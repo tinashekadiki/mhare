@@ -1,5 +1,30 @@
 package zw.ac.uz.emhare.coreidentity.rbac;
 
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.InstitutionProfile;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.LoginEvent;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.LookupSet;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.LookupValue;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.Permission;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.PermissionCategory;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.PlatformUser;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.Role;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.RolePermission;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.RoleScope;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.UserRoleAssignment;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.UserStatus;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.CountryRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.InstitutionProfileRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.LoginEventRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.LookupSetRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.LookupValueRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.PermissionRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.PlatformUserRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.RolePermissionRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.RoleRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.UserRoleAssignmentRepository;
+
+import zw.ac.uz.emhare.coreidentity.rbac.application.command.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;

@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.coreidentity.integration;
 
+import zw.ac.uz.emhare.coreidentity.infrastructure.messaging.model.CoreIdentityOutboxEvent;
+import zw.ac.uz.emhare.coreidentity.infrastructure.persistence.messaging.CoreIdentityOutboxEventRepository;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;

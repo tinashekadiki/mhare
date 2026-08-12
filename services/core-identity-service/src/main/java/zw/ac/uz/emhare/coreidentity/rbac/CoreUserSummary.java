@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.coreidentity.rbac;
 
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.PlatformUser;
+
 import java.util.UUID;
 
 public record CoreUserSummary(

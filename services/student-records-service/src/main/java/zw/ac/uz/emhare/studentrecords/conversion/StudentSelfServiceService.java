@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.studentrecords.conversion;
 
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProfile;
+import zw.ac.uz.emhare.studentrecords.conversion.infrastructure.persistence.StudentProfileRepository;
+import zw.ac.uz.emhare.studentrecords.conversion.infrastructure.persistence.StudentProgrammeEnrolmentRepository;
+
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

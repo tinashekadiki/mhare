@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantQualificationResult;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantQualificationSitting;
+import zw.ac.uz.emhare.admissions.domain.model.GradingScale;
+import zw.ac.uz.emhare.admissions.domain.model.GradingScaleValue;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,6 +16,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import zw.ac.uz.emhare.admissions.application.QualificationPointsCalculator.EligibilitySnapshot;
 import zw.ac.uz.emhare.admissions.application.QualificationPointsCalculator.ExclusionReason;
+import zw.ac.uz.emhare.admissions.domain.model.QualificationLevel;
 
 /** @author Tinashe K */
 class QualificationPointsCalculatorTest {

@@ -1,5 +1,30 @@
 package zw.ac.uz.emhare.finance.collections;
 
+import zw.ac.uz.emhare.finance.billing.domain.model.FinanceInvoice;
+import zw.ac.uz.emhare.finance.billing.domain.model.FinanceInvoiceLine;
+import zw.ac.uz.emhare.finance.billing.infrastructure.persistence.FinanceInvoiceLineRepository;
+import zw.ac.uz.emhare.finance.billing.infrastructure.persistence.FinanceInvoiceRepository;
+import zw.ac.uz.emhare.finance.collections.domain.model.FinanceCreditNote;
+import zw.ac.uz.emhare.finance.collections.domain.model.FinanceCreditNoteLine;
+import zw.ac.uz.emhare.finance.collections.domain.model.StudentAccountPayment;
+import zw.ac.uz.emhare.finance.collections.domain.model.StudentPaymentAllocation;
+import zw.ac.uz.emhare.finance.collections.domain.model.StudentPaymentAllocationReversal;
+import zw.ac.uz.emhare.finance.collections.domain.model.StudentPaymentReceipt;
+import zw.ac.uz.emhare.finance.collections.domain.model.StudentPaymentReversal;
+import zw.ac.uz.emhare.finance.collections.domain.model.StudentPaymentSuspenseResolution;
+import zw.ac.uz.emhare.finance.collections.infrastructure.persistence.FinanceCreditNoteLineRepository;
+import zw.ac.uz.emhare.finance.collections.infrastructure.persistence.FinanceCreditNoteRepository;
+import zw.ac.uz.emhare.finance.collections.infrastructure.persistence.StudentAccountPaymentRepository;
+import zw.ac.uz.emhare.finance.collections.infrastructure.persistence.StudentPaymentAllocationRepository;
+import zw.ac.uz.emhare.finance.collections.infrastructure.persistence.StudentPaymentAllocationReversalRepository;
+import zw.ac.uz.emhare.finance.collections.infrastructure.persistence.StudentPaymentReceiptRepository;
+import zw.ac.uz.emhare.finance.collections.infrastructure.persistence.StudentPaymentReversalRepository;
+import zw.ac.uz.emhare.finance.collections.infrastructure.persistence.StudentPaymentSuspenseResolutionRepository;
+import zw.ac.uz.emhare.finance.payment.domain.model.ExchangeRate;
+import zw.ac.uz.emhare.finance.payment.infrastructure.persistence.ExchangeRateRepository;
+import zw.ac.uz.emhare.finance.student.domain.model.StudentFinanceAccount;
+import zw.ac.uz.emhare.finance.student.infrastructure.persistence.StudentFinanceAccountRepository;
+
 import java.math.*;
 import java.time.*;
 import java.util.*;
@@ -7,7 +32,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zw.ac.uz.emhare.finance.billing.*;
-import zw.ac.uz.emhare.finance.collections.FinanceCollectionsContracts.*;
+import zw.ac.uz.emhare.finance.collections.api.model.FinanceCollectionsApiModels.*;
 import zw.ac.uz.emhare.finance.payment.*;
 import zw.ac.uz.emhare.finance.student.*;
 

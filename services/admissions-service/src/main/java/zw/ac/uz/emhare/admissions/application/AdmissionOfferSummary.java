@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionOffer;
+import zw.ac.uz.emhare.admissions.domain.model.OfferCondition;
+import zw.ac.uz.emhare.admissions.domain.model.OfferResponse;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -22,6 +26,9 @@ public record AdmissionOfferSummary(
         UUID intakeId,
         String offerType,
         String status,
+        UUID currentDocumentVersionId,
+        UUID currentPublicationId,
+        boolean amendmentPending,
         String conditionsText,
         Instant acceptanceDeadline,
         LocalDate registrationDate,
@@ -45,12 +52,17 @@ public record AdmissionOfferSummary(
             List<OfferCondition> conditions,
             OfferResponse response) {
         return new AdmissionOfferSummary(
-                offer.getId(), offer.getOfferBatch().getId(), offer.getOfferNumber(), offer.getApplication().getId(),
+                offer.getId(), offer.getOfferBatch() == null ? null : offer.getOfferBatch().getId(),
+                offer.getOfferNumber(), offer.getApplication().getId(),
                 offer.getApplication().getApplicationNumber(), offer.getApplication().getApplicant().getApplicantNumber(),
                 offer.getApplication().getApplicant().getDisplayName(),
                 offer.getProgrammeChoice().getId(), offer.getProgrammeId(), offer.getProgrammeVersionId(),
                 offer.getProgrammeCode(), offer.getProgrammeName(), offer.getIntakeId(),
-                offer.getOfferType().name(), offer.getStatus().name(), offer.getConditionsText(),
+                offer.getOfferType() == null ? null : offer.getOfferType().name(),
+                offer.getStatus().name(),
+                offer.getCurrentDocumentVersion() == null ? null : offer.getCurrentDocumentVersion().getId(),
+                offer.getCurrentPublication() == null ? null : offer.getCurrentPublication().getId(),
+                offer.isAmendmentPending(), offer.getConditionsText(),
                 offer.getAcceptanceDeadline(), offer.getRegistrationDate(), offer.getOrientationDate(),
                 offer.getCommencementDate(), offer.getGeneratedDocumentId(), offer.getApprovedAt(), offer.getSentAt(),
                 offer.getExpiredAt(), offer.getExpiryReason(), offer.getConversionRequestedAt(),

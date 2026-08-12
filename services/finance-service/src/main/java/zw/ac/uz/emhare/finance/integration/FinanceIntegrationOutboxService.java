@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.finance.integration;
 
+import zw.ac.uz.emhare.finance.infrastructure.messaging.model.FinanceOutboxEvent;
+import zw.ac.uz.emhare.finance.infrastructure.persistence.messaging.FinanceOutboxEventRepository;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -9,8 +12,8 @@ import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.ApplicationPaymentReferenceUpdatedEvent;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.StudentFinanceAccountProvisionedEvent;
-import zw.ac.uz.emhare.finance.payment.ApplicationPaymentReference;
-import zw.ac.uz.emhare.finance.student.StudentFinanceAccount;
+import zw.ac.uz.emhare.finance.payment.domain.model.ApplicationPaymentReference;
+import zw.ac.uz.emhare.finance.student.domain.model.StudentFinanceAccount;
 
 /** @author Tinashe K */
 @Service

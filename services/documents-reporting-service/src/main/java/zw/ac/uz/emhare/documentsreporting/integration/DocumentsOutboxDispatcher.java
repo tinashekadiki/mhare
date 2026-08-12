@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.documentsreporting.integration;
 
+import zw.ac.uz.emhare.documentsreporting.infrastructure.messaging.model.DocumentsOutboxEvent;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.messaging.DocumentsOutboxEventRepository;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;

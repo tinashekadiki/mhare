@@ -1,5 +1,14 @@
 package zw.ac.uz.emhare.studentrecords.registration;
 
+import zw.ac.uz.emhare.studentrecords.conversion.infrastructure.persistence.StudentProfileRepository;
+import zw.ac.uz.emhare.studentrecords.conversion.infrastructure.persistence.StudentProgrammeEnrolmentRepository;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.ModuleSelectionSource;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationModule;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationSession;
+import zw.ac.uz.emhare.studentrecords.registration.infrastructure.persistence.RegistrationModuleRepository;
+import zw.ac.uz.emhare.studentrecords.registration.infrastructure.persistence.RegistrationSessionRepository;
+import zw.ac.uz.emhare.studentrecords.registration.infrastructure.persistence.RegistrationStatusEventRepository;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,14 +28,12 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentProfile;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentProfileRepository;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentProgrammeEnrolment;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentProgrammeEnrolmentRepository;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProfile;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProgrammeEnrolment;
 import zw.ac.uz.emhare.studentrecords.integration.StudentRecordsIntegrationOutboxService;
 import zw.ac.uz.emhare.studentrecords.registration.AcademicRegistrationCatalogueClient.RegistrationCatalogue;
 import zw.ac.uz.emhare.studentrecords.registration.AcademicRegistrationCatalogueClient.RegistrationModuleOption;
-import zw.ac.uz.emhare.studentrecords.registration.RegistrationCommands.CreateOwnRegistration;
+import zw.ac.uz.emhare.studentrecords.registration.api.model.RegistrationRequests.CreateOwnRegistration;
 
 /** @author Tinashe K */
 class StudentRegistrationSelfServiceTest {

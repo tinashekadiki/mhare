@@ -1,14 +1,28 @@
 package zw.ac.uz.emhare.accommodation.operations;
 
+import zw.ac.uz.emhare.accommodation.operations.domain.model.AccommodationApplication;
+import zw.ac.uz.emhare.accommodation.operations.domain.model.AccommodationRate;
+import zw.ac.uz.emhare.accommodation.operations.domain.model.AccommodationWaitlistEntry;
+import zw.ac.uz.emhare.accommodation.operations.domain.model.RoomAllocation;
+import zw.ac.uz.emhare.accommodation.operations.domain.model.RoomAllocationEvent;
+import zw.ac.uz.emhare.accommodation.operations.infrastructure.persistence.AccommodationApplicationRepository;
+import zw.ac.uz.emhare.accommodation.operations.infrastructure.persistence.AccommodationRateRepository;
+import zw.ac.uz.emhare.accommodation.operations.infrastructure.persistence.AccommodationWaitlistRepository;
+import zw.ac.uz.emhare.accommodation.operations.infrastructure.persistence.OperationalApplicationPeriodRepository;
+import zw.ac.uz.emhare.accommodation.operations.infrastructure.persistence.OperationalRoomRepository;
+import zw.ac.uz.emhare.accommodation.operations.infrastructure.persistence.OperationalRoomTypeRepository;
+import zw.ac.uz.emhare.accommodation.operations.infrastructure.persistence.RoomAllocationEventRepository;
+import zw.ac.uz.emhare.accommodation.operations.infrastructure.persistence.RoomAllocationRepository;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.accommodation.operations.AccommodationOperationsContracts.*;
-import zw.ac.uz.emhare.accommodation.setup.AccommodationApplicationPeriod;
-import zw.ac.uz.emhare.accommodation.setup.AccommodationRoom;
-import zw.ac.uz.emhare.accommodation.setup.AccommodationRoomType;
+import zw.ac.uz.emhare.accommodation.operations.api.model.AccommodationOperationsApiModels.*;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationApplicationPeriod;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationRoom;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationRoomType;
 
 /** @author Tinashe K */
 @Service

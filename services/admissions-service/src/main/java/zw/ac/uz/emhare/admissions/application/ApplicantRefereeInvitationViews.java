@@ -17,12 +17,4 @@ public final class ApplicantRefereeInvitationViews {
             Instant expiresAt,
             Instant submittedAt) {
     }
-
-    public record SubmitReferenceCommand(
-            String relationshipToApplicant,
-            int yearsKnown,
-            ApplicantRefereeInvitation.Recommendation recommendation,
-            String comments,
-            boolean declarationAccepted) {
-    }
 }

@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.admissions.application.AdmissionsApplicationService;
+import zw.ac.uz.emhare.admissions.application.AdmissionsRollingWorkflowService;
 import zw.ac.uz.emhare.common.messaging.ApplicationPaymentReferenceUpdatedEvent;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 
@@ -20,14 +21,17 @@ public class AdmissionsPaymentReferenceEventListener {
     private final AdmissionsApplicationService admissionsApplicationService;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final AdmissionsRollingWorkflowService rollingWorkflowService;
 
     public AdmissionsPaymentReferenceEventListener(
             AdmissionsIntegrationInbox integrationInbox,
             AdmissionsApplicationService admissionsApplicationService,
+            AdmissionsRollingWorkflowService rollingWorkflowService,
             ObjectMapper objectMapper,
             Clock clock) {
         this.integrationInbox = integrationInbox;
         this.admissionsApplicationService = admissionsApplicationService;
+        this.rollingWorkflowService = rollingWorkflowService;
         this.objectMapper = objectMapper;
         this.clock = clock;
     }
@@ -47,6 +51,7 @@ public class AdmissionsPaymentReferenceEventListener {
             return;
         }
         admissionsApplicationService.applyFinancePaymentReferenceUpdate(event);
+        rollingWorkflowService.advance(event.applicationId(), event.eventId());
         integrationInbox.markProcessed(event.eventId(), clock.instant());
     }
 

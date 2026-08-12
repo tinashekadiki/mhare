@@ -1,5 +1,13 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantReferee;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantRefereeInvitation;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantRefereeInvitationRepository;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -22,8 +30,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import zw.ac.uz.emhare.admissions.application.ApplicantRefereeInvitation.Recommendation;
-import zw.ac.uz.emhare.admissions.application.ApplicantRefereeInvitationViews.SubmitReferenceCommand;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantRefereeInvitation.Recommendation;
+import zw.ac.uz.emhare.admissions.application.command.SubmitReferenceCommand;
 import zw.ac.uz.emhare.admissions.integration.AdmissionsIntegrationOutboxService;
 
 /** @author Tinashe K */
@@ -97,6 +105,32 @@ class ApplicantRefereeInvitationServiceTest {
         assertEquals(Recommendation.STRONGLY_RECOMMEND, invitation.getRecommendation());
         assertThrows(IllegalStateException.class, () -> service.submitReference(rawToken, new SubmitReferenceCommand(
                 "Line manager", 4, Recommendation.RECOMMEND, "A duplicate response must not be accepted.", true)));
+    }
+
+    @Test
+    void countsOnlyTheLatestSubmittedResponseForEachRefereeInTheCurrentApplication() {
+        ApplicantReferee secondReferee = new ApplicantReferee(
+                application.getApplicant(), "Prof Rudo Ncube", "Prof", "UZ", "Director",
+                "rudo.ncube@example.test", "+263772000000");
+        ReflectionTestUtils.setField(secondReferee, "id", UUID.randomUUID());
+        ApplicantRefereeInvitation previouslySubmitted = new ApplicantRefereeInvitation(
+                application, referee, "old-hash", "old", now.minusSeconds(100), now.plusSeconds(86400), 1);
+        previouslySubmitted.submit(
+                "Line manager", 3, Recommendation.RECOMMEND,
+                "This older response was replaced by a new current invitation.", true, now.minusSeconds(50));
+        ApplicantRefereeInvitation replacement = new ApplicantRefereeInvitation(
+                application, referee, "new-hash", "new", now, now.plusSeconds(86400), 2);
+        ApplicantRefereeInvitation submittedCurrent = new ApplicantRefereeInvitation(
+                application, secondReferee, "second-hash", "second", now, now.plusSeconds(86400), 1);
+        submittedCurrent.submit(
+                "Academic supervisor", 5, Recommendation.STRONGLY_RECOMMEND,
+                "This is the current completed confidential response.", true, now);
+        when(invitationRepository.findAllByApplicationIdAndDeletedAtIsNullOrderByCreatedAtDesc(application.getId()))
+                .thenReturn(List.of(replacement, previouslySubmitted, submittedCurrent));
+
+        long submittedReferences = service.countCurrentSubmittedReferences(application.getId());
+
+        assertEquals(1, submittedReferences);
     }
 
     private Application application() {

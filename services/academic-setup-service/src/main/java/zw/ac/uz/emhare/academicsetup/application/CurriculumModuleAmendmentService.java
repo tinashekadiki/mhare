@@ -1,14 +1,15 @@
 package zw.ac.uz.emhare.academicsetup.application;
 
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.CurriculumModuleRepository;
+
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.academicsetup.domain.CurriculumModule;
-import zw.ac.uz.emhare.academicsetup.domain.CurriculumModuleRepository;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeVersionStatus;
-import zw.ac.uz.emhare.academicsetup.integration.CurriculumModuleUsageClient;
-import zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.RemoveCurriculumModule;
-import zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.CurriculumModuleUsageSummary;
+import zw.ac.uz.emhare.academicsetup.domain.model.CurriculumModule;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeVersionStatus;
+import zw.ac.uz.emhare.academicsetup.curriculum.application.port.CurriculumModuleUsagePort;
+import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.RemoveCurriculumModule;
+import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.CurriculumModuleUsageSummary;
 import zw.ac.uz.emhare.common.persistence.EmhareRevisionContext;
 import zw.ac.uz.emhare.common.security.EmhareCurrentUserResolver;
 
@@ -17,22 +18,22 @@ import zw.ac.uz.emhare.common.security.EmhareCurrentUserResolver;
 public class CurriculumModuleAmendmentService {
 
     private final CurriculumModuleRepository curriculumModuleRepository;
-    private final CurriculumModuleUsageClient curriculumModuleUsageClient;
+    private final CurriculumModuleUsagePort curriculumModuleUsagePort;
     private final EmhareCurrentUserResolver currentUserResolver;
 
     public CurriculumModuleAmendmentService(
             CurriculumModuleRepository curriculumModuleRepository,
-            CurriculumModuleUsageClient curriculumModuleUsageClient,
+            CurriculumModuleUsagePort curriculumModuleUsagePort,
             EmhareCurrentUserResolver currentUserResolver) {
         this.curriculumModuleRepository = curriculumModuleRepository;
-        this.curriculumModuleUsageClient = curriculumModuleUsageClient;
+        this.curriculumModuleUsagePort = curriculumModuleUsagePort;
         this.currentUserResolver = currentUserResolver;
     }
 
     @Transactional(readOnly = true)
     public CurriculumModuleUsageSummary usage(UUID programmeVersionId, UUID curriculumModuleId) {
         requireAmendableCurriculumModule(programmeVersionId, curriculumModuleId);
-        return curriculumModuleUsageClient.usage(curriculumModuleId);
+        return curriculumModuleUsagePort.usage(curriculumModuleId);
     }
 
     @Transactional
@@ -42,7 +43,7 @@ public class CurriculumModuleAmendmentService {
             RemoveCurriculumModule command) {
         CurriculumModule curriculumModule = requireAmendableCurriculumModule(programmeVersionId, curriculumModuleId);
         curriculumModule.requireVersion(command.expectedVersion());
-        CurriculumModuleUsageSummary usage = curriculumModuleUsageClient.usage(curriculumModuleId);
+        CurriculumModuleUsageSummary usage = curriculumModuleUsagePort.usage(curriculumModuleId);
         if (usage.registrationCount() > 0) {
             throw new IllegalStateException(
                     "Module cannot be removed because " + usage.registrationCount() + " student registration(s) reference it.");

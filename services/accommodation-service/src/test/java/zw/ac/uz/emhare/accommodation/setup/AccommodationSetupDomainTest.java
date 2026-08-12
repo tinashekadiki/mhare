@@ -1,5 +1,11 @@
 package zw.ac.uz.emhare.accommodation.setup;
 
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationApplicationPeriod;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationPremise;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationRoom;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationRoomType;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.ResidenceHall;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.Instant;

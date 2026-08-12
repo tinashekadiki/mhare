@@ -1,42 +1,58 @@
 package zw.ac.uz.emhare.academicsetup.application;
 
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.AddCurriculumModule;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.CreateAcademicModule;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.CreateAcademicPeriod;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.CreateAcademicPeriodType;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.CreateAcademicUnit;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.CreateAcademicUnitType;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.CreateAcademicYear;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.CreateIntake;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.CreateProgramme;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.CreateProgrammeLevel;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.CreateProgrammeType;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.CreateProgrammeVersion;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.UpdateProgramme;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.UpdateCurriculumModule;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.UpdateAcademicYear;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.UpdateAcademicPeriodType;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.UpdateAcademicPeriod;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.UpdateIntake;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.AcademicModuleSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.AdmissionsCatalogue;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.AdmissionsIntakeOption;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.AdmissionsProgrammeOption;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.AcademicPeriodSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.AcademicPeriodTypeSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.AcademicSetupOverview;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.AcademicUnitSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.AcademicUnitTypeSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.AcademicYearSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.CurriculumModuleSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.IntakeSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.ProgrammeLevelSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.ProgrammeHierarchyResolution;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.ProgrammeSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.ProgrammeTypeSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.ProgrammeVersionSummary;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.RegistrationCatalogue;
-import static zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.RegistrationModuleOption;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicModuleRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicPeriodRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicPeriodTypeRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicUnitRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicUnitTypeRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicYearRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.CurriculumModuleRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.IntakeProgrammeLevelTargetRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.IntakeProgrammeTargetRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.IntakeRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.ProgrammeLevelRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.ProgrammeRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.ProgrammeTypeRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.ProgrammeVersionRepository;
+
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.AddCurriculumModule;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.CreateAcademicModule;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.CreateAcademicPeriod;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.CreateAcademicPeriodType;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.CreateAcademicUnit;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.CreateAcademicUnitType;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.CreateAcademicYear;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.CreateIntake;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.CreateProgramme;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.CreateProgrammeLevel;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.CreateProgrammeType;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.CreateProgrammeVersion;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.ConfigureProgrammeEntryOptions;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateProgramme;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateCurriculumModule;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicYear;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicPeriodType;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicPeriod;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateIntake;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AcademicModuleSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AdmissionsCatalogue;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AdmissionsIntakeOption;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AdmissionsProgrammeOption;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AcademicPeriodSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AcademicPeriodTypeSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AcademicSetupOverview;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AcademicUnitSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AcademicUnitTypeSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AcademicYearSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.CurriculumModuleSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.IntakeSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.ProgrammeLevelSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.ProgrammeHierarchyResolution;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.ProgrammeSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.ProgrammeTypeSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.ProgrammeVersionSummary;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.RegistrationCatalogue;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.RegistrationModuleOption;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -52,40 +68,28 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicModule;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicModuleRepository;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicOfferingStatus;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicPeriod;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicPeriodRepository;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicPeriodType;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicPeriodTypeRepository;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicUnit;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicUnitRepository;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicUnitType;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicUnitTypeRepository;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicYear;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicYearRepository;
-import zw.ac.uz.emhare.academicsetup.domain.CalendarStatus;
-import zw.ac.uz.emhare.academicsetup.domain.CurriculumModule;
-import zw.ac.uz.emhare.academicsetup.domain.CurriculumModuleRepository;
-import zw.ac.uz.emhare.academicsetup.domain.Intake;
-import zw.ac.uz.emhare.academicsetup.domain.IntakeProgrammeLevelTarget;
-import zw.ac.uz.emhare.academicsetup.domain.IntakeProgrammeLevelTargetRepository;
-import zw.ac.uz.emhare.academicsetup.domain.IntakeProgrammeTarget;
-import zw.ac.uz.emhare.academicsetup.domain.IntakeProgrammeTargetRepository;
-import zw.ac.uz.emhare.academicsetup.domain.IntakeRepository;
-import zw.ac.uz.emhare.academicsetup.domain.Programme;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeLevel;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeLevelRepository;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeRepository;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeType;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeTypeRepository;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeVersion;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeVersionRepository;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeVersionStatus;
-import zw.ac.uz.emhare.academicsetup.domain.ReferenceStatus;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicModule;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicOfferingStatus;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicPeriod;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicPeriodType;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicUnit;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicUnitType;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicYear;
+import zw.ac.uz.emhare.academicsetup.domain.model.CalendarStatus;
+import zw.ac.uz.emhare.academicsetup.domain.model.CurriculumModule;
+import zw.ac.uz.emhare.academicsetup.domain.model.Intake;
+import zw.ac.uz.emhare.academicsetup.domain.model.IntakeProgrammeLevelTarget;
+import zw.ac.uz.emhare.academicsetup.domain.model.IntakeProgrammeTarget;
+import zw.ac.uz.emhare.academicsetup.domain.model.Programme;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeLevel;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeType;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeVersion;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeVersionStatus;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeVersion.EntryOptionDefinition;
+import zw.ac.uz.emhare.academicsetup.domain.model.ReferenceStatus;
 import zw.ac.uz.emhare.common.security.EmhareCurrentUserResolver;
 import zw.ac.uz.emhare.common.persistence.EmhareRevisionContext;
+import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses;
 
 /**
  * Governs the institution-owned academic hierarchy, calendar, catalogue, and
@@ -679,11 +683,7 @@ public class AcademicSetupService {
                         : specificProgrammeIds.contains(programmeVersion.getProgramme().getId()))
                 .map(programmeVersion -> {
                     Programme programme = programmeVersion.getProgramme();
-                    return new AdmissionsProgrammeOption(
-                            programme.getId(), programme.getCode(), programme.getName(), programme.getAwardName(),
-                            programmeVersion.getId(), programmeVersion.getVersionCode(),
-                            programme.getOwningAcademicUnit().getId(), programme.getOwningAcademicUnit().getName(),
-                            programme.getMinimumDurationPeriods(), programme.getMaximumDurationPeriods());
+                    return admissionsProgrammeOption(programmeVersion);
                 })
                 .toList();
         return new AdmissionsCatalogue(
@@ -741,13 +741,36 @@ public class AcademicSetupService {
                         : specificProgrammeIds.contains(programmeVersion.getProgramme().getId()))
                 .map(programmeVersion -> {
                     Programme programme = programmeVersion.getProgramme();
-                    return new AdmissionsProgrammeOption(
-                            programme.getId(), programme.getCode(), programme.getName(), programme.getAwardName(),
-                            programmeVersion.getId(), programmeVersion.getVersionCode(),
-                            programme.getOwningAcademicUnit().getId(), programme.getOwningAcademicUnit().getName(),
-                            programme.getMinimumDurationPeriods(), programme.getMaximumDurationPeriods());
+                    return admissionsProgrammeOption(programmeVersion);
                 })
                 .toList();
+    }
+
+    public ProgrammeVersionSummary configureProgrammeEntryOptions(
+            UUID programmeVersionId,
+            ConfigureProgrammeEntryOptions request) {
+        ProgrammeVersion programmeVersion = requireProgrammeVersion(programmeVersionId);
+        programmeVersion.configureEntryOptions(
+                request.minimumSelections(),
+                request.maximumSelections(),
+                request.options().stream().map(option -> new EntryOptionDefinition(
+                        option.code(), option.name(), option.description(), option.sortOrder())).toList(),
+                request.expectedVersion());
+        return programmeVersionSummary(programmeVersionRepository.saveAndFlush(programmeVersion));
+    }
+
+    private AdmissionsProgrammeOption admissionsProgrammeOption(ProgrammeVersion programmeVersion) {
+        Programme programme = programmeVersion.getProgramme();
+        return new AdmissionsProgrammeOption(
+                programme.getId(), programme.getCode(), programme.getName(), programme.getAwardName(),
+                programmeVersion.getId(), programmeVersion.getVersionCode(),
+                programme.getOwningAcademicUnit().getId(), programme.getOwningAcademicUnit().getName(),
+                programme.getMinimumDurationPeriods(), programme.getMaximumDurationPeriods(),
+                programme.getProgrammeType().getId(), programme.getProgrammeType().getCode(), programme.getProgrammeType().getName(),
+                programme.getProgrammeLevel().getId(), programme.getProgrammeLevel().getCode(), programme.getProgrammeLevel().getName(),
+                programmeVersion.getMinimumEntryOptionSelections(), programmeVersion.getMaximumEntryOptionSelections(),
+                programmeVersion.getEntryOptions().stream().map(option -> new AcademicSetupResponses.ProgrammeEntryOptionSummary(
+                        option.getId(), option.getCode(), option.getName(), option.getDescription(), option.getSortOrder())).toList());
     }
 
     @Transactional(readOnly = true)
@@ -979,13 +1002,13 @@ public class AcademicSetupService {
                 value.getMaximumProgrammeChoices(),
                 value.getChangeReason(),
                 programmeLevelTargets.stream()
-                        .map(target -> new zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.IntakeProgrammeLevelSummary(
+                        .map(target -> new zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.IntakeProgrammeLevelSummary(
                                 target.getProgrammeLevel().getId(),
                                 target.getProgrammeLevel().getCode(),
                                 target.getProgrammeLevel().getName()))
                         .toList(),
                 programmeTargets.stream()
-                        .map(target -> new zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.IntakeProgrammeSummary(
+                        .map(target -> new zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.IntakeProgrammeSummary(
                                 target.getProgramme().getId(),
                                 target.getProgramme().getCode(),
                                 target.getProgramme().getName(),

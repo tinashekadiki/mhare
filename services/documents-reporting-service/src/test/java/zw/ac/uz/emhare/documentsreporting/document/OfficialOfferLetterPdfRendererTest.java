@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.documentsreporting.document;
 
+import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.model.GeneratedDocument;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import java.time.Instant;
@@ -7,7 +9,7 @@ import java.time.LocalDate;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
-import zw.ac.uz.emhare.documentsreporting.projection.OfferLetterProjection;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.model.OfferLetterProjection;
 
 /** @author Tinashe K */
 class OfficialOfferLetterPdfRendererTest {

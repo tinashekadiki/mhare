@@ -1,5 +1,45 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionSubject;
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantEmploymentHistory;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantNextOfKin;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantQualificationResult;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantQualificationSitting;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantReferee;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantRefereeInvitation;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeChoice;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationSection;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeDocumentRequirement;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeSection;
+import zw.ac.uz.emhare.admissions.domain.model.ExamBody;
+import zw.ac.uz.emhare.admissions.domain.model.ProgrammeSelectionSnapshot;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionSubjectRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantEmploymentHistoryRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantNextOfKinRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantQualificationResultRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantRefereeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationPaymentReferenceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeChoiceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationSectionRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeDocumentRequirementRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeOptionSnapshotRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRefereeNominationRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationRefereeNomination;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationPriorUzDeclaration;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationProfessionalAchievement;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationPriorUzDeclarationRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProfessionalAchievementRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeEntryOptionSelectionRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeEntryOptionSelection;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeSectionRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ExamBodyRepository;
+
+import zw.ac.uz.emhare.admissions.application.command.*;
+
 import jakarta.transaction.Transactional;
 import java.time.Clock;
 import java.time.Instant;
@@ -15,6 +55,9 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import zw.ac.uz.emhare.admissions.application.AdmissionsDocumentViews.ApplicationDocumentRegister;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ApplicationDocumentVerificationRow;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.PriorUzDeclarationSummary;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ProfessionalAchievementSummary;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ProgrammeEntryPreferenceSummary;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ApplicationSectionSummary;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ApplicationSectionVerificationRow;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ApplicationWorkspace;
@@ -26,8 +69,13 @@ import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ReferenceOption;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.RefereeSummary;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.VerificationQueue;
-import zw.ac.uz.emhare.admissions.integration.AcademicSetupCatalogueClient;
-import zw.ac.uz.emhare.admissions.integration.AcademicSetupCatalogueClient.AcademicProgrammeOption;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantQualificationSittingRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationSectionStatus;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatus;
+import zw.ac.uz.emhare.admissions.domain.model.QualificationLevel;
+import zw.ac.uz.emhare.admissions.domain.model.QualificationResultStatus;
+import zw.ac.uz.emhare.admissions.domain.model.SubjectLevel;
 
 /** Owns application progress, applicant capture and completeness gates. @author Tinashe K */
 @Service
@@ -45,6 +93,9 @@ public class ApplicantApplicationWorkspaceService {
     private final ApplicantNextOfKinRepository nextOfKinRepository;
     private final ApplicantEmploymentHistoryRepository employmentRepository;
     private final ApplicantRefereeRepository refereeRepository;
+    private final ApplicationRefereeNominationRepository refereeNominationRepository;
+    private final ApplicationPriorUzDeclarationRepository priorUzDeclarationRepository;
+    private final ApplicationProfessionalAchievementRepository professionalAchievementRepository;
     private final ApplicantRefereeInvitationService refereeInvitationService;
     private final ApplicantQualificationSittingRepository qualificationSittingRepository;
     private final ApplicantQualificationResultRepository qualificationResultRepository;
@@ -53,9 +104,11 @@ public class ApplicantApplicationWorkspaceService {
     private final AdmissionsDocumentService documentService;
     private final ApplicationPaymentSubmissionReadinessService paymentSubmissionReadinessService;
     private final QualificationEligibilityService qualificationEligibilityService;
-    private final AcademicSetupCatalogueClient academicSetupCatalogueClient;
+    private final ApplicationProgrammeOptionSnapshotRepository programmeOptionSnapshotRepository;
+    private final ApplicationProgrammeEntryOptionSelectionRepository entryOptionSelectionRepository;
     private final AdmissionsApplicationWorkflowProgressService workflowProgressService;
     private final Clock clock;
+    private final tools.jackson.databind.ObjectMapper objectMapper;
 
     public ApplicantApplicationWorkspaceService(
             ApplicationRepository applicationRepository,
@@ -68,6 +121,9 @@ public class ApplicantApplicationWorkspaceService {
             ApplicantNextOfKinRepository nextOfKinRepository,
             ApplicantEmploymentHistoryRepository employmentRepository,
             ApplicantRefereeRepository refereeRepository,
+            ApplicationRefereeNominationRepository refereeNominationRepository,
+            ApplicationPriorUzDeclarationRepository priorUzDeclarationRepository,
+            ApplicationProfessionalAchievementRepository professionalAchievementRepository,
             ApplicantRefereeInvitationService refereeInvitationService,
             ApplicantQualificationSittingRepository qualificationSittingRepository,
             ApplicantQualificationResultRepository qualificationResultRepository,
@@ -76,9 +132,11 @@ public class ApplicantApplicationWorkspaceService {
             AdmissionsDocumentService documentService,
             ApplicationPaymentSubmissionReadinessService paymentSubmissionReadinessService,
             QualificationEligibilityService qualificationEligibilityService,
-            AcademicSetupCatalogueClient academicSetupCatalogueClient,
+            ApplicationProgrammeOptionSnapshotRepository programmeOptionSnapshotRepository,
+            ApplicationProgrammeEntryOptionSelectionRepository entryOptionSelectionRepository,
             AdmissionsApplicationWorkflowProgressService workflowProgressService,
-            Clock clock) {
+            Clock clock,
+            tools.jackson.databind.ObjectMapper objectMapper) {
         this.applicationRepository = applicationRepository;
         this.applicantRepository = applicantRepository;
         this.paymentReferenceRepository = paymentReferenceRepository;
@@ -89,6 +147,9 @@ public class ApplicantApplicationWorkspaceService {
         this.nextOfKinRepository = nextOfKinRepository;
         this.employmentRepository = employmentRepository;
         this.refereeRepository = refereeRepository;
+        this.refereeNominationRepository = refereeNominationRepository;
+        this.priorUzDeclarationRepository = priorUzDeclarationRepository;
+        this.professionalAchievementRepository = professionalAchievementRepository;
         this.refereeInvitationService = refereeInvitationService;
         this.qualificationSittingRepository = qualificationSittingRepository;
         this.qualificationResultRepository = qualificationResultRepository;
@@ -97,9 +158,11 @@ public class ApplicantApplicationWorkspaceService {
         this.documentService = documentService;
         this.paymentSubmissionReadinessService = paymentSubmissionReadinessService;
         this.qualificationEligibilityService = qualificationEligibilityService;
-        this.academicSetupCatalogueClient = academicSetupCatalogueClient;
+        this.programmeOptionSnapshotRepository = programmeOptionSnapshotRepository;
+        this.entryOptionSelectionRepository = entryOptionSelectionRepository;
         this.workflowProgressService = workflowProgressService;
         this.clock = clock;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -134,7 +197,7 @@ public class ApplicantApplicationWorkspaceService {
 
     @Transactional
     public ApplicationWorkspace staffWorkspace(UUID applicationId) {
-        return workspace(requireApplication(applicationId));
+        return workspace(requireApplication(applicationId), true);
     }
 
     @Transactional
@@ -145,7 +208,7 @@ public class ApplicantApplicationWorkspaceService {
         Application application = requireOwnedDraft(applicationId, applicantUserId);
         Applicant applicant = application.getApplicant();
         assertIdentityAvailable(applicant, command.nationalIdNumber(), command.passportNumber());
-        applicant.correctProfile(command);
+        applicant.correctProfile(command.toProfileCorrection());
         applicantRepository.saveAndFlush(applicant);
         invalidateDeclaration(application);
         return workspace(application);
@@ -250,6 +313,8 @@ public class ApplicantApplicationWorkspaceService {
             String positionTitle,
             String email,
             String phoneNumber,
+            String expertise,
+            String relationshipToApplicant,
             long expectedVersion) {
         Application application = requireOwnedDraft(applicationId, applicantUserId);
         ApplicantReferee referee;
@@ -265,10 +330,70 @@ public class ApplicantApplicationWorkspaceService {
             referee.update(fullName, title, organisation, positionTitle, email, phoneNumber);
         }
         refereeRepository.saveAndFlush(referee);
+        assertUniqueNominationContacts(application, referee);
+        ApplicationRefereeNomination nomination = refereeNominationRepository
+                .findByApplicationIdAndRefereeIdAndCurrentTrueAndDeletedAtIsNull(applicationId, referee.getId())
+                .orElseGet(() -> new ApplicationRefereeNomination(
+                        application, referee, organisation, positionTitle, expertise, relationshipToApplicant));
+        nomination.update(organisation, positionTitle, expertise, relationshipToApplicant);
+        refereeNominationRepository.saveAndFlush(nomination);
         if (refereeId == null || !referee.getEmail().equalsIgnoreCase(previousEmail)) {
-            refereeInvitationService.issueInvitation(application, referee);
+            refereeInvitationService.issueInvitation(application, referee, nomination);
         }
         invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace savePriorUzDeclaration(
+            UUID applicationId,
+            UUID applicantUserId,
+            boolean previouslyStudiedAtUz,
+            String registrationNumber,
+            java.time.LocalDate enrolmentStartedOn,
+            java.time.LocalDate enrolmentEndedOn,
+            Boolean previouslyAcceptedOffer,
+            Boolean previouslyTookUpPlace) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        ApplicationPriorUzDeclaration declaration = priorUzDeclarationRepository
+                .findByApplicationIdAndDeletedAtIsNull(applicationId)
+                .orElseGet(() -> new ApplicationPriorUzDeclaration(
+                        application, previouslyStudiedAtUz, registrationNumber, enrolmentStartedOn,
+                        enrolmentEndedOn, previouslyAcceptedOffer, previouslyTookUpPlace));
+        declaration.update(previouslyStudiedAtUz, registrationNumber, enrolmentStartedOn,
+                enrolmentEndedOn, previouslyAcceptedOffer, previouslyTookUpPlace);
+        priorUzDeclarationRepository.saveAndFlush(declaration);
+        invalidateDeclaration(application);
+        return workspace(application);
+    }
+
+    @Transactional
+    public ApplicationWorkspace replaceProfessionalAchievements(
+            UUID applicationId,
+            UUID applicantUserId,
+            boolean declaredNone,
+            List<ProfessionalAchievementInput> inputs) {
+        Application application = requireOwnedDraft(applicationId, applicantUserId);
+        List<ProfessionalAchievementInput> safeInputs = inputs == null ? List.of() : inputs;
+        if (declaredNone && !safeInputs.isEmpty()) {
+            throw new IllegalArgumentException("Professional achievements cannot be supplied when none are declared.");
+        }
+        if (!declaredNone && safeInputs.isEmpty()) {
+            throw new IllegalArgumentException("Add a professional achievement or explicitly declare none.");
+        }
+        professionalAchievementRepository
+                .findAllByApplicationIdAndDeletedAtIsNullOrderByCreatedAtAsc(applicationId)
+                .forEach(achievement -> achievement.markDeleted(applicantUserId));
+        if (!safeInputs.isEmpty()) {
+            professionalAchievementRepository.saveAllAndFlush(safeInputs.stream()
+                    .map(input -> new ApplicationProfessionalAchievement(
+                            application,
+                            professionalAchievementType(input.type()),
+                            input.title(), input.organisation(), input.achievedOn(), input.description()))
+                    .toList());
+        }
+        application.recordProfessionalAchievementsDeclaredNone(declaredNone);
+        applicationRepository.save(application);
         return workspace(application);
     }
 
@@ -280,7 +405,10 @@ public class ApplicantApplicationWorkspaceService {
                         refereeId, application.getApplicant().getId())
                 .orElseThrow(() -> new IllegalArgumentException("Referee record was not found."));
         assertVersion(referee.getVersion(), expectedVersion, "Referee record");
-        refereeInvitationService.issueInvitation(application, referee);
+        ApplicationRefereeNomination nomination = refereeNominationRepository
+                .findByApplicationIdAndRefereeIdAndCurrentTrueAndDeletedAtIsNull(applicationId, refereeId)
+                .orElseThrow(() -> new IllegalArgumentException("Referee is not nominated for this application."));
+        refereeInvitationService.issueInvitation(application, referee, nomination);
         return workspace(application);
     }
 
@@ -292,7 +420,8 @@ public class ApplicantApplicationWorkspaceService {
                 .orElseThrow(() -> new IllegalArgumentException("Referee record was not found."));
         assertVersion(referee.getVersion(), expectedVersion, "Referee record");
         refereeInvitationService.revokeInvitations(applicationId, refereeId);
-        referee.markDeleted(applicantUserId);
+        refereeNominationRepository.findByApplicationIdAndRefereeIdAndCurrentTrueAndDeletedAtIsNull(applicationId, refereeId)
+                .ifPresent(nomination -> nomination.withdraw(applicantUserId));
         invalidateDeclaration(application);
         return workspace(application);
     }
@@ -473,13 +602,25 @@ public class ApplicantApplicationWorkspaceService {
             List<UUID> programmeIds,
             boolean staffAmendment,
             String changeReason) {
+        return replaceStructuredProgrammeChoices(applicationId, actorUserId,
+                programmeIds.stream().map(programmeId -> new ProgrammeChoiceSelection(programmeId, List.of())).toList(),
+                staffAmendment, changeReason);
+    }
+
+    @Transactional
+    public ApplicationWorkspace replaceStructuredProgrammeChoices(
+            UUID applicationId,
+            UUID actorUserId,
+            List<ProgrammeChoiceSelection> requestedChoices,
+            boolean staffAmendment,
+            String changeReason) {
         Application application = staffAmendment
                 ? requireDraft(requireApplication(applicationId))
                 : requireOwnedDraft(applicationId, actorUserId);
         if (staffAmendment && (changeReason == null || changeReason.trim().length() < 10)) {
             throw new IllegalArgumentException("A staff programme-choice amendment reason is required.");
         }
-        List<ProgrammeSelectionSnapshot> selections = validateProgrammeSelections(application, programmeIds);
+        List<ValidatedProgrammeChoice> selections = validateProgrammeSelections(application, requestedChoices);
         List<ApplicationProgrammeChoice> currentChoices = programmeChoiceRepository
                 .findAllByApplicationIdOrderByChoiceRankAsc(applicationId).stream()
                 .filter(choice -> !choice.isDeleted()).toList();
@@ -487,9 +628,20 @@ public class ApplicantApplicationWorkspaceService {
         programmeChoiceRepository.saveAllAndFlush(currentChoices);
         List<ApplicationProgrammeChoice> replacements = new ArrayList<>();
         for (int index = 0; index < selections.size(); index++) {
-            replacements.add(new ApplicationProgrammeChoice(application, selections.get(index), index + 1));
+            replacements.add(new ApplicationProgrammeChoice(application, selections.get(index).programme(), index + 1));
         }
         programmeChoiceRepository.saveAllAndFlush(replacements);
+        List<ApplicationProgrammeEntryOptionSelection> entrySelections = new ArrayList<>();
+        for (int choiceIndex = 0; choiceIndex < replacements.size(); choiceIndex++) {
+            ApplicationProgrammeChoice programmeChoice = replacements.get(choiceIndex);
+            List<EntryOptionSnapshot> entryOptions = selections.get(choiceIndex).entryOptions();
+            for (int entryIndex = 0; entryIndex < entryOptions.size(); entryIndex++) {
+                EntryOptionSnapshot entry = entryOptions.get(entryIndex);
+                entrySelections.add(new ApplicationProgrammeEntryOptionSelection(
+                        programmeChoice, entry.id(), entry.code(), entry.name(), entryIndex + 1));
+            }
+        }
+        if (!entrySelections.isEmpty()) entryOptionSelectionRepository.saveAllAndFlush(entrySelections);
         invalidateDeclaration(application);
         return workspace(application);
     }
@@ -585,6 +737,10 @@ public class ApplicantApplicationWorkspaceService {
     }
 
     private ApplicationWorkspace workspace(Application application) {
+        return workspace(application, false);
+    }
+
+    private ApplicationWorkspace workspace(Application application, boolean includeConfidentialReferenceResponses) {
         initializeSections(application);
         synchronizeQualificationPoints(application);
         List<ApplicationSection> sections = refreshSectionProgress(application);
@@ -604,9 +760,34 @@ public class ApplicantApplicationWorkspaceService {
                         .stream().map(NextOfKinSummary::from).toList(),
                 employmentRepository.findAllByApplicantIdAndDeletedAtIsNullOrderByStartedOnDesc(applicant.getId())
                         .stream().map(EmploymentHistorySummary::from).toList(),
-                refereeRepository.findAllByApplicantIdAndDeletedAtIsNullOrderByFullNameAsc(applicant.getId())
-                        .stream().map(referee -> RefereeSummary.from(
-                                referee, latestRefereeInvitations.get(referee.getId()))).toList(),
+                refereeNominationRepository
+                        .findAllByApplicationIdAndCurrentTrueAndDeletedAtIsNullOrderByCreatedAtAsc(application.getId())
+                        .stream().map(nomination -> RefereeSummary.from(
+                                nomination,
+                                latestRefereeInvitations.get(nomination.getReferee().getId()),
+                                includeConfidentialReferenceResponses)).toList(),
+                priorUzDeclarationRepository.findByApplicationIdAndDeletedAtIsNull(application.getId())
+                        .map(declaration -> new PriorUzDeclarationSummary(
+                                declaration.isPreviouslyStudiedAtUz(), declaration.getRegistrationNumber(),
+                                declaration.getEnrolmentStartedOn(), declaration.getEnrolmentEndedOn(),
+                                declaration.getPreviouslyAcceptedOffer(), declaration.getPreviouslyTookUpPlace(),
+                                declaration.getVersion()))
+                        .orElse(null),
+                application.isProfessionalAchievementsDeclaredNone(),
+                professionalAchievementRepository
+                        .findAllByApplicationIdAndDeletedAtIsNullOrderByCreatedAtAsc(application.getId())
+                        .stream().map(achievement -> new ProfessionalAchievementSummary(
+                                achievement.getId(), achievement.getType().name(), achievement.getTitle(),
+                                achievement.getOrganisation(), achievement.getAchievedOn(), achievement.getDescription(),
+                                achievement.getVersion())).toList(),
+                choices.stream()
+                        .flatMap(choice -> entryOptionSelectionRepository
+                                .findAllByProgrammeChoice_IdAndDeletedAtIsNullOrderByPreferenceRankAsc(choice.getId()).stream())
+                        .map(selection -> new ProgrammeEntryPreferenceSummary(
+                                selection.getProgrammeChoiceId(), selection.getEntryOptionId(),
+                                selection.getEntryOptionCode(), selection.getEntryOptionName(),
+                                selection.getPreferenceRank()))
+                        .toList(),
                 qualificationSittingRepository.findAllByApplicationIdAndDeletedAtIsNullOrderByYearWrittenDesc(application.getId())
                         .stream().map(this::qualificationSummary).toList(),
                 documents,
@@ -638,7 +819,21 @@ public class ApplicantApplicationWorkspaceService {
                 .count();
         updateCountSection(byCode.get("QUALIFICATIONS"), completeSittings, now);
         updateCountSection(byCode.get("EMPLOYMENT_HISTORY"), employmentRepository.countByApplicantIdAndDeletedAtIsNull(applicant.getId()), now);
-        updateCountSection(byCode.get("REFEREES"), refereeRepository.countByApplicantIdAndDeletedAtIsNull(applicant.getId()), now);
+        updateSection(byCode.get("PRIOR_UZ_STUDY"),
+                priorUzDeclarationRepository.findByApplicationIdAndDeletedAtIsNull(application.getId()).isPresent(),
+                priorUzDeclarationRepository.findByApplicationIdAndDeletedAtIsNull(application.getId()).isPresent()
+                        ? "Prior UZ study declaration completed." : "Declare whether you previously studied at UZ.", now);
+        long achievementCount = professionalAchievementRepository
+                .findAllByApplicationIdAndDeletedAtIsNullOrderByCreatedAtAsc(application.getId()).size();
+        boolean achievementsComplete = application.isProfessionalAchievementsDeclaredNone() || achievementCount > 0;
+        updateSection(byCode.get("PROFESSIONAL_ACHIEVEMENTS"), achievementsComplete,
+                achievementsComplete
+                        ? application.isProfessionalAchievementsDeclaredNone()
+                            ? "Applicant declared no professional achievements."
+                            : achievementCount + " professional achievement(s) captured."
+                        : "Add professional achievements or explicitly declare none.", now);
+        updateCountSection(byCode.get("REFEREES"),
+                refereeInvitationService.countCurrentSubmittedReferences(application.getId()), now);
         updateCountSection(byCode.get("PROGRAMME_CHOICES"), activeProgrammeChoices(application.getId()).size(), now);
         ApplicationDocumentRegister documents = documentService.staffRegister(application.getId());
         updateSection(byCode.get("DOCUMENTS"), documents.requiredDocumentsUploaded(),
@@ -732,25 +927,66 @@ public class ApplicantApplicationWorkspaceService {
                 .filter(choice -> !choice.isDeleted()).toList();
     }
 
-    private List<ProgrammeSelectionSnapshot> validateProgrammeSelections(Application application, List<UUID> programmeIds) {
-        if (programmeIds == null || programmeIds.isEmpty()) {
+    private List<ValidatedProgrammeChoice> validateProgrammeSelections(
+            Application application, List<ProgrammeChoiceSelection> requestedChoices) {
+        if (requestedChoices == null || requestedChoices.isEmpty()) {
             throw new IllegalArgumentException("At least one programme choice is required.");
         }
-        if (programmeIds.size() > application.getAdmissionCycle().getMaximumProgrammeChoices()) {
+        if (requestedChoices.size() > application.getAdmissionCycle().getMaximumProgrammeChoices()) {
             throw new IllegalArgumentException("This intake allows a maximum of "
                     + application.getAdmissionCycle().getMaximumProgrammeChoices() + " programme choices.");
         }
+        List<UUID> programmeIds = requestedChoices.stream().map(ProgrammeChoiceSelection::programmeId).toList();
         if (new LinkedHashSet<>(programmeIds).size() != programmeIds.size()) {
             throw new IllegalArgumentException("The same programme cannot be selected more than once.");
         }
-        Map<UUID, AcademicProgrammeOption> available = academicSetupCatalogueClient.getAdmissionsCatalogue(
-                        application.getAdmissionCycle().getAcademicYearId(), application.getAdmissionCycle().getIntakeId())
-                .programmes().stream().collect(Collectors.toMap(AcademicProgrammeOption::programmeId, Function.identity()));
-        return programmeIds.stream().map(programmeId -> {
-            AcademicProgrammeOption option = available.get(programmeId);
-            if (option == null) throw new IllegalArgumentException("Selected programme is not available for this intake: " + programmeId);
-            return ProgrammeSelectionSnapshot.from(option);
+        Map<UUID, zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeOptionSnapshot> available =
+                programmeOptionSnapshotRepository
+                        .findAllByApplicationIdAndDeletedAtIsNullOrderByProgrammeCodeAsc(application.getId())
+                        .stream().collect(Collectors.toMap(
+                                zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeOptionSnapshot::getProgrammeId,
+                                Function.identity()));
+        return requestedChoices.stream().map(requested -> {
+            var option = available.get(requested.programmeId());
+            if (option == null) throw new IllegalArgumentException(
+                    "Selected programme is outside this application's eligible programme snapshot: " + requested.programmeId());
+            List<EntryOptionSnapshot> availableEntryOptions = entryOptions(option.getEntryOptionsJson());
+            List<UUID> entryOptionIds = requested.entryOptionIds() == null ? List.of() : requested.entryOptionIds();
+            if (new LinkedHashSet<>(entryOptionIds).size() != entryOptionIds.size()) {
+                throw new IllegalArgumentException("The same entry option cannot be selected more than once.");
+            }
+            if (entryOptionIds.size() < option.getMinimumEntryOptionSelections()
+                    || entryOptionIds.size() > option.getMaximumEntryOptionSelections()) {
+                throw new IllegalArgumentException("Programme " + option.getProgrammeCode() + " requires between "
+                        + option.getMinimumEntryOptionSelections() + " and "
+                        + option.getMaximumEntryOptionSelections() + " entry-option selections.");
+            }
+            Map<UUID, EntryOptionSnapshot> byId = availableEntryOptions.stream()
+                    .collect(Collectors.toMap(EntryOptionSnapshot::id, Function.identity()));
+            List<EntryOptionSnapshot> selectedEntries = entryOptionIds.stream().map(entryOptionId -> {
+                EntryOptionSnapshot entry = byId.get(entryOptionId);
+                if (entry == null) throw new IllegalArgumentException(
+                        "Selected entry option is outside the programme snapshot: " + entryOptionId);
+                return entry;
+            }).toList();
+            return new ValidatedProgrammeChoice(option.toProgrammeSelectionSnapshot(), selectedEntries);
         }).toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<EntryOptionSnapshot> entryOptions(String json) {
+        try {
+            Object parsed = objectMapper.readValue(json, Object.class);
+            if (!(parsed instanceof List<?> values)) return List.of();
+            return values.stream().map(value -> {
+                Map<String, Object> map = (Map<String, Object>) value;
+                return new EntryOptionSnapshot(
+                        UUID.fromString(String.valueOf(map.get("id"))),
+                        String.valueOf(map.get("code")), String.valueOf(map.get("name")));
+            }).toList();
+        } catch (RuntimeException exception) {
+            throw new IllegalStateException("Programme entry-option snapshot is invalid.", exception);
+        }
     }
 
     private void validateSubjectLevel(QualificationLevel level, AdmissionSubject subject) {
@@ -773,6 +1009,21 @@ public class ApplicantApplicationWorkspaceService {
         }
     }
 
+    private ApplicationProfessionalAchievement.Type professionalAchievementType(String value) {
+        try {
+            return ApplicationProfessionalAchievement.Type.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("Unsupported professional achievement type: " + value, exception);
+        }
+    }
+
+    public record ProfessionalAchievementInput(
+            String type, String title, String organisation, java.time.LocalDate achievedOn, String description) { }
+
+    public record ProgrammeChoiceSelection(UUID programmeId, List<UUID> entryOptionIds) { }
+    private record EntryOptionSnapshot(UUID id, String code, String name) { }
+    private record ValidatedProgrammeChoice(ProgrammeSelectionSnapshot programme, List<EntryOptionSnapshot> entryOptions) { }
+
     private void assertIdentityAvailable(Applicant applicant, String nationalId, String passport) {
         if (nationalId != null && !nationalId.isBlank()) {
             applicantRepository.findByNationalIdNumberIgnoreCaseAndDeletedAtIsNull(nationalId.trim())
@@ -783,6 +1034,20 @@ public class ApplicantApplicationWorkspaceService {
             applicantRepository.findByPassportNumberIgnoreCaseAndDeletedAtIsNull(passport.trim())
                     .filter(existing -> !existing.getId().equals(applicant.getId()))
                     .ifPresent(existing -> { throw new IllegalStateException("This passport is already linked to another applicant account."); });
+        }
+    }
+
+    private void assertUniqueNominationContacts(Application application, ApplicantReferee referee) {
+        String normalizedEmail = ApplicationRefereeNomination.normalizeEmail(referee.getEmail());
+        String normalizedPhone = ApplicationRefereeNomination.normalizePhone(referee.getPhoneNumber());
+        boolean duplicate = refereeNominationRepository
+                .findAllByApplicationIdAndCurrentTrueAndDeletedAtIsNullOrderByCreatedAtAsc(application.getId())
+                .stream().filter(nomination -> !nomination.getReferee().getId().equals(referee.getId()))
+                .anyMatch(nomination -> nomination.getNormalizedEmail().equals(normalizedEmail)
+                        || (normalizedPhone != null && normalizedPhone.equals(nomination.getNormalizedPhoneNumber())));
+        if (duplicate) {
+            throw new IllegalArgumentException(
+                    "Each nominated referee must have a distinct email address and supplied phone number.");
         }
     }
 

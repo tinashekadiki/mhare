@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.examstimetabling.roster;
 
+import zw.ac.uz.emhare.examstimetabling.roster.domain.model.ExamCandidateModule;
+import zw.ac.uz.emhare.examstimetabling.roster.domain.model.ExamRegistrationImport;
+import zw.ac.uz.emhare.examstimetabling.roster.infrastructure.persistence.ExamCandidateModuleRepository;
+import zw.ac.uz.emhare.examstimetabling.roster.infrastructure.persistence.ExamRegistrationImportRepository;
+
 import java.time.Clock;
 import java.util.HashSet;
 import java.util.Set;

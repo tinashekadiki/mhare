@@ -1,5 +1,14 @@
 package zw.ac.uz.emhare.dining;
 
+import zw.ac.uz.emhare.dining.operations.domain.model.MealAttendanceEvent;
+import zw.ac.uz.emhare.dining.operations.domain.model.MealServiceSession;
+import zw.ac.uz.emhare.dining.operations.domain.model.StudentDietaryRequirement;
+import zw.ac.uz.emhare.dining.operations.domain.model.StudentDiningAssignment;
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningAttendantAssignment;
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningHallAssignmentRule;
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningPlan;
+import zw.ac.uz.emhare.dining.setup.domain.model.MealOption;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.*;
@@ -12,9 +21,9 @@ import org.springframework.test.context.*;
 import org.testcontainers.junit.jupiter.*;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import zw.ac.uz.emhare.dining.operations.*;
-import zw.ac.uz.emhare.dining.operations.DiningOperationsContracts.*;
+import zw.ac.uz.emhare.dining.operations.api.model.DiningOperationsApiModels.*;
 import zw.ac.uz.emhare.dining.setup.*;
-import zw.ac.uz.emhare.dining.setup.DiningSetupContracts.*;
+import zw.ac.uz.emhare.dining.setup.api.model.DiningSetupApiModels.*;
 
 /** @author Tinashe K */
 @Testcontainers

@@ -1,5 +1,28 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantQualificationSitting;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationFee;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationPaymentReference;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatusEvent;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationClearanceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationEvaluationRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationFeeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationPaymentReferenceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeChoiceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationSectionRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationStatusEventRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeProgrammeMappingRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeOptionSnapshotRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeProgrammeMapping;
+
+import zw.ac.uz.emhare.admissions.application.command.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -23,11 +46,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.admissions.integration.AdmissionsIntegrationOutboxService;
 import zw.ac.uz.emhare.admissions.integration.AcademicSetupCatalogueClient.AcademicAdmissionsIntake;
 import zw.ac.uz.emhare.admissions.integration.AcademicSetupCatalogueClient.AcademicProgrammeOption;
 import zw.ac.uz.emhare.admissions.integration.FinanceCatalogueClient;
 import zw.ac.uz.emhare.common.messaging.ApplicationPaymentReferenceUpdatedEvent;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantQualificationSittingRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRepository;
+import zw.ac.uz.emhare.admissions.domain.model.PaymentReferenceStatus;
+import zw.ac.uz.emhare.admissions.domain.model.QualificationResultStatus;
 
 @ExtendWith(MockitoExtension.class)
 class AdmissionsApplicationServiceTest {
@@ -40,6 +68,8 @@ class AdmissionsApplicationServiceTest {
 
     @Mock
     private ApplicationTypeRepository applicationTypeRepository;
+    @Mock private ApplicationTypeProgrammeMappingRepository programmeMappingRepository;
+    @Mock private ApplicationProgrammeOptionSnapshotRepository programmeOptionSnapshotRepository;
 
     @Mock
     private ApplicationFeeRepository applicationFeeRepository;
@@ -90,6 +120,8 @@ class AdmissionsApplicationServiceTest {
                 applicantRepository,
                 admissionsIntakeProjectionService,
                 applicationTypeRepository,
+                programmeMappingRepository,
+                programmeOptionSnapshotRepository,
                 applicationFeeRepository,
                 applicationRepository,
                 programmeChoiceRepository,
@@ -105,7 +137,8 @@ class AdmissionsApplicationServiceTest {
                 admissionsDocumentService,
                 applicantApplicationWorkspaceService,
                 qualificationEligibilityService,
-                clock);
+                clock,
+                new ObjectMapper());
     }
 
     @Test
@@ -142,6 +175,7 @@ class AdmissionsApplicationServiceTest {
         when(admissionsIntakeProjectionService.requireOpenIntake(intakeId))
                 .thenReturn(resolvedIntake(admissionCycle, List.of(programmeId)));
         when(applicationTypeRepository.findById(applicationTypeId)).thenReturn(Optional.of(applicationType));
+        allowProgrammeForRoute(applicationTypeId, applicationType, programmeId);
         when(applicationFeeRepository.findEffectiveFees(applicationTypeId, "LOCAL", LocalDate.now(clock)))
                 .thenReturn(List.of(applicationFee));
         when(admissionsIdentifierGenerator.nextApplicantNumber()).thenReturn("APP-0001");
@@ -178,6 +212,7 @@ class AdmissionsApplicationServiceTest {
         UUID userId = UUID.randomUUID();
         UUID intakeId = UUID.randomUUID();
         UUID applicationTypeId = UUID.randomUUID();
+        UUID availableProgrammeId = UUID.randomUUID();
         AdmissionCycle admissionCycle = new AdmissionCycle(
                 UUID.randomUUID(),
                 intakeId,
@@ -202,8 +237,9 @@ class AdmissionsApplicationServiceTest {
         when(applicantRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(applicantRepository.save(any(Applicant.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(admissionsIntakeProjectionService.requireOpenIntake(intakeId))
-                .thenReturn(resolvedIntake(admissionCycle, List.of()));
+                .thenReturn(resolvedIntake(admissionCycle, List.of(availableProgrammeId)));
         when(applicationTypeRepository.findById(applicationTypeId)).thenReturn(Optional.of(applicationType));
+        allowProgrammeForRoute(applicationTypeId, applicationType, availableProgrammeId);
         when(applicationFeeRepository.findEffectiveFees(applicationTypeId, "LOCAL", LocalDate.now(clock)))
                 .thenReturn(List.of());
         when(admissionsIdentifierGenerator.nextApplicantNumber()).thenReturn("APP-0002");
@@ -264,6 +300,7 @@ class AdmissionsApplicationServiceTest {
         when(admissionsIntakeProjectionService.requireOpenIntake(intakeId))
                 .thenReturn(resolvedIntake(admissionCycle, List.of(programmeId)));
         when(applicationTypeRepository.findById(applicationTypeId)).thenReturn(Optional.of(applicationType));
+        allowProgrammeForRoute(applicationTypeId, applicationType, programmeId);
         when(applicationFeeRepository.findEffectiveFees(applicationTypeId, "LOCAL", LocalDate.now(clock)))
                 .thenReturn(List.of());
         when(applicantRepository.findByUserId(userId)).thenReturn(Optional.of(existingApplicant));
@@ -296,12 +333,48 @@ class AdmissionsApplicationServiceTest {
         when(admissionsIntakeProjectionService.requireOpenIntake(intakeId))
                 .thenReturn(resolvedIntake(admissionCycle, List.of(programmeId)));
         when(applicationTypeRepository.findById(applicationTypeId)).thenReturn(Optional.of(applicationType));
+        allowProgrammeForRoute(applicationTypeId, applicationType, programmeId);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> admissionsApplicationService.startApplication(command));
 
         assertEquals("The same programme cannot be selected more than once.", exception.getMessage());
+    }
+
+    @Test
+    void startApplication_shouldRejectProgrammeOutsideConfiguredRouteBeforeWritingApplication() {
+        UUID intakeId = UUID.randomUUID();
+        UUID applicationTypeId = UUID.randomUUID();
+        UUID mbaProgrammeId = UUID.randomUUID();
+        UUID unrelatedProgrammeId = UUID.randomUUID();
+        AdmissionCycle admissionCycle = new AdmissionCycle(
+                UUID.randomUUID(), intakeId, "2027-AUG", "2027 August Intake",
+                currentInstant.minusSeconds(3600), currentInstant.plusSeconds(86400));
+        admissionCycle.open(currentInstant);
+        ApplicationType applicationType = new ApplicationType("MBA", "MBA", true, true);
+        CreateApplicationCommand command = new CreateApplicationCommand(
+                UUID.randomUUID(), UUID.randomUUID(), "LOCAL", "Nyasha", "Moyo", null, "nyasha@example.test",
+                intakeId, applicationTypeId, List.of(unrelatedProgrammeId));
+        when(admissionsIntakeProjectionService.requireOpenIntake(intakeId))
+                .thenReturn(resolvedIntake(admissionCycle, List.of(mbaProgrammeId, unrelatedProgrammeId)));
+        when(applicationTypeRepository.findById(applicationTypeId)).thenReturn(Optional.of(applicationType));
+        allowProgrammeForRoute(applicationTypeId, applicationType, mbaProgrammeId);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> admissionsApplicationService.startApplication(command));
+
+        assertTrue(exception.getMessage().contains("application route and intake"));
+        verify(applicationRepository, org.mockito.Mockito.never()).saveAndFlush(any(Application.class));
+    }
+
+    private void allowProgrammeForRoute(
+            UUID applicationTypeId, ApplicationType applicationType, UUID programmeId) {
+        when(programmeMappingRepository
+                .findAllByApplicationTypeIdAndActiveTrueAndDeletedAtIsNullOrderByProgrammeCodeAsc(applicationTypeId))
+                .thenReturn(List.of(new ApplicationTypeProgrammeMapping(
+                        applicationType, programmeId, "BSCIT", "Bachelor of Science in Information Technology")));
     }
 
     private AdmissionsIntakeProjectionService.ResolvedAdmissionsIntake resolvedIntake(

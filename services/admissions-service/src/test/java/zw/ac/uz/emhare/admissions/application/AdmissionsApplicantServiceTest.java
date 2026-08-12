@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantRepository;
+
+import zw.ac.uz.emhare.admissions.application.command.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -21,6 +26,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 import zw.ac.uz.emhare.common.persistence.EmhareRevisionContext;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatus;
 
 @ExtendWith(MockitoExtension.class)
 class AdmissionsApplicantServiceTest {

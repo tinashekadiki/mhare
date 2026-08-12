@@ -1,4 +1,20 @@
 services:
+  discovery-server:
+    profiles: ["service-runtime"]
+    build:
+      context: .
+      dockerfile: services/discovery-server/Dockerfile
+    container_name: emhare-discovery-server
+    environment:
+      EUREKA_USERNAME: ${EUREKA_USERNAME:-emhare-discovery}
+      EUREKA_PASSWORD: ${EUREKA_PASSWORD:-emhare-discovery-dev}
+      EUREKA_INSTANCE_HOSTNAME: discovery-server
+      EUREKA_REGISTER_WITH_SERVER: "false"
+      EUREKA_FETCH_REGISTRY: "false"
+      OTEL_SDK_DISABLED: "true"
+    ports:
+      - "8761:8761"
+
   postgres:
     image: postgres:18
     container_name: emhare-postgres
@@ -76,6 +92,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    container_name: emhare-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
 volumes:
   postgres-data:

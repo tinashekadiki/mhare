@@ -25,6 +25,12 @@
         "command": "nuxt prepare && vue-tsc --noEmit",
         "cwd": "apps/applicant-portal"
       }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config vitest.config.ts apps/applicant-portal"
+      }
     }
   }
 }

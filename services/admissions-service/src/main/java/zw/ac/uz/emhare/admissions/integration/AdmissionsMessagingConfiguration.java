@@ -98,4 +98,17 @@ public class AdmissionsMessagingConfiguration {
                 BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange)
                         .with(EmhareMessagingTopology.deadLetterRoutingKey(queueName)));
     }
+
+    @Bean
+    Declarables admissionsNotificationDeliveryMessagingTopology() {
+        TopicExchange eventsExchange = new TopicExchange(EmhareMessagingTopology.EVENTS_EXCHANGE, true, false);
+        DirectExchange deadLetterExchange = new DirectExchange(EmhareMessagingTopology.DEAD_LETTER_EXCHANGE, true, false);
+        String queueName = EmhareMessagingTopology.NOTIFICATION_DELIVERY_ADMISSIONS_QUEUE;
+        Queue queue = QueueBuilder.durable(queueName).deadLetterExchange(EmhareMessagingTopology.DEAD_LETTER_EXCHANGE)
+                .deadLetterRoutingKey(EmhareMessagingTopology.deadLetterRoutingKey(queueName)).build();
+        Queue deadQueue = QueueBuilder.durable(EmhareMessagingTopology.deadLetterQueue(queueName)).build();
+        return new Declarables(eventsExchange, deadLetterExchange, queue, deadQueue,
+                BindingBuilder.bind(queue).to(eventsExchange).with(EmhareMessagingTopology.NOTIFICATION_DELIVERY_EVENT),
+                BindingBuilder.bind(deadQueue).to(deadLetterExchange).with(EmhareMessagingTopology.deadLetterRoutingKey(queueName)));
+    }
 }

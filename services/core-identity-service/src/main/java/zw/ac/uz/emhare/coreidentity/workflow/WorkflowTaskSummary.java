@@ -1,5 +1,11 @@
 package zw.ac.uz.emhare.coreidentity.workflow;
 
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowAssigneeType;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowDecision;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowScopeType;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowTask;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowTaskStatus;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

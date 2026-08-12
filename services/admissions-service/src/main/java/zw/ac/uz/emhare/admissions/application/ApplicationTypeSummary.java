@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
+
 import java.util.UUID;
 
 /** @author Tinashe K */

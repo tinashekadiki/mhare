@@ -1,5 +1,12 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionOffer;
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeChoice;
+import zw.ac.uz.emhare.admissions.domain.model.OfferBatch;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -10,6 +17,14 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import zw.ac.uz.emhare.admissions.domain.model.OfferBatchStatus;
+import zw.ac.uz.emhare.admissions.domain.model.OfferStatus;
+import zw.ac.uz.emhare.admissions.domain.model.OfferType;
+import zw.ac.uz.emhare.admissions.domain.model.ProgrammeChoiceDecision;
+import zw.ac.uz.emhare.admissions.domain.model.DecisionOutcome;
+import zw.ac.uz.emhare.admissions.domain.model.OfferDocumentVersion;
+import zw.ac.uz.emhare.admissions.domain.model.OfferPublication;
+import zw.ac.uz.emhare.admissions.domain.model.OfferResponseType;
 
 /** @author Tinashe K */
 class AdmissionOfferGovernanceTest {
@@ -54,6 +69,37 @@ class AdmissionOfferGovernanceTest {
 
         assertThat(summary.applicantNumber()).isEqualTo("APP-00000762");
         assertThat(summary.applicantName()).isEqualTo("Jemima Megan Lindsey Stevens");
+    }
+
+    @Test
+    void publishedDirectOfferRequiresReplacementPublicationAfterTermsChange() {
+        Instant now = Instant.parse("2028-01-10T08:00:00Z");
+        AdmissionCycle cycle = mock(AdmissionCycle.class); when(cycle.getIntakeId()).thenReturn(UUID.randomUUID());
+        Application application = mock(Application.class); UUID applicationId = UUID.randomUUID();
+        when(application.getId()).thenReturn(applicationId); when(application.getAdmissionCycle()).thenReturn(cycle);
+        ApplicationProgrammeChoice choice = mock(ApplicationProgrammeChoice.class); UUID choiceId = UUID.randomUUID();
+        when(choice.getId()).thenReturn(choiceId); when(choice.getApplication()).thenReturn(application);
+        when(choice.getProgrammeId()).thenReturn(UUID.randomUUID()); when(choice.getProgrammeVersionId()).thenReturn(UUID.randomUUID());
+        when(choice.getProgrammeCode()).thenReturn("BSC-CS"); when(choice.getProgrammeName()).thenReturn("Computer Science");
+        ProgrammeChoiceDecision decision = mock(ProgrammeChoiceDecision.class);
+        when(decision.getDecision()).thenReturn(DecisionOutcome.ADMIT); when(decision.getProgrammeChoice()).thenReturn(choice);
+        AdmissionOffer offer = new AdmissionOffer(application, choice, decision, "OFR-2028-0002");
+        offer.updateTerms(OfferType.FIRM, null, now.plusSeconds(86_400), null, null,
+                LocalDate.parse("2028-08-25"), now);
+        OfferDocumentVersion document = new OfferDocumentVersion(offer, 1, UUID.randomUUID(), now);
+        document.store(UUID.randomUUID(), "OFFER-OFR-2028-0002-V1", "documents",
+                "official-offers/APP/OFFER-OFR-2028-0002-V1.pdf", "a".repeat(64), now.plusSeconds(10));
+        offer.linkCurrentDocumentVersion(document);
+        OfferPublication publication = new OfferPublication(offer, document, 1, UUID.randomUUID(), UUID.randomUUID(), now.plusSeconds(20));
+        offer.publish(publication, UUID.randomUUID(), now.plusSeconds(20));
+
+        offer.updateTerms(OfferType.FIRM, null, now.plusSeconds(172_800), null, null,
+                LocalDate.parse("2028-08-25"), now.plusSeconds(30));
+
+        assertThat(offer.getOfferBatch()).isNull();
+        assertThat(offer.isAmendmentPending()).isTrue();
+        assertThatThrownBy(() -> offer.respond(OfferResponseType.ACCEPTED))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("published");
     }
 
     private AdmissionOffer draftOffer(Instant now) {

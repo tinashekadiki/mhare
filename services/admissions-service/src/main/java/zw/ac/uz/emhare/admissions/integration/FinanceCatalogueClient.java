@@ -2,36 +2,27 @@ package zw.ac.uz.emhare.admissions.integration;
 
 import java.math.BigDecimal;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import zw.ac.uz.emhare.common.web.ServiceDependencyUnavailableException;
+import zw.ac.uz.emhare.admissions.integration.http.FinanceHttpService;
 
 /** @author Tinashe K */
 @Component
 public class FinanceCatalogueClient {
 
-    private final RestClient restClient;
+    private final FinanceHttpService financeHttpService;
 
-    public FinanceCatalogueClient(
-            RestClient.Builder restClientBuilder,
-            @Value("${emhare.finance.url:http://localhost:8084}") String financeUrl) {
-        this.restClient = restClientBuilder.baseUrl(financeUrl).build();
+    public FinanceCatalogueClient(FinanceHttpService financeHttpService) {
+        this.financeHttpService = financeHttpService;
     }
 
     public ApplicationFeeStructurePricing getApplicationFeeStructurePricing(UUID feeStructureId) {
         try {
-            ApplicationFeeStructurePricing pricing = restClient.get()
-                    .uri("/api/finance/fee-structures/{id}/pricing", feeStructureId)
-                    .headers(headers -> headers.setBearerAuth(currentBearerToken()))
-                    .retrieve()
-                    .body(ApplicationFeeStructurePricing.class);
+            ApplicationFeeStructurePricing pricing = financeHttpService.getApplicationFeeStructurePricing(feeStructureId);
             if (pricing == null) {
                 throw new ServiceDependencyUnavailableException("Finance returned an empty fee structure pricing response.", null);
             }
@@ -46,10 +37,12 @@ public class FinanceCatalogueClient {
             throw unavailable(exception);
         } catch (RestClientException exception) {
             throw unavailable(exception);
+        } catch (RuntimeException exception) {
+            throw unavailable(exception);
         }
     }
 
-    private ServiceDependencyUnavailableException unavailable(RestClientException exception) {
+    private ServiceDependencyUnavailableException unavailable(Throwable exception) {
         return new ServiceDependencyUnavailableException(
                 "Finance is unavailable, so the application fee cannot be safely resolved.", exception);
     }
@@ -64,13 +57,6 @@ public class FinanceCatalogueClient {
             // Use the stable local message when Finance returns a non-standard error body.
         }
         return "Finance rejected the fee structure pricing request.";
-    }
-
-    private String currentBearerToken() {
-        if (SecurityContextHolder.getContext().getAuthentication() instanceof JwtAuthenticationToken authentication) {
-            return authentication.getToken().getTokenValue();
-        }
-        throw new IllegalStateException("JWT authentication is required for the Finance fee structure lookup.");
     }
 
     public record ApplicationFeeStructurePricing(

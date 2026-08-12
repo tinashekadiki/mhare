@@ -1,5 +1,13 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionSubject;
+import zw.ac.uz.emhare.admissions.domain.model.GradingScale;
+import zw.ac.uz.emhare.admissions.domain.model.GradingScaleValue;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionSubjectRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ExamBodyRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.GradingScaleRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.GradingScaleValueRepository;
+
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -14,6 +22,8 @@ import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.QualificationReferenceManagementData;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ReferenceOption;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.SubjectReferenceOption;
+import zw.ac.uz.emhare.admissions.domain.model.QualificationLevel;
+import zw.ac.uz.emhare.admissions.domain.model.SubjectLevel;
 
 /** Maintains qualification subjects and grading values used by applicant capture. @author Tinashe K */
 @Service

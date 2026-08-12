@@ -42,6 +42,9 @@ public class DocumentsReportingMessagingConfiguration {
         declareRoute(declarations, eventsExchange, deadLetterExchange,
                 EmhareMessagingTopology.OFFER_LETTER_REQUESTED_DOCUMENTS_QUEUE,
                 EmhareMessagingTopology.OFFER_LETTER_REQUESTED_EVENT);
+        declareRoute(declarations, eventsExchange, deadLetterExchange,
+                EmhareMessagingTopology.OFFER_PUBLICATION_DOCUMENTS_QUEUE,
+                EmhareMessagingTopology.OFFER_PUBLICATION_EVENT);
         return new Declarables(declarations);
     }
 

@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.notifications;
 
+import zw.ac.uz.emhare.notifications.domain.model.NotificationRequest;
+
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;

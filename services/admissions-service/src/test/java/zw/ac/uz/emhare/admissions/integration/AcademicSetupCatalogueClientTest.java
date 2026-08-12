@@ -21,6 +21,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.support.RestClientAdapter;
+import org.springframework.web.service.invoker.HttpServiceProxyFactory;
+import zw.ac.uz.emhare.admissions.integration.http.AcademicSetupHttpService;
 import zw.ac.uz.emhare.common.web.ServiceDependencyUnavailableException;
 
 /** @author Tinashe K */
@@ -36,7 +39,18 @@ class AcademicSetupCatalogueClientTest {
     void setUp() {
         RestClient.Builder restClientBuilder = RestClient.builder();
         server = MockRestServiceServer.bindTo(restClientBuilder).build();
-        client = new AcademicSetupCatalogueClient(restClientBuilder, "http://academic-setup.test");
+        RestClient restClient = restClientBuilder
+                .baseUrl("http://academic-setup.test")
+                .requestInterceptor((request, body, execution) -> {
+                    request.getHeaders().setBearerAuth("forwarded-jwt");
+                    return execution.execute(request, body);
+                })
+                .build();
+        AcademicSetupHttpService httpService = HttpServiceProxyFactory
+                .builderFor(RestClientAdapter.create(restClient))
+                .build()
+                .createClient(AcademicSetupHttpService.class);
+        client = new AcademicSetupCatalogueClient(httpService);
 
         Instant now = Instant.now();
         Jwt jwt = new Jwt(

@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.finance.payment.provider;
 
+import zw.ac.uz.emhare.finance.payment.provider.infrastructure.persistence.model.CbzIveriLiteTransactionStatus;
+
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;

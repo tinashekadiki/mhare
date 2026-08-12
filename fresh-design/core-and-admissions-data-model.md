@@ -348,6 +348,23 @@ There is no separately managed admission-cycle business entity. The Academic Set
 
 Examples: undergraduate, postgraduate, transfer, mature entry, RPL, HEXCO, foreign equivalence.
 
+The governed route baseline is `UNDERGRAD`, `POSTGRAD`, `MBA`, and `EDUCATION`. Programme scope is relational through `application_type_programme_mappings`; it is never inferred from a legacy faculty code. Application-type activation is atomic and requires programme, section, document, fee, and reference readiness.
+
+Route-aware governance adds:
+
+- `application_type_programme_mappings`
+- `application_type_sections` as the authoritative section definition
+- `application_programme_option_snapshots`
+- `application_document_requirement_snapshots`
+- `application_prior_uz_declarations`
+- `application_professional_achievements`
+- `application_referee_nominations`
+- `application_programme_entry_option_selections`
+- `admission_qualification_requirement_groups`
+- `admission_qualification_requirement_items`
+
+Academic Setup owns versioned `programme_entry_options` and each programme version's minimum and maximum entry-option selection counts. Admissions snapshots those values at draft creation. Student Records preserves accepted entry-option preferences without treating them as a curriculum or Module-registration decision.
+
 `application_fees`
 - `id`
 - `application_type_id`
@@ -431,6 +448,8 @@ Constraint: `user_id` is required because applicants must sign up or log in befo
 - `phone_number`
 - `verification_status`
 - `reference_document_id`
+
+Referee contacts remain reusable applicant-level contacts, but `application_referee_nominations` owns organisation, position, expertise, relationship, normalized email/phone, current-invitation status, and application scope. Confidential submitted responses are immutable; applicants see status only. Replacement invitations invalidate the previous response for submission-readiness counting.
 
 ### Applications and Choices
 

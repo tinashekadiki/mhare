@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.studentrecords.integration;
 
+import zw.ac.uz.emhare.studentrecords.infrastructure.messaging.model.StudentRecordsOutboxEvent;
+import zw.ac.uz.emhare.studentrecords.infrastructure.persistence.messaging.StudentRecordsOutboxEventRepository;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.nio.charset.StandardCharsets;
@@ -15,9 +18,9 @@ import zw.ac.uz.emhare.common.messaging.StudentFinanceAccountProvisioningRequest
 import zw.ac.uz.emhare.common.messaging.NotificationRequestedEvent;
 import zw.ac.uz.emhare.common.messaging.StudentPortalAccessProvisioningRequestedEvent;
 import zw.ac.uz.emhare.common.messaging.StudentRegistrationConfirmedEvent;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentConversionRequest;
-import zw.ac.uz.emhare.studentrecords.registration.RegistrationModule;
-import zw.ac.uz.emhare.studentrecords.registration.RegistrationSession;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentConversionRequest;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationModule;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationSession;
 
 /** @author Tinashe K */
 @Service

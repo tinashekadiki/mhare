@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.coreidentity.rbac;
 
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.LoginEvent;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.LoginOutcome;
+
 import java.time.Instant;
 import java.util.UUID;
 

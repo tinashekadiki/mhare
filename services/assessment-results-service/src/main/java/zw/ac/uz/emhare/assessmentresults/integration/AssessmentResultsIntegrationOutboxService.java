@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.assessmentresults.integration;
 
+import zw.ac.uz.emhare.assessmentresults.infrastructure.messaging.model.AssessmentResultsOutboxEvent;
+import zw.ac.uz.emhare.assessmentresults.infrastructure.persistence.messaging.AssessmentResultsOutboxEventRepository;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -7,10 +10,10 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
-import zw.ac.uz.emhare.assessmentresults.progression.StudentOverallDecision;
-import zw.ac.uz.emhare.assessmentresults.progression.StudentOverallDecisionResult;
-import zw.ac.uz.emhare.assessmentresults.result.ModuleResult;
-import zw.ac.uz.emhare.assessmentresults.result.PublishedResult;
+import zw.ac.uz.emhare.assessmentresults.progression.domain.model.StudentOverallDecision;
+import zw.ac.uz.emhare.assessmentresults.progression.domain.model.StudentOverallDecisionResult;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.ModuleResult;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.PublishedResult;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.ProgressionDecisionPublishedEvent;
 import zw.ac.uz.emhare.common.messaging.PublishedResultVersionCreatedEvent;

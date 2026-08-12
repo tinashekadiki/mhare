@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.assessmentresults.progression;
 
+import zw.ac.uz.emhare.assessmentresults.progression.domain.model.ProgressionRuleOutcome;
+import zw.ac.uz.emhare.assessmentresults.progression.domain.model.ProgressionRuleSet;
+import zw.ac.uz.emhare.assessmentresults.progression.domain.model.StudentOverallDecision;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -9,7 +13,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import zw.ac.uz.emhare.assessmentresults.roster.RegistrationRosterImport;
+import zw.ac.uz.emhare.assessmentresults.roster.domain.model.RegistrationRosterImport;
 
 /** @author Tinashe K */
 class StudentOverallDecisionTest {

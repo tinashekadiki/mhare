@@ -1,5 +1,16 @@
 package zw.ac.uz.emhare.studentrecords.conversion;
 
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentConversionRequest;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProfile;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProgrammeEnrolment;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentStatusEvent;
+import zw.ac.uz.emhare.studentrecords.conversion.infrastructure.persistence.StudentConversionRequestRepository;
+import zw.ac.uz.emhare.studentrecords.conversion.infrastructure.persistence.StudentProfileRepository;
+import zw.ac.uz.emhare.studentrecords.conversion.infrastructure.persistence.StudentProgrammeEnrolmentRepository;
+import zw.ac.uz.emhare.studentrecords.conversion.infrastructure.persistence.StudentStatusEventRepository;
+import zw.ac.uz.emhare.studentrecords.conversion.infrastructure.persistence.StudentEntryOptionPreferenceRepository;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentEntryOptionPreference;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -9,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zw.ac.uz.emhare.common.messaging.AcceptedOfferReadyForConversionEvent;
 import zw.ac.uz.emhare.studentrecords.integration.StudentRecordsIntegrationOutboxService;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentStatus;
 
 /** @author Tinashe K */
 @Service
@@ -20,6 +32,27 @@ public class StudentConversionService {
     private final StudentRecordsIntegrationOutboxService outboxService;
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
+    private final StudentEntryOptionPreferenceRepository entryOptionPreferenceRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public StudentConversionService(
+            StudentProfileRepository studentRepository,
+            StudentProgrammeEnrolmentRepository enrolmentRepository,
+            StudentConversionRequestRepository conversionRepository,
+            StudentStatusEventRepository statusEventRepository,
+            StudentRecordsIntegrationOutboxService outboxService,
+            JdbcTemplate jdbcTemplate,
+            Clock clock,
+            StudentEntryOptionPreferenceRepository entryOptionPreferenceRepository) {
+        this.studentRepository = studentRepository;
+        this.enrolmentRepository = enrolmentRepository;
+        this.conversionRepository = conversionRepository;
+        this.statusEventRepository = statusEventRepository;
+        this.outboxService = outboxService;
+        this.jdbcTemplate = jdbcTemplate;
+        this.clock = clock;
+        this.entryOptionPreferenceRepository = entryOptionPreferenceRepository;
+    }
 
     public StudentConversionService(
             StudentProfileRepository studentRepository,
@@ -29,13 +62,8 @@ public class StudentConversionService {
             StudentRecordsIntegrationOutboxService outboxService,
             JdbcTemplate jdbcTemplate,
             Clock clock) {
-        this.studentRepository = studentRepository;
-        this.enrolmentRepository = enrolmentRepository;
-        this.conversionRepository = conversionRepository;
-        this.statusEventRepository = statusEventRepository;
-        this.outboxService = outboxService;
-        this.jdbcTemplate = jdbcTemplate;
-        this.clock = clock;
+        this(studentRepository, enrolmentRepository, conversionRepository, statusEventRepository,
+                outboxService, jdbcTemplate, clock, null);
     }
 
     @Transactional
@@ -49,6 +77,11 @@ public class StudentConversionService {
                 new StudentProfile(nextStudentNumber(event.commencementDate().getYear()), event));
         StudentProgrammeEnrolment enrolment = enrolmentRepository.saveAndFlush(
                 new StudentProgrammeEnrolment(student, event));
+        if (entryOptionPreferenceRepository != null && event.entryOptionPreferences() != null
+                && !event.entryOptionPreferences().isEmpty()) {
+            entryOptionPreferenceRepository.saveAll(event.entryOptionPreferences().stream()
+                    .map(preference -> new StudentEntryOptionPreference(enrolment, preference)).toList());
+        }
         StudentConversionRequest conversion = conversionRepository.saveAndFlush(new StudentConversionRequest(
                 event.eventId(), event.applicationId(), event.offerId(), student, enrolment, now));
         statusEventRepository.save(new StudentStatusEvent(
@@ -108,7 +141,8 @@ public class StudentConversionService {
 
     private void validate(AcceptedOfferReadyForConversionEvent event) {
         if (event.eventId() == null
-                || event.schemaVersion() != AcceptedOfferReadyForConversionEvent.CURRENT_SCHEMA_VERSION
+                || event.schemaVersion() < AcceptedOfferReadyForConversionEvent.MINIMUM_SUPPORTED_SCHEMA_VERSION
+                || event.schemaVersion() > AcceptedOfferReadyForConversionEvent.CURRENT_SCHEMA_VERSION
                 || event.applicationId() == null || event.offerId() == null || event.applicantId() == null
                 || event.applicantUserId() == null || event.programmeChoiceId() == null
                 || event.programmeId() == null || event.programmeVersionId() == null

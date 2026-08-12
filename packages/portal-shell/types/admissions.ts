@@ -242,7 +242,7 @@ export type OfferBatchSummary = {
 
 export type AdmissionOfferSummary = {
   id: string;
-  offerBatchId: string;
+  offerBatchId: string | null;
   offerNumber: string;
   applicationId: string;
   applicationNumber: string;
@@ -254,7 +254,7 @@ export type AdmissionOfferSummary = {
   programmeCode: string;
   programmeName: string;
   intakeId: string;
-  offerType: "FIRM" | "CONDITIONAL";
+  offerType: "FIRM" | "CONDITIONAL" | null;
   status:
     | "DRAFT"
     | "APPROVED"
@@ -264,11 +264,14 @@ export type AdmissionOfferSummary = {
     | "EXPIRED"
     | "WITHDRAWN"
     | "CONVERTED";
+  currentDocumentVersionId: string | null;
+  currentPublicationId: string | null;
+  amendmentPending: boolean;
   conditionsText: string | null;
-  acceptanceDeadline: string;
+  acceptanceDeadline: string | null;
   registrationDate: string | null;
   orientationDate: string | null;
-  commencementDate: string;
+  commencementDate: string | null;
   generatedDocumentId: string | null;
   approvedAt: string | null;
   sentAt: string | null;
@@ -355,6 +358,21 @@ export type ProgrammeOption = {
   awardName: string;
   owningAcademicUnitName: string;
   programmeVersionCode: string;
+  programmeTypeCode: string | null;
+  programmeTypeName: string | null;
+  programmeLevelCode: string | null;
+  programmeLevelName: string | null;
+  minimumEntryOptionSelections: number;
+  maximumEntryOptionSelections: number;
+  entryOptions: ProgrammeEntryOption[];
+};
+
+export type ProgrammeEntryOption = {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
 };
 
 export type ApplicationTypeOption = {
@@ -385,6 +403,18 @@ export type ApplicationStartOptions = {
   applicantCategories: ApplicantCategoryOption[];
   intakes: AdmissionIntakeOption[];
   applicationTypes: ApplicationTypeOption[];
+  routes: ApplicationRouteOption[];
+};
+
+export type ApplicationRouteOption = {
+  applicationTypeId: string;
+  applicationTypeCode: string;
+  applicationTypeName: string;
+  intakeId: string;
+  intakeCode: string;
+  intakeName: string;
+  maximumProgrammeChoices: number;
+  programmes: ProgrammeOption[];
 };
 
 export type ApplicationDocumentState =
@@ -477,6 +507,8 @@ export type ApplicantReferee = {
   title: string | null;
   organisation: string;
   positionTitle: string | null;
+  expertise: string;
+  relationshipToApplicant: string;
   email: string;
   phoneNumber: string | null;
   verificationStatus: "PENDING" | "VERIFIED" | "REJECTED";
@@ -485,8 +517,45 @@ export type ApplicantReferee = {
   invitationStatus:
     "NOT_SENT" | "SENT" | "OPENED" | "SUBMITTED" | "REVOKED" | "EXPIRED";
   invitedAt: string | null;
+  referenceRelationshipToApplicant: string | null;
+  yearsKnown: number | null;
+  recommendation:
+    | "STRONGLY_RECOMMEND"
+    | "RECOMMEND"
+    | "RECOMMEND_WITH_RESERVATIONS"
+    | "DO_NOT_RECOMMEND"
+    | null;
+  referenceComments: string | null;
   referenceSubmittedAt: string | null;
   version: number;
+};
+
+export type PriorUzDeclaration = {
+  previouslyStudiedAtUz: boolean;
+  registrationNumber: string | null;
+  enrolmentStartedOn: string | null;
+  enrolmentEndedOn: string | null;
+  previouslyAcceptedOffer: boolean | null;
+  previouslyTookUpPlace: boolean | null;
+  version: number;
+};
+
+export type ProfessionalAchievement = {
+  id: string;
+  type: "AWARD" | "PROFESSIONAL_MEMBERSHIP" | "PUBLICATION" | "PRESENTATION" | "OTHER";
+  title: string;
+  organisation: string | null;
+  achievedOn: string | null;
+  description: string | null;
+  version: number;
+};
+
+export type ProgrammeEntryPreference = {
+  programmeChoiceId: string;
+  entryOptionId: string;
+  entryOptionCode: string;
+  entryOptionName: string;
+  preferenceRank: number;
 };
 
 export type AdmissionsReferenceOption = {
@@ -540,6 +609,10 @@ export type ApplicantApplicationWorkspace = {
   nextOfKin: ApplicantNextOfKin[];
   employmentHistory: ApplicantEmploymentHistory[];
   referees: ApplicantReferee[];
+  priorUzDeclaration: PriorUzDeclaration | null;
+  professionalAchievementsDeclaredNone: boolean;
+  professionalAchievements: ProfessionalAchievement[];
+  programmeEntryPreferences: ProgrammeEntryPreference[];
   qualifications: ApplicantQualificationSitting[];
   documents: ApplicationDocumentRegister;
   readyForSubmission: boolean;
@@ -550,18 +623,43 @@ export type ApplicantApplicationWorkspace = {
 };
 
 export type AdmissionsApplicationWorkflowProgress = {
-  currentStageCode: "CONFIRM" | "RELEASE" | "RECOMMEND" | "DECIDE" | "OFFER";
+  currentStageCode: "VERIFICATION" | "ELIGIBILITY" | "ACADEMIC_REVIEW" | "ADMISSION_DECISION" | "OFFER" | "RESPONSE";
   stages: AdmissionsApplicationWorkflowStage[];
 };
 
 export type AdmissionsApplicationWorkflowStage = {
   sequence: number;
-  code: "CONFIRM" | "RELEASE" | "RECOMMEND" | "DECIDE" | "OFFER";
+  code: "VERIFICATION" | "ELIGIBILITY" | "ACADEMIC_REVIEW" | "ADMISSION_DECISION" | "OFFER" | "RESPONSE";
   label: string;
   state: "COMPLETED" | "CURRENT" | "PENDING" | "NOT_APPLICABLE";
   statusLabel: string;
   detail: string;
   occurredAt: string | null;
+};
+
+export type AdmissionsWorkItemRow = {
+  applicationId: string; applicationNumber: string; applicantNumber: string; applicantName: string;
+  intakeId: string; intakeCode: string; applicationTypeId: string; applicationTypeName: string;
+  programmeId: string | null; programmeCode: string | null; programmeName: string | null;
+  points: number | null; paymentState: string; stage: string; outcome: string;
+  blockers: string[]; lastActivityAt: string;
+};
+
+export type AdmissionsWorkItemPage = { content: AdmissionsWorkItemRow[]; page: number; size: number; totalElements: number; totalPages: number };
+
+export type AdmissionsOfferDocumentVersion = { id: string; version: number; status: string; generatedDocumentId: string | null; documentNumber: string | null; checksumSha256: string | null; requestedAt: string; storedAt: string | null; failureReason: string | null };
+export type AdmissionsOfferPublication = { id: string; documentVersionId: string; sequence: number; portalPublishedAt: string; publishedByUserId: string; emailStatus: string; emailStatusAt: string; emailFailureReason: string | null; current: boolean; supersededAt: string | null };
+export type AdmissionsWorkItemCase = {
+  workspace: ApplicantApplicationWorkspace;
+  academicReview: { id: string; programmeChoiceId: string; status: string; recommendationAcademicUnitId: string; recommendationAcademicUnitName: string; claimedByUserId: string | null; claimedAt: string | null; completedAt: string | null; version: number } | null;
+  academicRecommendation: { id: string; recommendation: string; reason: string; recommendedByUserId: string; recommendedAt: string; reviewStatus: string } | null;
+  admissionDecision: { id: string; decision: string; reason: string; decidedByUserId: string; decidedAt: string } | null;
+  offer: AdmissionOfferSummary | null;
+  documentVersions: AdmissionsOfferDocumentVersion[];
+  publications: AdmissionsOfferPublication[];
+  auditHistory: Array<{ id: string; fromStatus: string | null; toStatus: string; reason: string; changedByUserId: string; changedAt: string }>;
+  blockers: string[];
+  availableActions: string[];
 };
 
 export type AdmissionsVerificationQueue = {

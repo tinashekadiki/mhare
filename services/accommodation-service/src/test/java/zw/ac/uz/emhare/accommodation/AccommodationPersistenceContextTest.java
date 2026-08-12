@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.accommodation;
 
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationApplicationPeriod;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationPremise;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;

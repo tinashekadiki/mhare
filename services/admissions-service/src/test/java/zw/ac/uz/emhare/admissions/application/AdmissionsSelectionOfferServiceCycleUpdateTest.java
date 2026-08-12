@@ -1,5 +1,31 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionRequirementSet;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeDocumentRequirement;
+import zw.ac.uz.emhare.admissions.domain.model.OfferBatch;
+import zw.ac.uz.emhare.admissions.domain.model.SelectionRound;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AcademicReviewAssignmentRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionCycleArchiveSummaryRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionCycleRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionOfferRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionRequirementSetRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionQualificationRequirementGroupRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionQualificationRequirementItemRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationEvaluationRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeChoiceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationStatusEventRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeDocumentRequirementRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferBatchRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferConditionRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferDispatchRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferResponseRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferStatusEventRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.SelectionDecisionRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.SelectionRoundRepository;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
@@ -18,6 +44,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.admissions.integration.AdmissionsIntegrationOutboxService;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycleStatus;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRepository;
+import zw.ac.uz.emhare.admissions.domain.model.RequirementSetStatus;
 
 /** @author Tinashe K */
 @ExtendWith(MockitoExtension.class)
@@ -31,8 +60,11 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
     @Mock private ApplicationRepository applicationRepository;
     @Mock private ApplicationProgrammeChoiceRepository programmeChoiceRepository;
     @Mock private AdmissionRequirementSetRepository requirementSetRepository;
+    @Mock private AdmissionQualificationRequirementGroupRepository qualificationGroupRepository;
+    @Mock private AdmissionQualificationRequirementItemRepository qualificationItemRepository;
     @Mock private ApplicationEvaluationRepository evaluationRepository;
     @Mock private QualificationEligibilityService qualificationEligibilityService;
+    @Mock private AdvancedAdmissionRuleEvaluator advancedRuleEvaluator;
     @Mock private ApplicationStatusEventRepository applicationStatusEventRepository;
     @Mock private SelectionRoundRepository selectionRoundRepository;
     @Mock private SelectionDecisionRepository selectionDecisionRepository;
@@ -158,14 +190,12 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
     }
 
     @Test
-    void activatesAnApplicationTypeWithOptimisticLockingAndChangeEvidence() {
+    void rejectsActivationOutsideTheAtomicRouteConfigurationEndpoint() {
         UUID applicationTypeId = UUID.randomUUID();
         ApplicationType applicationType = new ApplicationType(
                 "UNDERGRAD", "Undergraduate", false, false, false);
         when(applicationTypeRepository.findById(applicationTypeId)).thenReturn(Optional.of(applicationType));
-        when(applicationTypeRepository.saveAndFlush(applicationType)).thenReturn(applicationType);
-
-        ApplicationTypeSummary result = service.updateApplicationType(
+        assertThatThrownBy(() -> service.updateApplicationType(
                 applicationTypeId,
                 "Undergraduate applications",
                 false,
@@ -175,11 +205,9 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
                 null,
                 true,
                 "Admissions approved this route for applicant use.",
-                0);
-
-        assertThat(result.name()).isEqualTo("Undergraduate applications");
-        assertThat(result.active()).isTrue();
-        verify(applicationTypeRepository).saveAndFlush(applicationType);
+                0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("atomic route-configuration");
     }
 
     @Test
@@ -197,7 +225,7 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
                 null,
                 null,
                 null,
-                true,
+                false,
                 "Activate the approved transfer route.",
                 9))
                 .isInstanceOf(IllegalStateException.class)

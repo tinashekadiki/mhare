@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @SpringBootApplication
-@EnableConfigurationProperties(GatewayUpstreamHealthProperties.class)
+@EnableConfigurationProperties(GatewayServiceTopologyProperties.class)
 public class ApiGatewayApplication {
 
     public static void main(String[] args) {

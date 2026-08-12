@@ -1,10 +1,18 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AcademicReviewAssignment;
+import zw.ac.uz.emhare.admissions.domain.model.AcademicUnitRecommendation;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeChoice;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AcademicReviewAssignmentRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AcademicUnitRecommendationRepository;
+
 import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient.CoreCurrentUserProfile;
+import zw.ac.uz.emhare.admissions.domain.model.AcademicReviewAssignmentStatus;
+import zw.ac.uz.emhare.admissions.domain.model.DecisionOutcome;
 
 /**
  * Read-only academic-review case history: assignment listing and reviewer-scoped access.

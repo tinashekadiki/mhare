@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.documentsreporting.integration;
 
+import zw.ac.uz.emhare.documentsreporting.infrastructure.messaging.model.DocumentsOutboxEvent;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.messaging.DocumentsOutboxEventRepository;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -17,7 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.DocumentVerificationChangedEvent;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
-import zw.ac.uz.emhare.documentsreporting.upload.UploadedDocument;
+import zw.ac.uz.emhare.documentsreporting.upload.domain.model.UploadedDocument;
 
 /** @author Tinashe K */
 class DocumentVerificationOutboxServiceTest {

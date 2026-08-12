@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.coreidentity.workflow;
 
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowStatus;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

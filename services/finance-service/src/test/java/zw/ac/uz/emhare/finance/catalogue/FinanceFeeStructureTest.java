@@ -1,5 +1,13 @@
 package zw.ac.uz.emhare.finance.catalogue;
 
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeStructure;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeCatalogueRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeRuleRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeRuleScopeRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeStructureAttachmentRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeStructureRepository;
+import zw.ac.uz.emhare.finance.payment.infrastructure.persistence.ExchangeRateRepository;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -11,9 +19,8 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.AcademicUnitPathItem;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.ResolveStructure;
-import zw.ac.uz.emhare.finance.payment.ExchangeRateRepository;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.AcademicUnitPathItem;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.ResolveStructure;
 
 /** @author Tinashe K */
 class FinanceFeeStructureTest {

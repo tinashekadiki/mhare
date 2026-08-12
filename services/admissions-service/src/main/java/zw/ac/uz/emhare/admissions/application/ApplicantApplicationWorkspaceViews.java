@@ -1,5 +1,13 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantEmploymentHistory;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantNextOfKin;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantReferee;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantRefereeInvitation;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationSection;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationRefereeNomination;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,6 +28,10 @@ public final class ApplicantApplicationWorkspaceViews {
             List<NextOfKinSummary> nextOfKin,
             List<EmploymentHistorySummary> employmentHistory,
             List<RefereeSummary> referees,
+            PriorUzDeclarationSummary priorUzDeclaration,
+            boolean professionalAchievementsDeclaredNone,
+            List<ProfessionalAchievementSummary> professionalAchievements,
+            List<ProgrammeEntryPreferenceSummary> programmeEntryPreferences,
             List<QualificationSittingSummary> qualifications,
             ApplicationDocumentRegister documents,
             boolean readyForSubmission,
@@ -28,6 +40,23 @@ public final class ApplicantApplicationWorkspaceViews {
             String declarationVersion,
             AdmissionsApplicationWorkflowProgress workflowProgress) {
     }
+
+    public record PriorUzDeclarationSummary(
+            boolean previouslyStudiedAtUz,
+            String registrationNumber,
+            LocalDate enrolmentStartedOn,
+            LocalDate enrolmentEndedOn,
+            Boolean previouslyAcceptedOffer,
+            Boolean previouslyTookUpPlace,
+            long version) { }
+
+    public record ProfessionalAchievementSummary(
+            UUID id, String type, String title, String organisation,
+            LocalDate achievedOn, String description, long version) { }
+
+    public record ProgrammeEntryPreferenceSummary(
+            UUID programmeChoiceId, UUID entryOptionId, String entryOptionCode,
+            String entryOptionName, int preferenceRank) { }
 
     public record ApplicationSectionSummary(
             UUID id,
@@ -85,6 +114,8 @@ public final class ApplicantApplicationWorkspaceViews {
             String title,
             String organisation,
             String positionTitle,
+            String expertise,
+            String relationshipToApplicant,
             String email,
             String phoneNumber,
             String verificationStatus,
@@ -92,14 +123,30 @@ public final class ApplicantApplicationWorkspaceViews {
             String rejectionReason,
             String invitationStatus,
             Instant invitedAt,
+            String referenceRelationshipToApplicant,
+            Integer yearsKnown,
+            String recommendation,
+            String referenceComments,
             Instant referenceSubmittedAt,
             long version) {
-        static RefereeSummary from(ApplicantReferee value, ApplicantRefereeInvitation invitation) {
+        static RefereeSummary from(
+                ApplicationRefereeNomination nomination,
+                ApplicantRefereeInvitation invitation,
+                boolean includeConfidentialResponse) {
+            ApplicantReferee value = nomination.getReferee();
+            boolean submittedResponseVisible = includeConfidentialResponse
+                    && invitation != null
+                    && invitation.getStatus() == ApplicantRefereeInvitation.Status.SUBMITTED;
             return new RefereeSummary(value.getId(), value.getFullName(), value.getTitle(), value.getOrganisation(),
-                    value.getPositionTitle(), value.getEmail(), value.getPhoneNumber(),
+                    value.getPositionTitle(), nomination.getExpertise(), nomination.getRelationshipToApplicant(),
+                    value.getEmail(), value.getPhoneNumber(),
                     value.getVerificationStatus().name(), value.getReferenceDocumentId(), value.getRejectionReason(),
                     invitation == null ? "NOT_SENT" : invitation.getStatus().name(),
                     invitation == null ? null : invitation.getSentAt(),
+                    submittedResponseVisible ? invitation.getRelationshipToApplicant() : null,
+                    submittedResponseVisible ? invitation.getYearsKnown() : null,
+                    submittedResponseVisible ? invitation.getRecommendation().name() : null,
+                    submittedResponseVisible ? invitation.getComments() : null,
                     invitation == null ? null : invitation.getSubmittedAt(),
                     value.getVersion());
         }

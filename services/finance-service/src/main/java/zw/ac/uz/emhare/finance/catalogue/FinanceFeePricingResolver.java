@@ -1,5 +1,12 @@
 package zw.ac.uz.emhare.finance.catalogue;
 
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeCatalogue;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeRule;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeRuleScope;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeCatalogueRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeRuleRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeRuleScopeRepository;
+
 import java.time.Instant;
 import java.util.*;
 import org.springframework.stereotype.Service;

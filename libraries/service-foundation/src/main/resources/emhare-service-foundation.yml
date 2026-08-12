@@ -1,0 +1,103 @@
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: ${EMHARE_DATABASE_MAXIMUM_POOL_SIZE:5}
+      minimum-idle: ${EMHARE_DATABASE_MINIMUM_IDLE:1}
+      connection-timeout: ${EMHARE_DATABASE_CONNECTION_TIMEOUT_MILLISECONDS:5000}
+      validation-timeout: ${EMHARE_DATABASE_VALIDATION_TIMEOUT_MILLISECONDS:2000}
+      idle-timeout: ${EMHARE_DATABASE_IDLE_TIMEOUT_MILLISECONDS:300000}
+      max-lifetime: ${EMHARE_DATABASE_MAX_LIFETIME_MILLISECONDS:1500000}
+  http:
+    clients:
+      connect-timeout: ${EMHARE_HTTP_CONNECT_TIMEOUT:2s}
+      read-timeout: ${EMHARE_HTTP_READ_TIMEOUT:5s}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        envers:
+          audit_table_suffix: _aud
+          revision_field_name: rev
+          revision_type_field_name: revtype
+  flyway:
+    enabled: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: simple
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1s
+          max-attempts: 5
+          max-interval: 10s
+          multiplier: 2
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8099/realms/emhare}
+
+eureka:
+  client:
+    enabled: ${EUREKA_CLIENT_ENABLED:true}
+    healthcheck:
+      enabled: true
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://emhare-discovery:emhare-discovery-dev@localhost:8761/eureka/}
+  instance:
+    instance-id: ${spring.application.name}:${SERVER_PORT:${server.port}}:${random.value}
+    prefer-ip-address: ${EUREKA_PREFER_IP_ADDRESS:false}
+
+emhare:
+  http-service-client:
+    client-credentials:
+      enabled: ${EMHARE_CLIENT_CREDENTIALS_ENABLED:false}
+      registration-id: ${EMHARE_CLIENT_CREDENTIALS_REGISTRATION_ID:emhare-service}
+      group-names: ${EMHARE_CLIENT_CREDENTIALS_GROUP_NAMES:}
+
+spring.cloud.loadbalancer:
+  cache:
+    enabled: false
+  retry:
+    enabled: false
+  stats:
+    micrometer:
+      enabled: true
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: ${EMHARE_CIRCUIT_BREAKER_WINDOW_SIZE:20}
+        minimum-number-of-calls: ${EMHARE_CIRCUIT_BREAKER_MINIMUM_CALLS:10}
+        failure-rate-threshold: ${EMHARE_CIRCUIT_BREAKER_FAILURE_RATE:50}
+        permitted-number-of-calls-in-half-open-state: ${EMHARE_CIRCUIT_BREAKER_HALF_OPEN_CALLS:3}
+        wait-duration-in-open-state: ${EMHARE_CIRCUIT_BREAKER_OPEN_DURATION:30s}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-components: when-authorized
+      show-details: when-authorized
+      roles: system-admin
+
+logging:
+  structured:
+    format:
+      console: ${EMHARE_STRUCTURED_LOG_FORMAT:logstash}
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-},%X{correlationId:-}]"

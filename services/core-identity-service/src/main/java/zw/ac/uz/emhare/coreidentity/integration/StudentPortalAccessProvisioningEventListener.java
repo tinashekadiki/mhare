@@ -10,7 +10,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.StudentPortalAccessProvisioningRequestedEvent;
-import zw.ac.uz.emhare.coreidentity.provisioning.StudentPortalAccessProvisioning;
+import zw.ac.uz.emhare.coreidentity.provisioning.domain.model.StudentPortalAccessProvisioning;
 import zw.ac.uz.emhare.coreidentity.provisioning.StudentPortalAccessProvisioningService;
 
 /** @author Tinashe K */

@@ -26,3 +26,4 @@ graphify-out/
 _failed_clone_artifacts/
 tmp/
 .claude/settings.local.json
+.gstack/

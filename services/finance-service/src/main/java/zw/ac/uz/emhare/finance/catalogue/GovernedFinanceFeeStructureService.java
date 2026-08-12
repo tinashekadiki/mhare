@@ -1,5 +1,17 @@
 package zw.ac.uz.emhare.finance.catalogue;
 
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeCatalogue;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeRule;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeRuleScope;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeStructure;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeStructureAttachment;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeCatalogueRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeRuleRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeRuleScopeRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeStructureAttachmentRepository;
+import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeStructureRepository;
+import zw.ac.uz.emhare.finance.payment.infrastructure.persistence.ExchangeRateRepository;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -13,18 +25,18 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.ApplicationFeePricing;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.AttachmentInput;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.CreateStructure;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.LineInput;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.ResolveStructure;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.StructureAttachmentSummary;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.StructureDecision;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.StructureLineSummary;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.StructureRegister;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeStructureContracts.StructureSummary;
-import zw.ac.uz.emhare.finance.payment.ExchangeRate;
-import zw.ac.uz.emhare.finance.payment.ExchangeRateRepository;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.ApplicationFeePricing;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.AttachmentInput;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.CreateStructure;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.LineInput;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.ResolveStructure;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.StructureAttachmentSummary;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.StructureDecision;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.StructureLineSummary;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.StructureRegister;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.StructureSummary;
+import zw.ac.uz.emhare.finance.payment.domain.model.ExchangeRate;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels;
 
 /** Creates and resolves complete fee schedules with whole-structure precedence. @author Tinashe K */
 @Service
@@ -177,7 +189,7 @@ public class GovernedFinanceFeeStructureService {
                         ? new StructureMatch(structure, 3000) : null;
             }
             if (structure.getScopeType() == FinanceFeeStructure.ScopeType.ACADEMIC_UNIT) {
-                List<FinanceFeeStructureContracts.AcademicUnitPathItem> path = command.academicUnitPath() == null
+                List<zw.ac.uz.emhare.finance.catalogue.api.model.FinanceFeeStructureApiModels.AcademicUnitPathItem> path = command.academicUnitPath() == null
                         ? List.of() : command.academicUnitPath();
                 for (int distance = 0; distance < path.size(); distance++) {
                     var unit = path.get(distance);

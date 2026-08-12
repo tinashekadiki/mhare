@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.coreidentity.rbac;
 
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.PlatformUser;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.UserStatus;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.PlatformUserRepository;
+
 import java.util.Optional;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;

@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.coreidentity.integration;
 
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.PlatformUserRepository;
+
+import zw.ac.uz.emhare.coreidentity.workflow.application.command.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -18,10 +22,9 @@ import org.springframework.amqp.core.Message;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.MissingApplicationDocumentWorkflowRequestedEvent;
-import zw.ac.uz.emhare.coreidentity.rbac.PlatformUser;
-import zw.ac.uz.emhare.coreidentity.rbac.PlatformUserRepository;
-import zw.ac.uz.emhare.coreidentity.workflow.CreateWorkflowCommand;
-import zw.ac.uz.emhare.coreidentity.workflow.WorkflowScopeType;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.PlatformUser;
+import zw.ac.uz.emhare.coreidentity.workflow.application.command.CreateWorkflowCommand;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowScopeType;
 import zw.ac.uz.emhare.coreidentity.workflow.WorkflowService;
 
 /** @author Tinashe K */

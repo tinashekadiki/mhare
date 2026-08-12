@@ -1,8 +1,12 @@
 package zw.ac.uz.emhare.finance.payment;
 
+import zw.ac.uz.emhare.finance.payment.domain.model.ApplicationPaymentReference;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import zw.ac.uz.emhare.finance.payment.domain.model.MoneyRatingStatus;
+import zw.ac.uz.emhare.finance.payment.domain.model.PaymentReferenceStatus;
 
 public record ApplicationPaymentReferenceSummary(
         UUID id,

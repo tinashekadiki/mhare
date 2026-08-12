@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.documentsreporting.document;
 
+import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.model.GeneratedDocument;
+import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.GeneratedDocumentRepository;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.PublishedOfferLetterProjectionRepository;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -10,24 +14,27 @@ import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
-import zw.ac.uz.emhare.documentsreporting.document.DocumentViews.DocumentDownload;
-import zw.ac.uz.emhare.documentsreporting.document.DocumentViews.DocumentSummary;
+import zw.ac.uz.emhare.documentsreporting.document.api.model.DocumentResponses.DocumentDownload;
+import zw.ac.uz.emhare.documentsreporting.document.api.model.DocumentResponses.DocumentSummary;
 
 /** @author Tinashe K */
 @Service
 public class OfficialDocumentService {
 
     private final GeneratedDocumentRepository documentRepository;
+    private final PublishedOfferLetterProjectionRepository publishedOfferLetterRepository;
     private final S3Presigner s3Presigner;
     private final DocumentsStorageProperties storageProperties;
     private final Clock clock;
 
     public OfficialDocumentService(
             GeneratedDocumentRepository documentRepository,
+            PublishedOfferLetterProjectionRepository publishedOfferLetterRepository,
             S3Presigner s3Presigner,
             DocumentsStorageProperties storageProperties,
             Clock clock) {
         this.documentRepository = documentRepository;
+        this.publishedOfferLetterRepository = publishedOfferLetterRepository;
         this.s3Presigner = s3Presigner;
         this.storageProperties = storageProperties;
         this.clock = clock;
@@ -41,8 +48,15 @@ public class OfficialDocumentService {
     }
 
     @Transactional(readOnly = true)
-    public DocumentDownload download(UUID documentId) {
+    public DocumentDownload download(UUID documentId, String disposition) {
         GeneratedDocument document = requireDocument(documentId);
+        return download(document, disposition);
+    }
+
+    private DocumentDownload download(GeneratedDocument document, String disposition) {
+        if (!"inline".equalsIgnoreCase(disposition) && !"attachment".equalsIgnoreCase(disposition)) {
+            throw new IllegalArgumentException("Document disposition must be inline or attachment.");
+        }
         if (document.getStatus() != GeneratedDocument.Status.STORED) {
             throw new IllegalStateException("Official document is not yet stored.");
         }
@@ -52,7 +66,8 @@ public class OfficialDocumentService {
                 .bucket(document.getStorageBucket())
                 .key(document.getStorageKey())
                 .responseContentType("application/pdf")
-                .responseContentDisposition("inline; filename=\"" + document.getDocumentNumber() + ".pdf\"")
+                .responseContentDisposition(("attachment".equalsIgnoreCase(disposition) ? "attachment" : "inline")
+                        + "; filename=\"" + document.getDocumentNumber() + ".pdf\"")
                 .build();
         String downloadUrl = s3Presigner.presignGetObject(GetObjectPresignRequest.builder()
                         .signatureDuration(Duration.ofSeconds(validitySeconds))
@@ -67,6 +82,20 @@ public class OfficialDocumentService {
                 document.getChecksumSha256(),
                 downloadUrl,
                 expiresAt);
+    }
+
+    @Transactional(readOnly = true)
+    public DocumentDownload applicantOfferDownload(UUID documentId, UUID applicantUserId, String disposition) {
+        GeneratedDocument document = requireDocument(documentId);
+        var currentPublication = publishedOfferLetterRepository
+                .findByGeneratedDocumentIdAndCurrentPublicationTrue(documentId)
+                .filter(publication -> applicantUserId != null
+                        && applicantUserId.equals(publication.getApplicantUserId()))
+                .orElse(null);
+        if (document.getOfferLetter() == null || currentPublication == null) {
+            throw new org.springframework.security.access.AccessDeniedException("The published offer letter does not belong to this applicant.");
+        }
+        return download(document, disposition);
     }
 
     @Transactional

@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.coreidentity.integration;
 
+import zw.ac.uz.emhare.coreidentity.infrastructure.messaging.model.CoreIdentityOutboxEvent;
+import zw.ac.uz.emhare.coreidentity.infrastructure.persistence.messaging.CoreIdentityOutboxEventRepository;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.nio.charset.StandardCharsets;
@@ -12,9 +15,9 @@ import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.NotificationRequestedEvent;
 import zw.ac.uz.emhare.common.messaging.StudentPortalAccessProvisionedEvent;
-import zw.ac.uz.emhare.coreidentity.provisioning.StudentPortalAccessProvisioning;
-import zw.ac.uz.emhare.coreidentity.rbac.PlatformUser;
-import zw.ac.uz.emhare.coreidentity.workflow.WorkflowTask;
+import zw.ac.uz.emhare.coreidentity.provisioning.domain.model.StudentPortalAccessProvisioning;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.PlatformUser;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowTask;
 
 /** @author Tinashe K */
 @Service

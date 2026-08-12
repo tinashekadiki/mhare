@@ -126,7 +126,7 @@ const navigationGroups = [
     icon: "i-lucide-file-check-2",
     items: [
       {
-        label: "Admissions Workflow",
+        label: "Admissions",
         icon: "i-lucide-workflow",
         to: "/operations/admissions",
       },
@@ -136,29 +136,9 @@ const navigationGroups = [
         to: "/operations/application-types",
       },
       {
-        label: "Evidence verification",
-        icon: "i-lucide-shield-check",
-        to: "/operations/admissions-verification",
-      },
-      {
-        label: "Eligibility evaluation",
-        icon: "i-lucide-list-checks",
-        to: "/operations/admissions-evaluation",
-      },
-      {
-        label: "Selection rounds",
-        icon: "i-lucide-calendar-range",
-        to: "/operations/admissions-selection",
-      },
-      {
         label: "Applicant register",
         icon: "i-lucide-users",
         to: "/operations/applicants",
-      },
-      {
-        label: "Academic-unit documents",
-        icon: "i-lucide-folder-check",
-        to: "/operations/admissions-documents",
       },
     ],
   },

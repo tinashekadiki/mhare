@@ -1,0 +1,39 @@
+server:
+  port: ${SERVER_PORT:8761}
+
+spring:
+  application:
+    name: discovery-server
+  security:
+    user:
+      name: ${EUREKA_USERNAME:emhare-discovery}
+      password: ${EUREKA_PASSWORD:emhare-discovery-dev}
+
+eureka:
+  instance:
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+    instance-id: ${spring.application.name}:${EUREKA_INSTANCE_HOSTNAME:localhost}:${server.port}
+  client:
+    register-with-eureka: ${EUREKA_REGISTER_WITH_SERVER:false}
+    fetch-registry: ${EUREKA_FETCH_REGISTRY:false}
+    service-url:
+      defaultZone: ${EUREKA_PEER_DEFAULT_ZONE:http://${EUREKA_USERNAME:emhare-discovery}:${EUREKA_PASSWORD:emhare-discovery-dev}@localhost:8761/eureka/}
+  server:
+    enable-self-preservation: ${EUREKA_SELF_PRESERVATION_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  structured:
+    format:
+      console: ${EMHARE_STRUCTURED_LOG_FORMAT:logstash}
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-},%X{correlationId:-}]"

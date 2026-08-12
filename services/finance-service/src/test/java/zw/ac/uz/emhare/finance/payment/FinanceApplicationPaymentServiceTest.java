@@ -1,5 +1,16 @@
 package zw.ac.uz.emhare.finance.payment;
 
+import zw.ac.uz.emhare.finance.payment.domain.model.ApplicationPayment;
+import zw.ac.uz.emhare.finance.payment.domain.model.ApplicationPaymentReference;
+import zw.ac.uz.emhare.finance.payment.domain.model.ExchangeRate;
+import zw.ac.uz.emhare.finance.payment.domain.model.FinanceReceipt;
+import zw.ac.uz.emhare.finance.payment.infrastructure.persistence.ApplicationPaymentReferenceRepository;
+import zw.ac.uz.emhare.finance.payment.infrastructure.persistence.ApplicationPaymentRepository;
+import zw.ac.uz.emhare.finance.payment.infrastructure.persistence.ExchangeRateRepository;
+import zw.ac.uz.emhare.finance.payment.infrastructure.persistence.FinanceReceiptRepository;
+
+import zw.ac.uz.emhare.finance.payment.application.command.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -23,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import zw.ac.uz.emhare.finance.integration.FinanceIntegrationOutboxService;
+import zw.ac.uz.emhare.finance.payment.domain.model.MoneyRatingStatus;
 
 @ExtendWith(MockitoExtension.class)
 class FinanceApplicationPaymentServiceTest {

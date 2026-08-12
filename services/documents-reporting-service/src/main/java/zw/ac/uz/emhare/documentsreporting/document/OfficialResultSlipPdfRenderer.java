@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.documentsreporting.document;
 
+import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.model.GeneratedDocument;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.ZoneId;
@@ -13,8 +15,8 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.springframework.stereotype.Component;
-import zw.ac.uz.emhare.documentsreporting.projection.ProgressionDecisionProjection;
-import zw.ac.uz.emhare.documentsreporting.projection.PublishedResultProjection;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.model.ProgressionDecisionProjection;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.model.PublishedResultProjection;
 
 /** @author Tinashe K */
 @Component

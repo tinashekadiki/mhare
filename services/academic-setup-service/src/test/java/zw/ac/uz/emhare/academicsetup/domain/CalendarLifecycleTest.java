@@ -1,5 +1,11 @@
 package zw.ac.uz.emhare.academicsetup.domain;
 
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicPeriod;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicPeriodType;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicYear;
+import zw.ac.uz.emhare.academicsetup.domain.model.CalendarStatus;
+import zw.ac.uz.emhare.academicsetup.domain.model.Intake;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

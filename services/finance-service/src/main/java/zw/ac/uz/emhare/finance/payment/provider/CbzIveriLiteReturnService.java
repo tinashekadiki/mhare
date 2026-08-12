@@ -1,5 +1,11 @@
 package zw.ac.uz.emhare.finance.payment.provider;
 
+import zw.ac.uz.emhare.finance.payment.provider.infrastructure.persistence.ApplicationPaymentProviderAttemptRepository;
+import zw.ac.uz.emhare.finance.payment.provider.infrastructure.persistence.model.ApplicationPaymentProviderAttempt;
+import zw.ac.uz.emhare.finance.payment.provider.infrastructure.persistence.model.CbzIveriLiteTransactionStatus;
+
+import zw.ac.uz.emhare.finance.payment.application.command.*;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Clock;
@@ -10,7 +16,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 import zw.ac.uz.emhare.finance.payment.ApplicationPaymentReferenceSummary;
-import zw.ac.uz.emhare.finance.payment.ConfirmApplicationPaymentCommand;
+import zw.ac.uz.emhare.finance.payment.application.command.ConfirmApplicationPaymentCommand;
 import zw.ac.uz.emhare.finance.payment.FinanceApplicationPaymentService;
 
 /** Validates and records the browser return from the contained card checkout. @author Tinashe K */

@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -7,6 +9,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycleStatus;
 
 /** @author Tinashe K */
 class AdmissionCycleLifecycleTest {

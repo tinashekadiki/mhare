@@ -1,9 +1,14 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantQualificationResult;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantQualificationSitting;
+import zw.ac.uz.emhare.admissions.domain.model.GradingScaleValue;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import zw.ac.uz.emhare.admissions.domain.model.QualificationLevel;
 
 /**
  * Implements FR-SEL-015 and the A-Level-only points clause of FR-SEL-003: only passing subject

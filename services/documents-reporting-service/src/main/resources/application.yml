@@ -6,6 +6,10 @@ spring:
     import: classpath:emhare-service-common.yml
   application:
     name: documents-reporting-service
+  http:
+    serviceclient:
+      core-identity:
+        base-url: lb://core-identity-service
   datasource:
     url: ${DOCUMENTS_REPORTING_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_documents_reporting}
     username: ${EMHARE_SERVICE_DB_USER:emhare_service}

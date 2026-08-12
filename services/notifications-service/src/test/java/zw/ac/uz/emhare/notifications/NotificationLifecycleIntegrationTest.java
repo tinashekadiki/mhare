@@ -1,5 +1,11 @@
 package zw.ac.uz.emhare.notifications;
 
+import zw.ac.uz.emhare.notifications.domain.model.NotificationConsent;
+import zw.ac.uz.emhare.notifications.domain.model.NotificationEventInbox;
+import zw.ac.uz.emhare.notifications.domain.model.NotificationProviderCallback;
+import zw.ac.uz.emhare.notifications.domain.model.NotificationRequest;
+import zw.ac.uz.emhare.notifications.domain.model.NotificationTemplate;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.Instant;
@@ -16,7 +22,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.NotificationRequestedEvent;
-import zw.ac.uz.emhare.notifications.NotificationContracts.*;
+import zw.ac.uz.emhare.notifications.api.model.NotificationApiModels.*;
 
 /** @author Tinashe K */
 @Testcontainers

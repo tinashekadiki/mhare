@@ -1,5 +1,11 @@
 package zw.ac.uz.emhare.coreidentity.provisioning;
 
+import zw.ac.uz.emhare.coreidentity.provisioning.domain.model.StudentPortalAccessProvisioning;
+import zw.ac.uz.emhare.coreidentity.provisioning.infrastructure.persistence.StudentPortalAccessProvisioningRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.PlatformUserRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.RoleRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.UserRoleAssignmentRepository;
+
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -14,11 +20,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import zw.ac.uz.emhare.common.messaging.StudentPortalAccessProvisioningRequestedEvent;
-import zw.ac.uz.emhare.coreidentity.rbac.PlatformUser;
-import zw.ac.uz.emhare.coreidentity.rbac.PlatformUserRepository;
-import zw.ac.uz.emhare.coreidentity.rbac.RoleRepository;
-import zw.ac.uz.emhare.coreidentity.rbac.UserRoleAssignment;
-import zw.ac.uz.emhare.coreidentity.rbac.UserRoleAssignmentRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.PlatformUser;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.UserRoleAssignment;
 
 /** @author Tinashe K */
 class StudentPortalAccessProvisioningServiceTest {

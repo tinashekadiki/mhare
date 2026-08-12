@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationClearance;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationPaymentReference;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeChoice;
+
 import java.util.UUID;
 import java.util.List;
 import java.math.BigDecimal;

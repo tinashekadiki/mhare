@@ -1,12 +1,14 @@
 package zw.ac.uz.emhare.examstimetabling.timetable;
 
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamTimetableGenerationRun;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.*;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import zw.ac.uz.emhare.examstimetabling.setup.ExamSession;
+import zw.ac.uz.emhare.examstimetabling.setup.domain.model.ExamSession;
 
 /** @author Tinashe K */
 class ExamTimetableGenerationRunTest {

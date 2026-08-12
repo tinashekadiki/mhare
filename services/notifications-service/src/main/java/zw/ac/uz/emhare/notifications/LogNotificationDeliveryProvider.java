@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.notifications;
 
+import zw.ac.uz.emhare.notifications.domain.model.NotificationRequest;
+
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;

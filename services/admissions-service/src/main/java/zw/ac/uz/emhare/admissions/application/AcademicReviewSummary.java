@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AcademicReviewAssignment;
+import zw.ac.uz.emhare.admissions.domain.model.AcademicUnitRecommendation;
+
 import java.time.Instant;
 import java.util.UUID;
 

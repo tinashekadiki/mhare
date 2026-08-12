@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.academicsetup.application;
 
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.CurriculumModuleRepository;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
@@ -16,15 +18,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicModule;
-import zw.ac.uz.emhare.academicsetup.domain.CurriculumModule;
-import zw.ac.uz.emhare.academicsetup.domain.CurriculumModuleRepository;
-import zw.ac.uz.emhare.academicsetup.domain.CurriculumModuleType;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeVersion;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeVersionStatus;
-import zw.ac.uz.emhare.academicsetup.integration.CurriculumModuleUsageClient;
-import zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.RemoveCurriculumModule;
-import zw.ac.uz.emhare.academicsetup.web.AcademicSetupViews.CurriculumModuleUsageSummary;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicModule;
+import zw.ac.uz.emhare.academicsetup.domain.model.CurriculumModule;
+import zw.ac.uz.emhare.academicsetup.domain.model.CurriculumModuleType;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeVersion;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeVersionStatus;
+import zw.ac.uz.emhare.academicsetup.curriculum.application.port.CurriculumModuleUsagePort;
+import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.RemoveCurriculumModule;
+import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.CurriculumModuleUsageSummary;
 import zw.ac.uz.emhare.common.persistence.EmhareRevisionContext;
 import zw.ac.uz.emhare.common.security.EmhareCurrentUser;
 import zw.ac.uz.emhare.common.security.EmhareCurrentUserResolver;
@@ -34,7 +35,7 @@ import zw.ac.uz.emhare.common.security.EmhareCurrentUserResolver;
 class CurriculumModuleAmendmentServiceTest {
 
     @Mock private CurriculumModuleRepository curriculumModuleRepository;
-    @Mock private CurriculumModuleUsageClient curriculumModuleUsageClient;
+    @Mock private CurriculumModuleUsagePort curriculumModuleUsagePort;
     @Mock private EmhareCurrentUserResolver currentUserResolver;
     @Mock private ProgrammeVersion programmeVersion;
     @Mock private AcademicModule academicModule;
@@ -48,7 +49,7 @@ class CurriculumModuleAmendmentServiceTest {
     void setUp() {
         service = new CurriculumModuleAmendmentService(
                 curriculumModuleRepository,
-                curriculumModuleUsageClient,
+                curriculumModuleUsagePort,
                 currentUserResolver);
         programmeVersionId = UUID.randomUUID();
         curriculumModuleId = UUID.randomUUID();
@@ -72,7 +73,7 @@ class CurriculumModuleAmendmentServiceTest {
 
     @Test
     void remove_shouldDeclineWhenRegisteredStudentsReferenceModule() {
-        when(curriculumModuleUsageClient.usage(curriculumModuleId))
+        when(curriculumModuleUsagePort.usage(curriculumModuleId))
                 .thenReturn(new CurriculumModuleUsageSummary(curriculumModuleId, 3, 0, false));
 
         assertThatThrownBy(() -> service.remove(programmeVersionId, curriculumModuleId, removal(0)))
@@ -84,7 +85,7 @@ class CurriculumModuleAmendmentServiceTest {
 
     @Test
     void remove_shouldDeclineWhenResultsReferenceModule() {
-        when(curriculumModuleUsageClient.usage(curriculumModuleId))
+        when(curriculumModuleUsagePort.usage(curriculumModuleId))
                 .thenReturn(new CurriculumModuleUsageSummary(curriculumModuleId, 0, 2, false));
 
         assertThatThrownBy(() -> service.remove(programmeVersionId, curriculumModuleId, removal(0)))
@@ -97,7 +98,7 @@ class CurriculumModuleAmendmentServiceTest {
     @Test
     void remove_shouldSoftDeleteUnusedModuleAndRetainAuditReason() {
         UUID actorUserId = UUID.randomUUID();
-        when(curriculumModuleUsageClient.usage(curriculumModuleId))
+        when(curriculumModuleUsagePort.usage(curriculumModuleId))
                 .thenReturn(new CurriculumModuleUsageSummary(curriculumModuleId, 0, 0, true));
         when(currentUserResolver.requireCurrentUser()).thenReturn(new EmhareCurrentUser(
                 UUID.randomUUID(), actorUserId, "admin@example.test", "admin", "Admin", Set.of("academic-admin")));
@@ -119,7 +120,7 @@ class CurriculumModuleAmendmentServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Curriculum Module was changed by another user. Refresh before retrying.");
 
-        verify(curriculumModuleUsageClient, never()).usage(curriculumModuleId);
+        verify(curriculumModuleUsagePort, never()).usage(curriculumModuleId);
     }
 
     private RemoveCurriculumModule removal(long expectedVersion) {

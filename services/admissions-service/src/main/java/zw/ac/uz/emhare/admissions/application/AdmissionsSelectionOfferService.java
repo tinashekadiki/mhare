@@ -1,5 +1,48 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycleArchiveSummary;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionOffer;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionRequirementSet;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionQualificationRequirementGroup;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionQualificationRequirementItem;
+import zw.ac.uz.emhare.admissions.domain.model.QualificationLevel;
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationEvaluation;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeChoice;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatusEvent;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeDocumentRequirement;
+import zw.ac.uz.emhare.admissions.domain.model.OfferBatch;
+import zw.ac.uz.emhare.admissions.domain.model.OfferCondition;
+import zw.ac.uz.emhare.admissions.domain.model.OfferDispatch;
+import zw.ac.uz.emhare.admissions.domain.model.OfferResponse;
+import zw.ac.uz.emhare.admissions.domain.model.OfferStatusEvent;
+import zw.ac.uz.emhare.admissions.domain.model.SelectionDecision;
+import zw.ac.uz.emhare.admissions.domain.model.SelectionRound;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AcademicReviewAssignmentRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionCycleArchiveSummaryRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionCycleRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionOfferRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionRequirementSetRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionQualificationRequirementGroupRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionQualificationRequirementItemRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationEvaluationRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeChoiceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationStatusEventRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeDocumentRequirementRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferBatchRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferConditionRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferDispatchRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferResponseRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferStatusEventRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.SelectionDecisionRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.SelectionRoundRepository;
+
+import zw.ac.uz.emhare.admissions.application.command.*;
+
 import jakarta.transaction.Transactional;
 import java.time.Clock;
 import java.time.Instant;
@@ -13,6 +56,17 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.admissions.integration.AdmissionsIntegrationOutboxService;
 import zw.ac.uz.emhare.common.persistence.EmhareRevisionContext;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycleStatus;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatus;
+import zw.ac.uz.emhare.admissions.domain.model.EvaluationStatus;
+import zw.ac.uz.emhare.admissions.domain.model.OfferBatchScopeType;
+import zw.ac.uz.emhare.admissions.domain.model.OfferConditionStatus;
+import zw.ac.uz.emhare.admissions.domain.model.OfferResponseType;
+import zw.ac.uz.emhare.admissions.domain.model.OfferStatus;
+import zw.ac.uz.emhare.admissions.domain.model.OfferType;
+import zw.ac.uz.emhare.admissions.domain.model.ProgrammeChoiceStatus;
+import zw.ac.uz.emhare.admissions.domain.model.SelectionRoundStatus;
 
 /** @author Tinashe K */
 @Service
@@ -26,8 +80,11 @@ public class AdmissionsSelectionOfferService {
     private final ApplicationRepository applicationRepository;
     private final ApplicationProgrammeChoiceRepository programmeChoiceRepository;
     private final AdmissionRequirementSetRepository requirementSetRepository;
+    private final AdmissionQualificationRequirementGroupRepository qualificationGroupRepository;
+    private final AdmissionQualificationRequirementItemRepository qualificationItemRepository;
     private final ApplicationEvaluationRepository evaluationRepository;
     private final QualificationEligibilityService qualificationEligibilityService;
+    private final AdvancedAdmissionRuleEvaluator advancedRuleEvaluator;
     private final ApplicationStatusEventRepository applicationStatusEventRepository;
     private final SelectionRoundRepository selectionRoundRepository;
     private final SelectionDecisionRepository selectionDecisionRepository;
@@ -52,8 +109,11 @@ public class AdmissionsSelectionOfferService {
             ApplicationRepository applicationRepository,
             ApplicationProgrammeChoiceRepository programmeChoiceRepository,
             AdmissionRequirementSetRepository requirementSetRepository,
+            AdmissionQualificationRequirementGroupRepository qualificationGroupRepository,
+            AdmissionQualificationRequirementItemRepository qualificationItemRepository,
             ApplicationEvaluationRepository evaluationRepository,
             QualificationEligibilityService qualificationEligibilityService,
+            AdvancedAdmissionRuleEvaluator advancedRuleEvaluator,
             ApplicationStatusEventRepository applicationStatusEventRepository,
             SelectionRoundRepository selectionRoundRepository,
             SelectionDecisionRepository selectionDecisionRepository,
@@ -76,8 +136,11 @@ public class AdmissionsSelectionOfferService {
         this.applicationRepository = applicationRepository;
         this.programmeChoiceRepository = programmeChoiceRepository;
         this.requirementSetRepository = requirementSetRepository;
+        this.qualificationGroupRepository = qualificationGroupRepository;
+        this.qualificationItemRepository = qualificationItemRepository;
         this.evaluationRepository = evaluationRepository;
         this.qualificationEligibilityService = qualificationEligibilityService;
+        this.advancedRuleEvaluator = advancedRuleEvaluator;
         this.applicationStatusEventRepository = applicationStatusEventRepository;
         this.selectionRoundRepository = selectionRoundRepository;
         this.selectionDecisionRepository = selectionDecisionRepository;
@@ -111,6 +174,10 @@ public class AdmissionsSelectionOfferService {
             String financeFeeStructureCode,
             String financeFeeStructureName,
             boolean active) {
+        if (active) {
+            throw new IllegalArgumentException(
+                    "Create application routes as inactive, then use route configuration to validate and activate them.");
+        }
         String normalizedCode = requiredText(code, "Application type code").toUpperCase(Locale.ROOT);
         if (applicationTypeRepository.existsByCodeIgnoreCaseAndDeletedAtIsNull(normalizedCode)) {
             throw new IllegalStateException("An application type with this code already exists.");
@@ -153,6 +220,10 @@ public class AdmissionsSelectionOfferService {
         EmhareRevisionContext.setRequestMetadata(correlationId, normalizedChangeReason);
         try {
             ApplicationType applicationType = applicationType(applicationTypeId);
+            if (active != applicationType.isActive()) {
+                throw new IllegalArgumentException(
+                        "Use the atomic route-configuration endpoint to change application-route activation.");
+            }
             applicationType.update(
                     name, requiresEmploymentHistory, requiresReferees, active,
                     financeFeeStructureId, financeFeeStructureCode, financeFeeStructureName, expectedVersion);
@@ -308,23 +379,43 @@ public class AdmissionsSelectionOfferService {
             boolean requiresEnglish,
             boolean requiresMathematicsOrScience,
             Map<String, Object> advancedRules,
-            String advancedRulesVersion) {
+            String advancedRulesVersion,
+            List<QualificationRequirementGroupInput> qualificationGroups) {
         ApplicationType applicationType = applicationTypeRepository.findById(applicationTypeId)
                 .orElseThrow(() -> new IllegalArgumentException("Application type not found."));
         AdmissionCycle cycle = intakeId == null ? null : admissionsIntakeProjectionService.requireProjection(intakeId);
         String advancedRulesJson = advancedRules == null ? null : serialize(advancedRules);
-        AdmissionRequirementSet requirementSet = requirementSetRepository.save(new AdmissionRequirementSet(
+        AdmissionRequirementSet requirementSet = requirementSetRepository.saveAndFlush(new AdmissionRequirementSet(
                 programmeId, applicationType, cycle, requiredText(versionCode, "Requirement-set version"),
                 effectiveFrom, effectiveTo, minimumTotalPoints, maleCutoffPoints, femaleCutoffPoints,
                 requiresEnglish, requiresMathematicsOrScience, advancedRulesJson,
                 advancedRulesJson == null ? null : requiredText(advancedRulesVersion, "Advanced-rules version")));
-        return AdmissionRequirementSetSummary.from(requirementSet);
+        java.util.Set<String> groupCodes = new java.util.HashSet<>();
+        for (QualificationRequirementGroupInput input : qualificationGroups == null ? List.<QualificationRequirementGroupInput>of() : qualificationGroups) {
+            String normalizedCode = requiredText(input.code(), "Qualification group code").toUpperCase(Locale.ROOT);
+            if (!groupCodes.add(normalizedCode)) throw new IllegalArgumentException("Qualification group codes must be unique.");
+            if (input.items() == null || input.items().isEmpty() || input.minimumSatisfiedItems() > input.items().size()) {
+                throw new IllegalArgumentException("Qualification group minimum must be achievable by its configured items.");
+            }
+            AdmissionQualificationRequirementGroup group = qualificationGroupRepository.saveAndFlush(
+                    new AdmissionQualificationRequirementGroup(requirementSet, normalizedCode, input.name(),
+                            input.minimumSatisfiedItems(), input.sortOrder()));
+            qualificationItemRepository.saveAll(input.items().stream().map(item ->
+                    new AdmissionQualificationRequirementItem(group,
+                            qualificationLevel(item.qualificationLevel()), item.minimumCount(),
+                            item.minimumTotalPoints(), item.minimumDurationMonths(), item.sortOrder())).toList());
+        }
+        return requirementSetSummary(requirementSet);
     }
 
     @Transactional
     public AdmissionRequirementSetSummary approveRequirementSet(UUID requirementSetId, UUID actorUserId) {
         AdmissionRequirementSet requirementSet = requirementSetRepository.findById(requirementSetId)
                 .orElseThrow(() -> new IllegalArgumentException("Admission requirement set not found."));
+        if (requirementSet.getAdvancedRulesJson() != null) {
+            advancedRuleEvaluator.validate(
+                    requirementSet.getAdvancedRulesVersion(), requirementSet.getAdvancedRulesJson());
+        }
         List<AdmissionRequirementSet> supersededRequirementSets = requirementSetRepository.findApprovedForRouteForUpdate(
                         requirementSet.getProgrammeId(),
                         requirementSet.getApplicationType().getId(),
@@ -338,14 +429,30 @@ public class AdmissionsSelectionOfferService {
             requirementSetRepository.saveAllAndFlush(supersededRequirementSets);
         }
         requirementSet.approve(actorUserId, clock.instant());
-        return AdmissionRequirementSetSummary.from(requirementSetRepository.saveAndFlush(requirementSet));
+        return requirementSetSummary(requirementSetRepository.saveAndFlush(requirementSet));
     }
 
     @Transactional
     public List<AdmissionRequirementSetSummary> listRequirementSets() {
         return requirementSetRepository.findAllByDeletedAtIsNullOrderByEffectiveFromDesc().stream()
-                .map(AdmissionRequirementSetSummary::from)
+                .map(this::requirementSetSummary)
                 .toList();
+    }
+
+    private AdmissionRequirementSetSummary requirementSetSummary(AdmissionRequirementSet requirementSet) {
+        return AdmissionRequirementSetSummary.from(requirementSet).withQualificationGroups(
+                qualificationGroupRepository
+                        .findAllByRequirementSetIdAndDeletedAtIsNullOrderBySortOrderAsc(requirementSet.getId()).stream()
+                        .map(group -> new AdmissionRequirementSetSummary.QualificationRequirementGroupSummary(
+                                group.getId(), group.getGroupCode(), group.getName(),
+                                group.getMinimumSatisfiedItems(), group.getSortOrder(),
+                                qualificationItemRepository
+                                        .findAllByRequirementGroupIdAndDeletedAtIsNullOrderBySortOrderAsc(group.getId()).stream()
+                                        .map(item -> new AdmissionRequirementSetSummary.QualificationRequirementItemSummary(
+                                                item.getId(), item.getQualificationLevel().name(), item.getMinimumCount(),
+                                                item.getMinimumTotalPoints(), item.getMinimumDurationMonths(), item.getSortOrder()))
+                                        .toList()))
+                        .toList());
     }
 
     @Transactional
@@ -580,6 +687,7 @@ public class AdmissionsSelectionOfferService {
         }
         recordOfferStatusChange(offer, previousOfferStatus, "Offer withdrawn: " + reason, actorUserId);
         recordApplicationStatusChange(application, previousApplicationStatus, "Offer withdrawn: " + reason, actorUserId);
+        integrationOutboxService.enqueueCurrentOfferPublicationStatus(offer);
         return offerSummary(offer);
     }
 
@@ -595,6 +703,7 @@ public class AdmissionsSelectionOfferService {
         offer.getProgrammeChoice().reopenAfterOfferClosed(reason);
         recordOfferStatusChange(offer, previousOfferStatus, reason, actorUserId);
         recordApplicationStatusChange(application, previousApplicationStatus, reason, actorUserId);
+        integrationOutboxService.enqueueCurrentOfferPublicationStatus(offer);
         return offerSummary(offer);
     }
 
@@ -634,6 +743,7 @@ public class AdmissionsSelectionOfferService {
         offer.getProgrammeChoice().markConverted("Converted to student " + studentNumber + ".");
         recordOfferStatusChange(offer, previousOfferStatus, "Student conversion completed.", actorUserId);
         recordApplicationStatusChange(application, previousApplicationStatus, "Student conversion completed.", actorUserId);
+        integrationOutboxService.enqueueCurrentOfferPublicationStatus(offer);
         integrationOutboxService.enqueueStudentConversionNotification(offer);
     }
 
@@ -659,7 +769,7 @@ public class AdmissionsSelectionOfferService {
             throw new IllegalStateException("The offer acceptance deadline has passed.");
         }
         OfferResponse response = offerResponseRepository.saveAndFlush(
-                new OfferResponse(offer, responseType, now, applicantUserId, notes));
+                new OfferResponse(offer, offer.getCurrentPublication(), responseType, now, applicantUserId, notes));
         OfferStatus previousOfferStatus = offer.getStatus();
         Application application = offer.getApplication();
         ApplicationStatus previousApplicationStatus = application.getStatus();
@@ -671,6 +781,7 @@ public class AdmissionsSelectionOfferService {
         }
         recordOfferStatusChange(offer, previousOfferStatus, "Applicant response recorded.", applicantUserId);
         recordApplicationStatusChange(application, previousApplicationStatus, "Applicant response recorded.", applicantUserId);
+        integrationOutboxService.enqueueCurrentOfferPublicationStatus(offer);
         integrationOutboxService.enqueueOfferResponseNotification(offer);
         return AdmissionOfferSummary.from(
                 offer,
@@ -774,6 +885,18 @@ public class AdmissionsSelectionOfferService {
             throw new IllegalArgumentException("Evaluation evidence could not be serialized.", exception);
         }
     }
+
+    private QualificationLevel qualificationLevel(String value) {
+        return parseEnum(QualificationLevel.class, value, "qualification level");
+    }
+
+    public record QualificationRequirementGroupInput(
+            String code, String name, int minimumSatisfiedItems, int sortOrder,
+            List<QualificationRequirementItemInput> items) { }
+
+    public record QualificationRequirementItemInput(
+            String qualificationLevel, int minimumCount, java.math.BigDecimal minimumTotalPoints,
+            Integer minimumDurationMonths, int sortOrder) { }
 
     private static String requiredText(String value, String label) {
         if (value == null || value.isBlank()) throw new IllegalArgumentException(label + " is required.");

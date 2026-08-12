@@ -1,10 +1,25 @@
 package zw.ac.uz.emhare.dining.setup;
 
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningAttendantAssignment;
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningHall;
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningHallAssignmentRule;
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningPlan;
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningPlanMeal;
+import zw.ac.uz.emhare.dining.setup.domain.model.MealOption;
+import zw.ac.uz.emhare.dining.setup.domain.model.MealServiceTime;
+import zw.ac.uz.emhare.dining.setup.infrastructure.persistence.DiningAttendantAssignmentRepository;
+import zw.ac.uz.emhare.dining.setup.infrastructure.persistence.DiningHallAssignmentRuleRepository;
+import zw.ac.uz.emhare.dining.setup.infrastructure.persistence.DiningHallRepository;
+import zw.ac.uz.emhare.dining.setup.infrastructure.persistence.DiningPlanMealRepository;
+import zw.ac.uz.emhare.dining.setup.infrastructure.persistence.DiningPlanRepository;
+import zw.ac.uz.emhare.dining.setup.infrastructure.persistence.MealOptionRepository;
+import zw.ac.uz.emhare.dining.setup.infrastructure.persistence.MealServiceTimeRepository;
+
 import java.time.Clock;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.dining.setup.DiningSetupContracts.*;
+import zw.ac.uz.emhare.dining.setup.api.model.DiningSetupApiModels.*;
 
 /** @author Tinashe K */
 @Service

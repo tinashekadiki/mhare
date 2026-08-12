@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.studentrecords.conversion;
 
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentConversionRequest;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProfile;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProgrammeEnrolment;
+
 import java.time.Instant;
 import java.util.UUID;
 

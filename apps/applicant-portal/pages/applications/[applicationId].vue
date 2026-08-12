@@ -13,6 +13,7 @@ import type {
 } from '@emhare/portal-shell/types/admissions'
 import type { UploadedDocumentDownload, UploadedDocumentSummary } from '@emhare/portal-shell/types/documents'
 import type { ApplicationHostedCheckout, ApplicationPaymentOptions } from '@emhare/portal-shell/types/finance'
+import { entryOptionSelectionsByProgramme, routeForApplication } from '@emhare/portal-shell/utils/admissions-route'
 
 definePageMeta({ public: true })
 
@@ -24,6 +25,13 @@ type QualificationResultDraft = {
   grade: string
   principalSubject: boolean
   expectedVersion: number
+}
+type ProfessionalAchievementDraft = {
+  type: 'AWARD' | 'PROFESSIONAL_MEMBERSHIP' | 'PUBLICATION' | 'PRESENTATION' | 'OTHER'
+  title: string
+  organisation: string
+  achievedOn: string
+  description: string
 }
 type ApplicationPaymentReconciliation = {
   status: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED'
@@ -77,11 +85,15 @@ const profileForm = reactive({
 })
 const kinForm = reactive({ fullName: '', relationshipCode: '', phoneNumber: '', email: '', address: '', primary: false, expectedVersion: 0 })
 const employmentForm = reactive({ employerName: '', positionTitle: '', startedOn: '', endedOn: '', current: false, responsibilities: '', expectedVersion: 0 })
-const refereeForm = reactive({ fullName: '', title: '', organisation: '', positionTitle: '', email: '', phoneNumber: '', expectedVersion: 0 })
+const refereeForm = reactive({ fullName: '', title: '', organisation: '', positionTitle: '', expertise: '', relationshipToApplicant: '', email: '', phoneNumber: '', expectedVersion: 0 })
 const qualificationForm = reactive({ level: 'O_LEVEL', examBodyId: '', institutionName: '', centreNumber: '', candidateNumber: '', yearWritten: new Date().getFullYear(), countryId: '', documentId: '', expectedVersion: 0 })
 const resultForms = ref<QualificationResultDraft[]>([])
 let nextResultDraftId = 1
 const programmeIds = ref<string[]>([])
+const entryOptionIdsByProgramme = reactive<Record<string, string[]>>({})
+const priorUzForm = reactive({ previouslyStudiedAtUz: false, registrationNumber: '', enrolmentStartedOn: '', enrolmentEndedOn: '', previouslyAcceptedOffer: false, previouslyTookUpPlace: false })
+const achievementsDeclaredNone = ref(false)
+const achievementForms = ref<ProfessionalAchievementDraft[]>([])
 const documentForm = reactive<{ requirementCode: string, file: File | File[] | null }>({ requirementCode: '', file: null })
 const oLevelGradeItems = ['A', 'B', 'C']
 const aLevelGradeItems = ['A', 'B', 'C', 'D', 'E']
@@ -154,7 +166,11 @@ const applicationJourneySections = computed(() =>
   ]
 )
 const activeJourneyStepIndex = computed(() => preDraftJourneySteps.value.length + activeSectionIndex.value)
-const selectedIntake = computed(() => startOptions.value?.intakes.find(intake => intake.id === workspace.value?.application.intakeId) ?? null)
+const selectedRoute = computed(() => routeForApplication(
+  startOptions.value?.routes ?? [],
+  workspace.value?.application.applicationTypeId,
+  workspace.value?.application.intakeId,
+))
 const selectedResultSitting = computed(() => workspace.value?.qualifications.find(sitting => sitting.id === selectedSittingId.value) ?? null)
 const resultQualificationLevel = computed(() => selectedResultSitting.value?.level ?? qualificationForm.level)
 const activeSubjectCatalogueLevel = computed(() => inlineEditor.value === 'result' ? resultQualificationLevel.value : qualificationForm.level)
@@ -162,11 +178,12 @@ const resultGradeItems = computed(() => gradeItemsForQualificationLevel(resultQu
 const resultBatchReady = computed(() => resultForms.value.length > 0
   && resultForms.value.every(result => Boolean(result.subjectId && result.grade))
   && new Set(resultForms.value.map(result => result.subjectId)).size === resultForms.value.length)
-const programmeItems = computed(() => selectedIntake.value?.programmes.map(programme => ({
+const eligibleProgrammes = computed(() => selectedRoute.value?.programmes ?? [])
+const programmeItems = computed(() => eligibleProgrammes.value.map(programme => ({
   label: `${programme.code} · ${programme.name}`,
   value: programme.id,
   description: `${programme.owningAcademicUnitName} · Curriculum ${programme.programmeVersionCode}`
-})) ?? [])
+})))
 const countryItems = computed(() => countries.value.map(country => ({ label: `${country.iso2Code} · ${country.name}`, value: country.id })))
 const examBodyItems = computed(() => qualificationReferences.value?.examBodies.map(item => ({ label: `${item.code} · ${item.name}`, value: item.id })) ?? [])
 const subjectItems = computed(() => {
@@ -439,6 +456,24 @@ function applyWorkspace(value: ApplicantApplicationWorkspace) {
     expectedVersion: profile.version
   })
   programmeIds.value = value.application.programmeChoices.sort((a, b) => a.choiceRank - b.choiceRank).map(choice => choice.programmeId)
+  Object.keys(entryOptionIdsByProgramme).forEach(programmeId => delete entryOptionIdsByProgramme[programmeId])
+  Object.assign(entryOptionIdsByProgramme, entryOptionSelectionsByProgramme(value))
+  Object.assign(priorUzForm, value.priorUzDeclaration ? {
+    previouslyStudiedAtUz: value.priorUzDeclaration.previouslyStudiedAtUz,
+    registrationNumber: value.priorUzDeclaration.registrationNumber ?? '',
+    enrolmentStartedOn: value.priorUzDeclaration.enrolmentStartedOn ?? '',
+    enrolmentEndedOn: value.priorUzDeclaration.enrolmentEndedOn ?? '',
+    previouslyAcceptedOffer: value.priorUzDeclaration.previouslyAcceptedOffer ?? false,
+    previouslyTookUpPlace: value.priorUzDeclaration.previouslyTookUpPlace ?? false,
+  } : { previouslyStudiedAtUz: false, registrationNumber: '', enrolmentStartedOn: '', enrolmentEndedOn: '', previouslyAcceptedOffer: false, previouslyTookUpPlace: false })
+  achievementsDeclaredNone.value = value.professionalAchievementsDeclaredNone
+  achievementForms.value = value.professionalAchievements.map(achievement => ({
+    type: achievement.type,
+    title: achievement.title,
+    organisation: achievement.organisation ?? '',
+    achievedOn: achievement.achievedOn ?? '',
+    description: achievement.description ?? '',
+  }))
   if (!activeSectionCode.value || !sections.some(section => section.code === activeSectionCode.value)) {
     activeSectionCode.value = sections.find(section => !['COMPLETE', 'VERIFIED'].includes(section.status))?.code ?? sections[0]?.code ?? ''
   }
@@ -493,6 +528,8 @@ function sectionProgress(value: ApplicantApplicationWorkspace, code: string, min
   }
   if (code === 'NEXT_OF_KIN') return countSectionProgress(value.nextOfKin.length, minimum)
   if (code === 'QUALIFICATIONS') return countSectionProgress(value.qualifications.filter(sitting => sitting.results.length > 0).length, minimum)
+  if (code === 'PRIOR_UZ_STUDY') return countSectionProgress(value.priorUzDeclaration ? 1 : 0, 1)
+  if (code === 'PROFESSIONAL_ACHIEVEMENTS') return countSectionProgress(value.professionalAchievementsDeclaredNone ? 1 : value.professionalAchievements.length, 1)
   if (code === 'PROGRAMME_CHOICES') return countSectionProgress(value.application.programmeChoices.length, minimum)
   if (code === 'DOCUMENTS') {
     return { status: value.documents.requiredDocumentsUploaded ? 'COMPLETE' : 'IN_PROGRESS', completedAt: null, completionSummary: value.documents.requiredDocumentsUploaded ? 'Required documents uploaded.' : 'Required documents are missing or rejected.' }
@@ -650,7 +687,7 @@ function openEmployment(record?: ApplicantEmploymentHistory) {
 
 function openReferee(record?: ApplicantReferee) {
   editingId.value = record?.id ?? null
-  Object.assign(refereeForm, record ? { ...record, title: record.title ?? '', positionTitle: record.positionTitle ?? '', phoneNumber: record.phoneNumber ?? '', expectedVersion: record.version } : { fullName: '', title: '', organisation: '', positionTitle: '', email: '', phoneNumber: '', expectedVersion: 0 })
+  Object.assign(refereeForm, record ? { ...record, title: record.title ?? '', positionTitle: record.positionTitle ?? '', phoneNumber: record.phoneNumber ?? '', expectedVersion: record.version } : { fullName: '', title: '', organisation: '', positionTitle: '', expertise: '', relationshipToApplicant: '', email: '', phoneNumber: '', expectedVersion: 0 })
   inlineEditor.value = 'referee'
   focusInlineEditor(record != null)
 }
@@ -817,11 +854,54 @@ async function saveProgrammeChoices() {
   working.value = true
   try {
     applyWorkspace(await api.request<ApplicantApplicationWorkspace>(`/api/admissions/applications/${applicationId.value}/programme-choices`, {
-      method: 'PUT', body: { programmeIds: programmeIds.value }
+      method: 'PUT', body: {
+        choices: programmeIds.value.map(programmeId => ({
+          programmeId,
+          entryOptionIds: entryOptionIdsByProgramme[programmeId] ?? [],
+        })),
+      }
     }))
     await showSuccess('Programme choices saved', 'The displayed order is your preference ranking.')
   } catch (error) {
     await showError('Programme choices could not be saved', api.errorMessage(error))
+  } finally {
+    working.value = false
+  }
+}
+
+async function savePriorUzDeclaration() {
+  working.value = true
+  try {
+    applyWorkspace(await api.request<ApplicantApplicationWorkspace>(`/api/admissions/applications/${applicationId.value}/prior-uz-declaration`, {
+      method: 'PUT',
+      body: priorUzForm.previouslyStudiedAtUz ? nullableBody(priorUzForm) : { previouslyStudiedAtUz: false },
+    }))
+    await showSuccess('Prior UZ declaration saved', 'Your declaration is included in this application only.')
+  } catch (error) {
+    await showError('Prior UZ declaration could not be saved', api.errorMessage(error))
+  } finally {
+    working.value = false
+  }
+}
+
+function addAchievement() {
+  achievementsDeclaredNone.value = false
+  achievementForms.value.push({ type: 'AWARD', title: '', organisation: '', achievedOn: '', description: '' })
+}
+
+async function saveProfessionalAchievements() {
+  working.value = true
+  try {
+    applyWorkspace(await api.request<ApplicantApplicationWorkspace>(`/api/admissions/applications/${applicationId.value}/professional-achievements`, {
+      method: 'PUT',
+      body: {
+        declaredNone: achievementsDeclaredNone.value,
+        achievements: achievementsDeclaredNone.value ? [] : achievementForms.value.map(achievement => nullableBody(achievement)),
+      },
+    }))
+    await showSuccess('Professional achievements saved', 'The declaration is included in this application only.')
+  } catch (error) {
+    await showError('Professional achievements could not be saved', api.errorMessage(error))
   } finally {
     working.value = false
   }
@@ -984,6 +1064,11 @@ function formatStatus(value: string) {
         <section id="application-section-editor" class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-6 py-5 sm:px-8">
             <div>
+              <p data-testid="application-context" class="mb-1 text-xs font-bold tracking-[0.14em] text-uzgreen-700 uppercase">
+                {{ workspace.application.applicationTypeName }}
+                <span class="mx-1 text-uzgold-600" aria-hidden="true">·</span>
+                {{ workspace.application.intakeCode }}
+              </p>
               <div class="flex items-center gap-2"><h1 class="text-lg font-semibold text-slate-900">{{ displaySectionName(activeSection) }}</h1><EmhareStatusPill v-if="activeSection" :label="formatStatus(activeSection.status)" :tone="sectionTone(activeSection.status)" /></div>
               <p class="mt-1 text-sm text-slate-500">{{ activeSection?.completionSummary ?? 'Complete the required information for this section.' }}</p>
             </div>
@@ -1088,7 +1173,9 @@ function formatStatus(value: string) {
                   <EmhareFormField v-model="refereeForm.title" label="Title" />
                   <EmhareFormField v-model="refereeForm.fullName" label="Full name" required />
                   <EmhareFormField v-model="refereeForm.organisation" label="Organisation" required />
-                  <EmhareFormField v-model="refereeForm.positionTitle" label="Position" />
+                  <EmhareFormField v-model="refereeForm.positionTitle" label="Position" required />
+                  <EmhareFormField v-model="refereeForm.relationshipToApplicant" label="Relationship to applicant" required />
+                  <div class="md:col-span-2"><EmhareFormField v-model="refereeForm.expertise" type="textarea" label="Area of expertise" required /></div>
                   <EmhareFormField v-model="refereeForm.email" type="email" label="Email" required />
                   <EmhareFormField v-model="refereeForm.phoneNumber" type="phone" label="Phone number" />
                 </div>
@@ -1124,6 +1211,38 @@ function formatStatus(value: string) {
                   </div>
                 </div>
               </EmharePaginatedCollection>
+            </div>
+
+            <div v-else-if="activeSectionCode === 'PRIOR_UZ_STUDY'" class="space-y-5">
+              <UAlert color="primary" variant="soft" icon="i-lucide-landmark" title="Previous University of Zimbabwe study" description="This declaration is required even when you have not studied at UZ before." />
+              <EmhareFormField v-model="priorUzForm.previouslyStudiedAtUz" type="toggle" label="I previously studied at UZ" :disabled="!isDraft" />
+              <div v-if="priorUzForm.previouslyStudiedAtUz" class="grid gap-4 md:grid-cols-2">
+                <EmhareFormField v-model="priorUzForm.registrationNumber" label="Previous registration number" required :disabled="!isDraft" />
+                <EmhareFormField v-model="priorUzForm.enrolmentStartedOn" type="date" label="Enrolment started" required :disabled="!isDraft" />
+                <EmhareFormField v-model="priorUzForm.enrolmentEndedOn" type="date" label="Enrolment ended" :disabled="!isDraft" />
+                <EmhareFormField v-model="priorUzForm.previouslyAcceptedOffer" type="toggle" label="I accepted the previous offer" :disabled="!isDraft" />
+                <EmhareFormField v-model="priorUzForm.previouslyTookUpPlace" type="toggle" label="I took up the previous place" :disabled="!isDraft" />
+              </div>
+              <div class="flex justify-end"><UButton v-if="isDraft" label="Save declaration" icon="i-lucide-save" :loading="working" @click="savePriorUzDeclaration" /></div>
+            </div>
+
+            <div v-else-if="activeSectionCode === 'PROFESSIONAL_ACHIEVEMENTS'" class="space-y-5">
+              <UAlert color="primary" variant="soft" icon="i-lucide-award" title="Professional achievements" description="Add awards, memberships, publications or presentations, or explicitly declare that you have none." />
+              <EmhareFormField v-model="achievementsDeclaredNone" type="toggle" label="I have no professional achievements to declare" :disabled="!isDraft" />
+              <div v-if="!achievementsDeclaredNone" class="space-y-4">
+                <article v-for="(achievement, index) in achievementForms" :key="index" class="rounded-lg border border-muted p-4">
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <EmhareFormField v-model="achievement.type" type="select" label="Achievement type" :items="[{label:'Award',value:'AWARD'},{label:'Professional membership',value:'PROFESSIONAL_MEMBERSHIP'},{label:'Publication',value:'PUBLICATION'},{label:'Presentation',value:'PRESENTATION'},{label:'Other',value:'OTHER'}]" required :disabled="!isDraft" />
+                    <EmhareFormField v-model="achievement.title" label="Title" required :disabled="!isDraft" />
+                    <EmhareFormField v-model="achievement.organisation" label="Organisation" :disabled="!isDraft" />
+                    <EmhareFormField v-model="achievement.achievedOn" type="date" label="Date" :disabled="!isDraft" />
+                    <div class="md:col-span-2"><EmhareFormField v-model="achievement.description" type="textarea" label="Description" :disabled="!isDraft" /></div>
+                  </div>
+                  <div v-if="isDraft" class="mt-3 flex justify-end"><UButton label="Remove" icon="i-lucide-trash-2" color="error" variant="ghost" @click="achievementForms.splice(index, 1)" /></div>
+                </article>
+                <UButton v-if="isDraft" label="Add achievement" icon="i-lucide-plus" color="neutral" variant="outline" @click="addAchievement" />
+              </div>
+              <div class="flex justify-end"><UButton v-if="isDraft" label="Save achievements" icon="i-lucide-save" :loading="working" :disabled="!achievementsDeclaredNone && !achievementForms.length" @click="saveProfessionalAchievements" /></div>
             </div>
 
             <div v-else-if="activeSectionCode === 'QUALIFICATIONS'" class="space-y-5">
@@ -1210,7 +1329,22 @@ function formatStatus(value: string) {
             <div v-else-if="activeSectionCode === 'PROGRAMME_CHOICES'" class="space-y-5">
               <UAlert color="primary" variant="soft" icon="i-lucide-list-ordered" title="Preference order matters" description="Select Programmes in first-to-last preference order. The server validates intake eligibility and maximum choices." />
               <EmhareFormField v-model="programmeIds" type="multi-select" label="Programme choices" :items="programmeItems" required :disabled="!isDraft" placeholder="Search Programmes" />
-              <ol class="space-y-2"><li v-for="(programmeId, index) in programmeIds" :key="programmeId" class="flex items-start gap-3 rounded-lg border border-muted px-4 py-3"><UBadge :label="String(index + 1)" color="primary" /><div><p class="font-medium">{{ programmeItems.find(item => item.value === programmeId)?.label }}</p><p class="mt-0.5 text-sm text-muted">{{ programmeItems.find(item => item.value === programmeId)?.description }}</p></div></li></ol>
+              <ol class="space-y-3">
+                <li v-for="(programmeId, index) in programmeIds" :key="programmeId" class="rounded-lg border border-muted px-4 py-3">
+                  <div class="flex items-start gap-3"><UBadge :label="String(index + 1)" color="primary" /><div><p class="font-medium">{{ programmeItems.find(item => item.value === programmeId)?.label }}</p><p class="mt-0.5 text-sm text-muted">{{ programmeItems.find(item => item.value === programmeId)?.description }}</p></div></div>
+                  <div v-if="eligibleProgrammes.find(programme => programme.id === programmeId)?.entryOptions.length" class="mt-4 pl-10">
+                    <EmhareFormField
+                      v-model="entryOptionIdsByProgramme[programmeId]"
+                      type="multi-select"
+                      label="Specialization or entry preferences"
+                      :items="eligibleProgrammes.find(programme => programme.id === programmeId)?.entryOptions.map(option => ({ label: `${option.code} · ${option.name}`, value: option.id })) ?? []"
+                      :required="Boolean(eligibleProgrammes.find(programme => programme.id === programmeId)?.minimumEntryOptionSelections)"
+                      :disabled="!isDraft"
+                    />
+                    <p class="mt-1 text-xs text-muted">Select between {{ eligibleProgrammes.find(programme => programme.id === programmeId)?.minimumEntryOptionSelections }} and {{ eligibleProgrammes.find(programme => programme.id === programmeId)?.maximumEntryOptionSelections }} option(s), in preference order.</p>
+                  </div>
+                </li>
+              </ol>
               <div class="flex justify-end"><UButton v-if="isDraft" label="Save choices" icon="i-lucide-save" :loading="working" :disabled="!programmeIds.length" @click="saveProgrammeChoices" /></div>
             </div>
 
@@ -1526,6 +1660,40 @@ function formatStatus(value: string) {
                     <EmhareReviewField label="Responsibilities" :value="record.responsibilities" wide />
                   </dl>
                 </div>
+              </section>
+
+              <section v-if="workspace.sections.some(section => section.code === 'PRIOR_UZ_STUDY')" class="overflow-hidden rounded-xl border border-muted">
+                <header class="flex items-center gap-3 border-b border-muted bg-elevated/40 px-5 py-4">
+                  <UIcon name="i-lucide-landmark" class="size-5 text-primary" />
+                  <div><h2 class="font-semibold text-highlighted">Previous UZ study</h2><p class="text-sm text-muted">The application-specific prior-study declaration.</p></div>
+                </header>
+                <dl v-if="workspace.priorUzDeclaration?.previouslyStudiedAtUz" class="grid gap-x-6 gap-y-4 p-5 md:grid-cols-2">
+                  <EmhareReviewField label="Previous registration number" :value="workspace.priorUzDeclaration.registrationNumber" />
+                  <EmhareReviewField label="Enrolment started" :value="formatReviewDate(workspace.priorUzDeclaration.enrolmentStartedOn)" />
+                  <EmhareReviewField label="Enrolment ended" :value="formatReviewDate(workspace.priorUzDeclaration.enrolmentEndedOn)" />
+                  <EmhareReviewField label="Previous offer accepted" :value="yesOrNo(workspace.priorUzDeclaration.previouslyAcceptedOffer)" />
+                  <EmhareReviewField label="Previous place taken up" :value="yesOrNo(workspace.priorUzDeclaration.previouslyTookUpPlace)" />
+                </dl>
+                <p v-else-if="workspace.priorUzDeclaration" class="p-5 text-sm text-muted">No previous UZ study declared.</p>
+                <p v-else class="p-5 text-sm text-warning">Prior UZ study declaration is incomplete.</p>
+              </section>
+
+              <section v-if="workspace.sections.some(section => section.code === 'PROFESSIONAL_ACHIEVEMENTS')" class="overflow-hidden rounded-xl border border-muted">
+                <header class="flex items-center gap-3 border-b border-muted bg-elevated/40 px-5 py-4">
+                  <UIcon name="i-lucide-award" class="size-5 text-primary" />
+                  <div><h2 class="font-semibold text-highlighted">Professional achievements</h2><p class="text-sm text-muted">Awards, memberships, publications, presentations and other declared achievements.</p></div>
+                </header>
+                <div v-if="workspace.professionalAchievements.length" class="divide-y divide-muted">
+                  <dl v-for="achievement in workspace.professionalAchievements" :key="achievement.id" class="grid gap-x-6 gap-y-4 p-5 md:grid-cols-2">
+                    <EmhareReviewField label="Type" :value="formatStatus(achievement.type)" />
+                    <EmhareReviewField label="Title" :value="achievement.title" />
+                    <EmhareReviewField label="Organisation" :value="achievement.organisation" />
+                    <EmhareReviewField label="Date" :value="formatReviewDate(achievement.achievedOn)" />
+                    <EmhareReviewField label="Description" :value="achievement.description" wide />
+                  </dl>
+                </div>
+                <p v-else-if="workspace.professionalAchievementsDeclaredNone" class="p-5 text-sm text-muted">No professional achievements declared.</p>
+                <p v-else class="p-5 text-sm text-warning">Professional achievements declaration is incomplete.</p>
               </section>
 
               <section v-if="workspace.referees.length" class="overflow-hidden rounded-xl border border-muted">

@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.documentsreporting.document;
 
+import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.model.GeneratedDocument;
+import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.GeneratedDocumentRepository;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.ProgressionDecisionResultProjectionRepository;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
@@ -15,7 +19,7 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
-import zw.ac.uz.emhare.documentsreporting.projection.ProgressionDecisionResultProjectionRepository;
+import zw.ac.uz.emhare.documentsreporting.integration.DocumentVerificationOutboxService;
 
 /** @author Tinashe K */
 @Component

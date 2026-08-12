@@ -1,12 +1,23 @@
 package zw.ac.uz.emhare.examstimetabling.invigilation;
 
+import zw.ac.uz.emhare.examstimetabling.invigilation.domain.model.ExamAttendanceRecord;
+import zw.ac.uz.emhare.examstimetabling.invigilation.domain.model.ExamAttendanceSession;
+import zw.ac.uz.emhare.examstimetabling.invigilation.domain.model.ExamIncidentReport;
+import zw.ac.uz.emhare.examstimetabling.invigilation.infrastructure.persistence.ExamAttendanceRecordRepository;
+import zw.ac.uz.emhare.examstimetabling.invigilation.infrastructure.persistence.ExamAttendanceSessionRepository;
+import zw.ac.uz.emhare.examstimetabling.invigilation.infrastructure.persistence.ExamIncidentReportRepository;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamMasterTimetableEntry;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamStudentTimetableEntry;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamTimetableGenerationRun;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamTimetableVenueAllocation;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.util.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.examstimetabling.invigilation.ExamInvigilationContracts.*;
+import zw.ac.uz.emhare.examstimetabling.invigilation.api.model.ExamInvigilationApiModels.*;
 import zw.ac.uz.emhare.examstimetabling.timetable.*;
 
 /** Published-roster attendance reconciliation and segregated incident governance. @author Tinashe K */

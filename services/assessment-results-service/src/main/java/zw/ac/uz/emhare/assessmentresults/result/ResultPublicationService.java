@@ -1,5 +1,22 @@
 package zw.ac.uz.emhare.assessmentresults.result;
 
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.GradingBand;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.GradingScheme;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.ModuleResult;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.PublishedResult;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.PublishedResultAmendment;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.PublishedResultAmendmentEvent;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.ResultBatch;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.ResultBatchStatusEvent;
+import zw.ac.uz.emhare.assessmentresults.result.infrastructure.persistence.GradingBandRepository;
+import zw.ac.uz.emhare.assessmentresults.result.infrastructure.persistence.GradingSchemeRepository;
+import zw.ac.uz.emhare.assessmentresults.result.infrastructure.persistence.ModuleResultRepository;
+import zw.ac.uz.emhare.assessmentresults.result.infrastructure.persistence.PublishedResultAmendmentEventRepository;
+import zw.ac.uz.emhare.assessmentresults.result.infrastructure.persistence.PublishedResultAmendmentRepository;
+import zw.ac.uz.emhare.assessmentresults.result.infrastructure.persistence.PublishedResultRepository;
+import zw.ac.uz.emhare.assessmentresults.result.infrastructure.persistence.ResultBatchRepository;
+import zw.ac.uz.emhare.assessmentresults.result.infrastructure.persistence.ResultBatchStatusEventRepository;
+
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -10,21 +27,21 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zw.ac.uz.emhare.assessmentresults.assessment.AssessmentCalculationEvidenceService;
-import zw.ac.uz.emhare.assessmentresults.assessment.AssessmentModuleOffering;
+import zw.ac.uz.emhare.assessmentresults.assessment.domain.model.AssessmentModuleOffering;
 import zw.ac.uz.emhare.assessmentresults.integration.AssessmentResultsIntegrationOutboxService;
-import zw.ac.uz.emhare.assessmentresults.result.ResultCommands.Band;
-import zw.ac.uz.emhare.assessmentresults.result.ResultCommands.CreateGradingScheme;
-import zw.ac.uz.emhare.assessmentresults.result.ResultCommands.CreateResultBatch;
-import zw.ac.uz.emhare.assessmentresults.result.ResultCommands.Decision;
-import zw.ac.uz.emhare.assessmentresults.result.ResultCommands.RequestPublishedResultAmendment;
-import zw.ac.uz.emhare.assessmentresults.result.ResultViews.BandSummary;
-import zw.ac.uz.emhare.assessmentresults.result.ResultViews.BatchSummary;
-import zw.ac.uz.emhare.assessmentresults.result.ResultViews.CorrectionSourceSummary;
-import zw.ac.uz.emhare.assessmentresults.result.ResultViews.GradingSummary;
-import zw.ac.uz.emhare.assessmentresults.result.ResultViews.ModuleResultSummary;
-import zw.ac.uz.emhare.assessmentresults.result.ResultViews.PublishedResultAmendmentSummary;
-import zw.ac.uz.emhare.assessmentresults.result.ResultViews.PublishedResultPage;
-import zw.ac.uz.emhare.assessmentresults.result.ResultViews.PublishedResultSummary;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultRequests.Band;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultRequests.CreateGradingScheme;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultRequests.CreateResultBatch;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultRequests.Decision;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultRequests.RequestPublishedResultAmendment;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultResponses.BandSummary;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultResponses.BatchSummary;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultResponses.CorrectionSourceSummary;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultResponses.GradingSummary;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultResponses.ModuleResultSummary;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultResponses.PublishedResultAmendmentSummary;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultResponses.PublishedResultPage;
+import zw.ac.uz.emhare.assessmentresults.result.api.model.ResultResponses.PublishedResultSummary;
 
 /** @author Tinashe K */
 @Service

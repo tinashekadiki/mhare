@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionCycleRepository;
+
 import jakarta.transaction.Transactional;
 import java.time.Clock;
 import java.time.Instant;

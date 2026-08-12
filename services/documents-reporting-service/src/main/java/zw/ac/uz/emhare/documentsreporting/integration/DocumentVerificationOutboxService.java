@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.documentsreporting.integration;
 
+import zw.ac.uz.emhare.documentsreporting.infrastructure.messaging.model.DocumentsOutboxEvent;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.messaging.DocumentsOutboxEventRepository;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -8,9 +11,9 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.DocumentVerificationChangedEvent;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
-import zw.ac.uz.emhare.documentsreporting.upload.UploadedDocument;
+import zw.ac.uz.emhare.documentsreporting.upload.domain.model.UploadedDocument;
 import zw.ac.uz.emhare.common.messaging.OfferLetterStoredEvent;
-import zw.ac.uz.emhare.documentsreporting.document.GeneratedDocument;
+import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.model.GeneratedDocument;
 
 /** @author Tinashe K */
 @Service
@@ -57,12 +60,14 @@ public class DocumentVerificationOutboxService {
 
     public void enqueueOfferLetterStored(GeneratedDocument document) {
         var offer = document.getOfferLetter();
-        String identity = "offer-letter-stored:" + document.getId() + ":" + document.getVersion();
+        String identity = "offer-letter-stored:v" + OfferLetterStoredEvent.CURRENT_SCHEMA_VERSION
+                + ":" + document.getId() + ":" + document.getVersion();
         UUID eventId = UUID.nameUUIDFromBytes(identity.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         if (repository.existsById(eventId)) return;
         Instant occurredAt = clock.instant();
         OfferLetterStoredEvent event = new OfferLetterStoredEvent(eventId,
                 OfferLetterStoredEvent.CURRENT_SCHEMA_VERSION, occurredAt, offer.getOfferId(), offer.getOfferVersion(),
+                offer.getDocumentVersion(),
                 document.getId(), document.getDocumentNumber(), document.getStorageBucket(), document.getStorageKey(),
                 document.getChecksumSha256(), document.getGeneratedAt());
         repository.save(new DocumentsOutboxEvent(eventId, EmhareMessagingTopology.OFFER_LETTER_STORED_EVENT,

@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.studentrecords.integration;
 
+import zw.ac.uz.emhare.studentrecords.infrastructure.messaging.model.StudentRecordsOutboxEvent;
+import zw.ac.uz.emhare.studentrecords.infrastructure.persistence.messaging.StudentRecordsOutboxEventRepository;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;

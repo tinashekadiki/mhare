@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.coreidentity.integration;
 
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.PlatformUserRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.RoleRepository;
+
+import zw.ac.uz.emhare.coreidentity.workflow.application.command.*;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import org.springframework.amqp.core.Message;
@@ -11,10 +16,8 @@ import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.AcademicRecommendationRecordedEvent;
 import zw.ac.uz.emhare.common.messaging.AcademicReviewReleasedEvent;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
-import zw.ac.uz.emhare.coreidentity.rbac.PlatformUserRepository;
-import zw.ac.uz.emhare.coreidentity.rbac.RoleRepository;
-import zw.ac.uz.emhare.coreidentity.workflow.CreateWorkflowCommand;
-import zw.ac.uz.emhare.coreidentity.workflow.WorkflowScopeType;
+import zw.ac.uz.emhare.coreidentity.workflow.application.command.CreateWorkflowCommand;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowScopeType;
 import zw.ac.uz.emhare.coreidentity.workflow.WorkflowService;
 
 /** Keeps the Core task projection aligned with Admissions-owned academic reviews. @author Tinashe K */

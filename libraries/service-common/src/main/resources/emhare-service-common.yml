@@ -1,4 +1,8 @@
 spring:
+  http:
+    clients:
+      connect-timeout: ${EMHARE_HTTP_CONNECT_TIMEOUT:2s}
+      read-timeout: ${EMHARE_HTTP_READ_TIMEOUT:5s}
   datasource:
     hikari:
       maximum-pool-size: ${EMHARE_DATABASE_MAXIMUM_POOL_SIZE:5}
@@ -41,6 +45,36 @@ spring:
         jwt:
           issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8099/realms/emhare}
 
+eureka:
+  client:
+    enabled: ${EUREKA_CLIENT_ENABLED:true}
+    healthcheck:
+      enabled: true
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://emhare-discovery:emhare-discovery-dev@localhost:8761/eureka/}
+  instance:
+    instance-id: ${spring.application.name}:${SERVER_PORT:${server.port}}:${random.value}
+    prefer-ip-address: ${EUREKA_PREFER_IP_ADDRESS:false}
+
+spring.cloud.loadbalancer:
+  cache:
+    enabled: false
+  retry:
+    enabled: false
+  stats:
+    micrometer:
+      enabled: true
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: ${EMHARE_CIRCUIT_BREAKER_WINDOW_SIZE:20}
+        minimum-number-of-calls: ${EMHARE_CIRCUIT_BREAKER_MINIMUM_CALLS:10}
+        failure-rate-threshold: ${EMHARE_CIRCUIT_BREAKER_FAILURE_RATE:50}
+        permitted-number-of-calls-in-half-open-state: ${EMHARE_CIRCUIT_BREAKER_HALF_OPEN_CALLS:3}
+        wait-duration-in-open-state: ${EMHARE_CIRCUIT_BREAKER_OPEN_DURATION:30s}
+
 management:
   endpoints:
     web:
@@ -55,5 +89,8 @@ management:
       roles: system-admin
 
 logging:
+  structured:
+    format:
+      console: ${EMHARE_STRUCTURED_LOG_FORMAT:logstash}
   pattern:
-    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-},%X{correlationId:-}]"

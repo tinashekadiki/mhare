@@ -1,10 +1,21 @@
 package zw.ac.uz.emhare.accommodation.setup;
 
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationApplicationPeriod;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationPremise;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationRoom;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationRoomType;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.ResidenceHall;
+import zw.ac.uz.emhare.accommodation.setup.infrastructure.persistence.AccommodationApplicationPeriodRepository;
+import zw.ac.uz.emhare.accommodation.setup.infrastructure.persistence.AccommodationPremiseRepository;
+import zw.ac.uz.emhare.accommodation.setup.infrastructure.persistence.AccommodationRoomRepository;
+import zw.ac.uz.emhare.accommodation.setup.infrastructure.persistence.AccommodationRoomTypeRepository;
+import zw.ac.uz.emhare.accommodation.setup.infrastructure.persistence.ResidenceHallRepository;
+
 import java.time.Clock;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.accommodation.setup.AccommodationSetupContracts.*;
+import zw.ac.uz.emhare.accommodation.setup.api.model.AccommodationSetupApiModels.*;
 
 /** @author Tinashe K */
 @Service

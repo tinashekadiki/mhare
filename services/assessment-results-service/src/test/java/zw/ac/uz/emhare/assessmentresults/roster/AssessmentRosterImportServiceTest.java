@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.assessmentresults.roster;
 
+import zw.ac.uz.emhare.assessmentresults.roster.domain.model.RegistrationRosterImport;
+import zw.ac.uz.emhare.assessmentresults.roster.infrastructure.persistence.AssessmentRosterEntryRepository;
+import zw.ac.uz.emhare.assessmentresults.roster.infrastructure.persistence.RegistrationRosterImportRepository;
+
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;

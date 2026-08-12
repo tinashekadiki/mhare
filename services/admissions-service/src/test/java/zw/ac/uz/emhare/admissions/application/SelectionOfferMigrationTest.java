@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -239,6 +241,38 @@ class SelectionOfferMigrationTest {
                 () -> execute("UPDATE offers SET programme_id = ? WHERE id = ?", UUID.randomUUID(), offerId));
 
         assertEquals("P0001", exception.getSQLState());
+    }
+
+    @Test
+    void createsDirectDraftOfferWithoutRoundOrBatchAndKeepsHistoricalOfferReadable() throws SQLException {
+        WorkflowFixture directFixture = createWorkflowFixture();
+        markApplicationAndChoiceAdmitted(directFixture.applicationId(), directFixture.firstChoiceId());
+        UUID directDecisionId = UUID.randomUUID();
+        execute("""
+                INSERT INTO programme_choice_decisions (id, application_id, programme_choice_id, decision,
+                    reason, decided_by_user_id, decided_at, created_at, updated_at, version)
+                VALUES (?, ?, ?, 'ADMIT', 'Direct rolling admission approved', ?, now(), now(), now(), 0)
+                """, directDecisionId, directFixture.applicationId(), directFixture.firstChoiceId(), UUID.randomUUID());
+        UUID directOfferId = UUID.randomUUID();
+        UUID intakeId = queryUuid("SELECT intake_id FROM admission_cycles WHERE id = ?", directFixture.admissionCycleId());
+        execute("""
+                INSERT INTO offers (id, application_id, programme_choice_id, programme_choice_decision_id,
+                    programme_id, programme_version_id, programme_code, programme_name, intake_id,
+                    offer_number, status, amendment_pending, created_at, updated_at, version)
+                VALUES (?, ?, ?, ?, ?, ?, 'PRG-1', 'Selection Test Programme', ?, ?, 'DRAFT', false, now(), now(), 0)
+                """, directOfferId, directFixture.applicationId(), directFixture.firstChoiceId(), directDecisionId,
+                directFixture.firstProgrammeId(), directFixture.firstProgrammeVersionId(), intakeId,
+                "DIRECT-" + directOfferId);
+        assertEquals(directOfferId, queryUuid("SELECT id FROM offers WHERE id = ? AND offer_batch_id IS NULL", directOfferId));
+
+        WorkflowFixture historicalFixture = createWorkflowFixture();
+        insertSelectionDecision(historicalFixture.selectionRoundId(), historicalFixture.firstChoiceId());
+        markApplicationAndChoiceAdmitted(historicalFixture.applicationId(), historicalFixture.firstChoiceId());
+        approveSelectionRound(historicalFixture.selectionRoundId());
+        UUID batchId = insertOfferBatch(historicalFixture, "APPROVED");
+        UUID historicalOfferId = insertOffer(historicalFixture, batchId);
+        assertEquals(historicalOfferId, queryUuid("SELECT id FROM offers WHERE id = ? AND offer_batch_id = ?",
+                historicalOfferId, batchId));
     }
 
     private WorkflowFixture createWorkflowFixture() throws SQLException {

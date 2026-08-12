@@ -1,5 +1,13 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionSubject;
+import zw.ac.uz.emhare.admissions.domain.model.GradingScale;
+import zw.ac.uz.emhare.admissions.domain.model.GradingScaleValue;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionSubjectRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ExamBodyRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.GradingScaleRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.GradingScaleValueRepository;
+
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,6 +32,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.GradeReferenceOption;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.SubjectReferenceOption;
+import zw.ac.uz.emhare.admissions.domain.model.QualificationLevel;
+import zw.ac.uz.emhare.admissions.domain.model.SubjectLevel;
 
 /** @author Tinashe K */
 @ExtendWith(MockitoExtension.class)

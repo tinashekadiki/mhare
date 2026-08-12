@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.studentrecords.integration;
 
+import zw.ac.uz.emhare.studentrecords.infrastructure.messaging.model.StudentRecordsOutboxEvent;
+import zw.ac.uz.emhare.studentrecords.infrastructure.persistence.messaging.StudentRecordsOutboxEventRepository;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationStatus;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -17,8 +21,8 @@ import org.mockito.ArgumentCaptor;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.NotificationRequestedEvent;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentProfile;
-import zw.ac.uz.emhare.studentrecords.registration.RegistrationSession;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProfile;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationSession;
 
 /** @author Tinashe K */
 class StudentRecordsIntegrationOutboxServiceTest {
@@ -41,7 +45,7 @@ class StudentRecordsIntegrationOutboxServiceTest {
         StudentProfile student = org.mockito.Mockito.mock(StudentProfile.class);
         when(registration.getId()).thenReturn(registrationId);
         when(registration.getStatus()).thenReturn(
-                zw.ac.uz.emhare.studentrecords.registration.RegistrationStatus.SUBMITTED);
+                zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationStatus.SUBMITTED);
         when(registration.getStudent()).thenReturn(student);
         when(student.getUserId()).thenReturn(studentUserId);
         when(student.getStudentNumber()).thenReturn("R271234A");

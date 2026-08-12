@@ -1,5 +1,26 @@
 package zw.ac.uz.emhare.assessmentresults.assessment;
 
+import zw.ac.uz.emhare.assessmentresults.assessment.domain.model.AssessmentCalculationComponentEvidence;
+import zw.ac.uz.emhare.assessmentresults.assessment.domain.model.AssessmentCalculationOutcome;
+import zw.ac.uz.emhare.assessmentresults.assessment.domain.model.AssessmentCalculationRun;
+import zw.ac.uz.emhare.assessmentresults.assessment.domain.model.AssessmentComponent;
+import zw.ac.uz.emhare.assessmentresults.assessment.domain.model.AssessmentEnums;
+import zw.ac.uz.emhare.assessmentresults.assessment.domain.model.AssessmentModuleOffering;
+import zw.ac.uz.emhare.assessmentresults.assessment.domain.model.AssessmentScheme;
+import zw.ac.uz.emhare.assessmentresults.assessment.domain.model.MarkAmendmentRequest;
+import zw.ac.uz.emhare.assessmentresults.assessment.domain.model.StudentAssessmentMark;
+import zw.ac.uz.emhare.assessmentresults.assessment.infrastructure.persistence.AssessmentCalculationComponentEvidenceRepository;
+import zw.ac.uz.emhare.assessmentresults.assessment.infrastructure.persistence.AssessmentCalculationOutcomeRepository;
+import zw.ac.uz.emhare.assessmentresults.assessment.infrastructure.persistence.AssessmentCalculationRunRepository;
+import zw.ac.uz.emhare.assessmentresults.assessment.infrastructure.persistence.AssessmentComponentRepository;
+import zw.ac.uz.emhare.assessmentresults.assessment.infrastructure.persistence.AssessmentModuleOfferingRepository;
+import zw.ac.uz.emhare.assessmentresults.assessment.infrastructure.persistence.AssessmentSchemeRepository;
+import zw.ac.uz.emhare.assessmentresults.assessment.infrastructure.persistence.MarkAmendmentRequestRepository;
+import zw.ac.uz.emhare.assessmentresults.assessment.infrastructure.persistence.StudentAssessmentMarkRepository;
+import zw.ac.uz.emhare.assessmentresults.roster.domain.model.AssessmentRosterEntry;
+import zw.ac.uz.emhare.assessmentresults.roster.domain.model.RegistrationRosterImport;
+import zw.ac.uz.emhare.assessmentresults.roster.infrastructure.persistence.AssessmentRosterEntryRepository;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -9,9 +30,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.assessmentresults.assessment.AssessmentCommands.*;
-import zw.ac.uz.emhare.assessmentresults.assessment.AssessmentEnums.*;
-import zw.ac.uz.emhare.assessmentresults.assessment.AssessmentViews.*;
+import zw.ac.uz.emhare.assessmentresults.assessment.api.model.AssessmentRequests.*;
+import zw.ac.uz.emhare.assessmentresults.assessment.domain.model.AssessmentEnums.*;
+import zw.ac.uz.emhare.assessmentresults.assessment.api.model.AssessmentResponses.*;
 import zw.ac.uz.emhare.assessmentresults.roster.*;
 
 /** @author Tinashe K */

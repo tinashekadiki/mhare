@@ -1,37 +1,27 @@
 package zw.ac.uz.emhare.admissions.integration;
 
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import zw.ac.uz.emhare.common.web.ServiceDependencyUnavailableException;
+import zw.ac.uz.emhare.admissions.integration.http.DocumentsReportingHttpService;
 
 /** @author Tinashe K */
 @Component
 public class DocumentsReportingClient {
-    private final RestClient restClient;
+    private final DocumentsReportingHttpService documentsReportingHttpService;
 
-    public DocumentsReportingClient(
-            RestClient.Builder restClientBuilder,
-            @Value("${emhare.documents-reporting.url:http://localhost:8090}") String documentsReportingUrl) {
-        restClient = restClientBuilder.baseUrl(documentsReportingUrl).build();
+    public DocumentsReportingClient(DocumentsReportingHttpService documentsReportingHttpService) {
+        this.documentsReportingHttpService = documentsReportingHttpService;
     }
 
     public UploadedDocumentSnapshot getUploadedDocument(UUID documentId) {
         try {
-            UploadedDocumentSnapshot snapshot = restClient.get()
-                    .uri("/api/documents/uploads/{documentId}", documentId)
-                    .headers(headers -> headers.setBearerAuth(currentBearerToken()))
-                    .retrieve()
-                    .body(UploadedDocumentSnapshot.class);
+            UploadedDocumentSnapshot snapshot = documentsReportingHttpService.getUploadedDocument(documentId);
             if (snapshot == null) {
                 throw new ServiceDependencyUnavailableException(
                         "Documents/Reporting returned an empty document record.", null);
@@ -51,35 +41,25 @@ public class DocumentsReportingClient {
             throw unavailable(exception);
         } catch (RestClientException exception) {
             throw unavailable(exception);
+        } catch (RuntimeException exception) {
+            throw unavailable(exception);
         }
     }
 
     public List<UploadedDocumentSnapshot> getUploadedDocuments(String ownerType, UUID ownerId) {
         try {
-            UploadedDocumentSnapshot[] snapshots = restClient.get()
-                    .uri(uriBuilder -> uriBuilder.path("/api/documents/uploads")
-                            .queryParam("ownerType", ownerType)
-                            .queryParam("ownerId", ownerId)
-                            .build())
-                    .headers(headers -> headers.setBearerAuth(currentBearerToken()))
-                    .retrieve()
-                    .body(UploadedDocumentSnapshot[].class);
-            return snapshots == null ? List.of() : List.copyOf(Arrays.asList(snapshots));
+            List<UploadedDocumentSnapshot> snapshots = documentsReportingHttpService.getUploadedDocuments(ownerType, ownerId);
+            return snapshots == null ? List.of() : List.copyOf(snapshots);
         } catch (RestClientException exception) {
+            throw unavailable(exception);
+        } catch (RuntimeException exception) {
             throw unavailable(exception);
         }
     }
 
-    private ServiceDependencyUnavailableException unavailable(RestClientException exception) {
+    private ServiceDependencyUnavailableException unavailable(Throwable exception) {
         return new ServiceDependencyUnavailableException(
                 "Documents/Reporting is unavailable, so document evidence cannot be safely linked.", exception);
-    }
-
-    private String currentBearerToken() {
-        if (SecurityContextHolder.getContext().getAuthentication() instanceof JwtAuthenticationToken authentication) {
-            return authentication.getToken().getTokenValue();
-        }
-        throw new IllegalStateException("JWT authentication is required for Documents/Reporting access.");
     }
 
     public record UploadedDocumentSnapshot(

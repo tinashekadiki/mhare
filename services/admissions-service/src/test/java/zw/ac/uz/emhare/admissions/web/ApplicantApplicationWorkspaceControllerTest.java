@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.admissions.web;
 
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+
+import zw.ac.uz.emhare.admissions.application.command.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -20,15 +24,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceService;
-import zw.ac.uz.emhare.admissions.application.CreateQualificationResultCommand;
-import zw.ac.uz.emhare.admissions.application.UpdateApplicantProfileCommand;
+import zw.ac.uz.emhare.admissions.application.command.CreateQualificationResultCommand;
+import zw.ac.uz.emhare.admissions.application.command.UpdateApplicantProfileCommand;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient.CoreCurrentUserProfile;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient.CoreUserSummary;
 import zw.ac.uz.emhare.admissions.security.ApplicantRegistrationIdentityResolver;
-import zw.ac.uz.emhare.admissions.web.ApplicantWorkspaceRequests.SaveOwnProfileRequest;
-import zw.ac.uz.emhare.admissions.web.ApplicantWorkspaceRequests.AddQualificationResultItemRequest;
-import zw.ac.uz.emhare.admissions.web.ApplicantWorkspaceRequests.AddQualificationResultsRequest;
+import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.SaveOwnProfileRequest;
+import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.AddQualificationResultItemRequest;
+import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.AddQualificationResultsRequest;
+import zw.ac.uz.emhare.admissions.api.controller.ApplicantApplicationWorkspaceController;
 
 /** Verifies applicant-owned profile fields that are governed by registration identity. @author Tinashe K */
 @ExtendWith(MockitoExtension.class)

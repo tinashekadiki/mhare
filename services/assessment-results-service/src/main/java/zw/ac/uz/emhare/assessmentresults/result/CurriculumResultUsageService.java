@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.assessmentresults.result;
 
+import zw.ac.uz.emhare.assessmentresults.result.infrastructure.persistence.ModuleResultRepository;
+
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.studentrecords.registration;
 
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationSession;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationStatus;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationType;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -11,8 +15,8 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import zw.ac.uz.emhare.common.messaging.AcceptedOfferReadyForConversionEvent;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentProfile;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentProgrammeEnrolment;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProfile;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProgrammeEnrolment;
 import zw.ac.uz.emhare.studentrecords.registration.AcademicRegistrationCatalogueClient.RegistrationCatalogue;
 import zw.ac.uz.emhare.studentrecords.registration.AcademicRegistrationCatalogueClient.RegistrationModuleOption;
 

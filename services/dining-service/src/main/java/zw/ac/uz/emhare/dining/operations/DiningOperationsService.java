@@ -1,10 +1,31 @@
 package zw.ac.uz.emhare.dining.operations;
 
+import zw.ac.uz.emhare.dining.operations.domain.model.DiningWorkflowEvent;
+import zw.ac.uz.emhare.dining.operations.domain.model.MealAttendanceEvent;
+import zw.ac.uz.emhare.dining.operations.domain.model.MealAttendanceReversal;
+import zw.ac.uz.emhare.dining.operations.domain.model.MealServiceSession;
+import zw.ac.uz.emhare.dining.operations.domain.model.StudentDietaryRequirement;
+import zw.ac.uz.emhare.dining.operations.domain.model.StudentDiningAssignment;
+import zw.ac.uz.emhare.dining.operations.infrastructure.persistence.DiningWorkflowEventRepository;
+import zw.ac.uz.emhare.dining.operations.infrastructure.persistence.MealAttendanceEventRepository;
+import zw.ac.uz.emhare.dining.operations.infrastructure.persistence.MealAttendanceReversalRepository;
+import zw.ac.uz.emhare.dining.operations.infrastructure.persistence.MealServiceSessionRepository;
+import zw.ac.uz.emhare.dining.operations.infrastructure.persistence.OperationalDiningHallRepository;
+import zw.ac.uz.emhare.dining.operations.infrastructure.persistence.OperationalDiningPlanMealRepository;
+import zw.ac.uz.emhare.dining.operations.infrastructure.persistence.OperationalDiningPlanRepository;
+import zw.ac.uz.emhare.dining.operations.infrastructure.persistence.OperationalMealOptionRepository;
+import zw.ac.uz.emhare.dining.operations.infrastructure.persistence.StudentDietaryRequirementRepository;
+import zw.ac.uz.emhare.dining.operations.infrastructure.persistence.StudentDiningAssignmentRepository;
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningHall;
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningPlan;
+import zw.ac.uz.emhare.dining.setup.domain.model.DiningPlanMeal;
+import zw.ac.uz.emhare.dining.setup.domain.model.MealOption;
+
 import java.time.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.dining.operations.DiningOperationsContracts.*;
+import zw.ac.uz.emhare.dining.operations.api.model.DiningOperationsApiModels.*;
 import zw.ac.uz.emhare.dining.setup.*;
 
 /** @author Tinashe K */

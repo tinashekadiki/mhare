@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.finance.payment.provider;
 
+import zw.ac.uz.emhare.finance.payment.infrastructure.persistence.ApplicationPaymentReferenceRepository;
+import zw.ac.uz.emhare.finance.payment.provider.infrastructure.persistence.ApplicationPaymentProviderAttemptRepository;
+import zw.ac.uz.emhare.finance.payment.provider.infrastructure.persistence.model.ApplicationPaymentProviderAttempt;
+
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -16,11 +20,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
-import zw.ac.uz.emhare.finance.payment.ApplicationPaymentReference;
-import zw.ac.uz.emhare.finance.payment.ApplicationPaymentReferenceRepository;
-import zw.ac.uz.emhare.finance.payment.provider.ApplicationPaymentCheckoutViews.HostedCheckout;
-import zw.ac.uz.emhare.finance.payment.provider.ApplicationPaymentCheckoutViews.OnlinePayment;
-import zw.ac.uz.emhare.finance.payment.provider.ApplicationPaymentCheckoutViews.PaymentOptions;
+import zw.ac.uz.emhare.finance.payment.domain.model.ApplicationPaymentReference;
+import zw.ac.uz.emhare.finance.payment.provider.api.model.ApplicationPaymentCheckoutResponses.HostedCheckout;
+import zw.ac.uz.emhare.finance.payment.provider.api.model.ApplicationPaymentCheckoutResponses.OnlinePayment;
+import zw.ac.uz.emhare.finance.payment.provider.api.model.ApplicationPaymentCheckoutResponses.PaymentOptions;
 
 /** @author Tinashe K */
 @Service

@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.finance.billing;
 
+import zw.ac.uz.emhare.finance.billing.domain.model.FinanceBillingPolicy;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 
@@ -7,7 +9,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeCatalogue;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeCatalogue;
 
 /** @author Tinashe K */
 class FinanceBillingPolicyTest {

@@ -12,6 +12,8 @@ public class AdmissionsRbacGuard {
 
     private static final Map<String, String> PERMISSION_ROLE_MAP = Map.ofEntries(
             Map.entry("ADMISSIONS_APPLICATION_CONFIRM", "admissions-officer"),
+            Map.entry("ADMISSIONS_ELIGIBILITY_REVIEW", "admissions-officer"),
+            Map.entry("ADMISSIONS_DECISION_MAKE", "admissions-officer"),
             Map.entry("ADMISSIONS_ACADEMIC_REVIEW_RELEASE", "admissions-officer"),
             Map.entry("ADMISSIONS_ACADEMIC_UNIT_RECOMMEND", "academic-unit-staff"),
             Map.entry("ADMISSIONS_SELECTION_APPROVE", "admissions-officer"),

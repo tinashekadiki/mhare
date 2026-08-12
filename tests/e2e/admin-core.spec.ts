@@ -446,6 +446,212 @@ test.describe("Core Identity authentication and RBAC", () => {
     }
   });
 
+  test("configures and activates a governed admission route", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(60_000);
+    const username = `codex.admissions-route.${testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}@example.test`;
+    const applicationTypeId = "11111111-1111-4111-8111-111111111111";
+    const postgraduateProgrammeId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    const applicationType = {
+      id: applicationTypeId,
+      code: "POSTGRAD",
+      name: "Postgraduate",
+      requiresEmploymentHistory: true,
+      requiresReferees: true,
+      financeFeeStructureId: "12345678-1234-4234-8234-123456789abc",
+      financeFeeStructureCode: "APP-PG-LOCAL",
+      financeFeeStructureName: "Postgraduate application fee",
+      active: false,
+      version: 0,
+    };
+    const sections = [
+      ["PERSONAL_DETAILS", "Applicant details", false, 0, 10],
+      ["NEXT_OF_KIN", "Next of kin", true, 1, 20],
+      ["QUALIFICATIONS", "Qualifications", true, 1, 30],
+      ["EMPLOYMENT_HISTORY", "Employment history", true, 1, 40],
+      ["REFEREES", "Referees", true, 2, 50],
+      ["PROGRAMME_CHOICES", "Programme choices", true, 1, 60],
+      ["DOCUMENTS", "Supporting documents", false, 0, 70],
+      ["PAYMENT", "Application fee", false, 0, 80],
+      ["REVIEW_DECLARATION", "Review and declaration", false, 0, 90],
+    ].map(([code, name, repeatable, minimumRecords, sortOrder]) => ({
+      code,
+      name,
+      required: true,
+      repeatable,
+      minimumRecords,
+      sortOrder,
+    }));
+    let configuredRouteRequest: Record<string, unknown> | null = null;
+
+    await ensureSystemAdminUser(username);
+    await page.route("**/api/finance/fee-structures", (route) =>
+      route.fulfill({ json: { structures: [] } }),
+    );
+    await page.route("**/api/admissions/application-types", (route) =>
+      route.fulfill({ json: [applicationType] }),
+    );
+    await page.route("**/api/academic/overview", (route) =>
+      route.fulfill({
+        json: {
+          academicUnitTypes: [],
+          academicUnits: [],
+          academicYears: [],
+          academicPeriodTypes: [],
+          academicPeriods: [],
+          intakes: [],
+          programmeLevels: [],
+          programmeTypes: [],
+          programmes: [
+            {
+              id: postgraduateProgrammeId,
+              code: "MSCDA",
+              name: "Master of Data Analytics",
+              awardName: "Master of Data Analytics",
+              owningAcademicUnitId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+              owningAcademicUnitName: "Department of Computer Science",
+              programmeTypeId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+              programmeTypeName: "Masters",
+              programmeLevelId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              programmeLevelName: "Postgraduate",
+              minimumDurationPeriods: 2,
+              maximumDurationPeriods: 4,
+              status: "ACTIVE",
+              legacyProgrammeCode: null,
+              changeReason: "Playwright fixture",
+              version: 0,
+            },
+          ],
+          modules: [],
+        },
+      }),
+    );
+    await page.route(
+      `**/api/admissions/application-types/${applicationTypeId}/route-configuration`,
+      async (route) => {
+        if (route.request().method() === "PUT") {
+          configuredRouteRequest = route.request().postDataJSON() as Record<
+            string,
+            unknown
+          >;
+          applicationType.active = true;
+          applicationType.version = 1;
+          await route.fulfill({
+            json: {
+              applicationTypeId,
+              code: applicationType.code,
+              name: applicationType.name,
+              active: true,
+              readyForActivation: true,
+              readinessBlockers: [],
+              activeProgrammeCount: 1,
+              programmes: [
+                {
+                  programmeId: postgraduateProgrammeId,
+                  programmeCode: "MSCDA",
+                  programmeName: "Master of Data Analytics",
+                },
+              ],
+              sections,
+              requiredDocumentCount: 2,
+              documents: configuredRouteRequest.documents,
+              feePolicyStatus: "FEE_STRUCTURE",
+              version: 1,
+            },
+          });
+          return;
+        }
+        await route.fulfill({
+          json: {
+            applicationTypeId,
+            code: applicationType.code,
+            name: applicationType.name,
+            active: false,
+            readyForActivation: false,
+            readinessBlockers: [
+              "at least one active programme mapping is required",
+              "at least one required document definition is required",
+            ],
+            activeProgrammeCount: 0,
+            programmes: [],
+            sections,
+            requiredDocumentCount: 0,
+            documents: [],
+            feePolicyStatus: "FEE_STRUCTURE",
+            version: 0,
+          },
+        });
+      },
+    );
+
+    await page.goto("/operations/application-types");
+    await expect(page).toHaveURL(
+      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
+      { timeout: 15_000 },
+    );
+    await loginWithKeycloak(page, username);
+    await expect(
+      page.getByRole("heading", { name: "Application types" }),
+    ).toBeVisible();
+
+    const postgraduateRow = page
+      .locator("[data-emhare-paginated-table]")
+      .getByRole("row", { name: /POSTGRAD Postgraduate/ });
+    await postgraduateRow.getByRole("button", { name: "Configure" }).click();
+    const routeConfigurationDrawer = page.getByRole("dialog", {
+      name: "Configure Postgraduate",
+    });
+    await expect(routeConfigurationDrawer).toContainText(
+      "at least one active programme mapping is required",
+    );
+    const programmeMappings =
+      routeConfigurationDrawer.getByLabel("Programme mappings");
+    await programmeMappings.click();
+    await page
+      .getByRole("option", { name: /MSCDA · Master of Data Analytics/ })
+      .click();
+    await programmeMappings.click();
+    await expect(page.getByRole("listbox")).not.toBeVisible();
+    await expect(
+      routeConfigurationDrawer.getByLabel("Document code").first(),
+    ).toHaveValue("IDENTITY_DOCUMENT");
+    await routeConfigurationDrawer
+      .getByLabel("Activate application route")
+      .click();
+    const routeChangeReason =
+      routeConfigurationDrawer.getByLabel("Change reason");
+    await routeChangeReason.fill(
+      "Activate the configured postgraduate admissions route.",
+    );
+    await routeConfigurationDrawer
+      .getByRole("button", { name: "Save route configuration" })
+      .click();
+
+    await expect(routeConfigurationDrawer).not.toBeVisible();
+    expect(configuredRouteRequest).toEqual(
+      expect.objectContaining({
+        programmes: [
+          {
+            programmeId: postgraduateProgrammeId,
+            programmeCode: "MSCDA",
+            programmeName: "Master of Data Analytics",
+          },
+        ],
+        activate: true,
+        changeReason: "Activate the configured postgraduate admissions route.",
+      }),
+    );
+    expect(
+      (configuredRouteRequest?.documents as Array<Record<string, unknown>>)
+        .filter((document) => document.required)
+        .map((document) => document.code),
+    ).toEqual(["IDENTITY_DOCUMENT", "ACADEMIC_QUALIFICATIONS"]);
+    await expect(
+      postgraduateRow.getByText("Active", { exact: true }),
+    ).toBeVisible();
+  });
+
   test("redirects unauthenticated admin users to Keycloak and loads Core data after login", async ({
     page,
   }, testInfo) => {
@@ -2405,6 +2611,9 @@ test.describe("Core Identity authentication and RBAC", () => {
 
     const applicationId = "2fe27a8a-af58-4a08-93d8-d816823bc1f9";
     const documentId = "6c33eb11-8a23-448c-819e-ec2aa4b4511f";
+    const offerId = "76c0b172-499f-4057-a016-d31f03f6046d";
+    const offerDocumentVersionId = "ba64a439-79ad-41d2-83ba-091cd5cd30d0";
+    const offerGeneratedDocumentId = "9ca73cca-9a60-4d4a-b9d7-5d684991fac2";
     const application = {
       id: applicationId,
       applicationNumber: "EMH-AUG2027-00000142",
@@ -2457,6 +2666,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       version: 1,
     };
     const requestedDocumentDispositions: string[] = [];
+    const requestedOfferDocumentDispositions: string[] = [];
 
     await page.route("**/api/admissions/applications", (route) =>
       route.fulfill({
@@ -2465,13 +2675,12 @@ test.describe("Core Identity authentication and RBAC", () => {
         body: JSON.stringify([application]),
       }),
     );
-    await page.route(
-      `**/api/admissions/applications/${applicationId}/workspace/staff`,
-      (route) =>
-        route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
+    await page.route(`**/api/admissions/work-items/${applicationId}`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          workspace: {
             application,
             profile: {
               id: "7a5c50fb-47d4-4fde-a466-f30083ae7b0b",
@@ -2503,7 +2712,53 @@ test.describe("Core Identity authentication and RBAC", () => {
             ],
             nextOfKin: [],
             employmentHistory: [],
-            referees: [],
+            referees: [
+              {
+                id: "7ad2d743-4e3b-4f60-a54c-53b0bf3810c4",
+                fullName: "Dr Tariro Dube",
+                title: "Dr",
+                organisation: "University of Zimbabwe",
+                positionTitle: "Dean",
+                expertise: "Academic leadership",
+                relationshipToApplicant: "Line manager",
+                email: "tariro.dube@example.test",
+                phoneNumber: "+263771000100",
+                verificationStatus: "PENDING",
+                referenceDocumentId: null,
+                rejectionReason: null,
+                invitationStatus: "SUBMITTED",
+                invitedAt: "2027-06-07T09:00:00Z",
+                referenceRelationshipToApplicant: "Line manager",
+                yearsKnown: 4,
+                recommendation: "STRONGLY_RECOMMEND",
+                referenceComments:
+                  "Ruvimbo demonstrates sound judgement and readiness for postgraduate study.",
+                referenceSubmittedAt: "2027-06-09T09:30:00Z",
+                version: 0,
+              },
+              {
+                id: "7550ae99-09aa-47c7-bfbe-6002ab8d5906",
+                fullName: "Prof Rudo Ncube",
+                title: "Prof",
+                organisation: "University of Zimbabwe",
+                positionTitle: "Director",
+                expertise: "Data science",
+                relationshipToApplicant: "Academic supervisor",
+                email: "rudo.ncube@example.test",
+                phoneNumber: "+263772000100",
+                verificationStatus: "PENDING",
+                referenceDocumentId: null,
+                rejectionReason: null,
+                invitationStatus: "SENT",
+                invitedAt: "2027-06-08T09:00:00Z",
+                referenceRelationshipToApplicant: null,
+                yearsKnown: null,
+                recommendation: null,
+                referenceComments: null,
+                referenceSubmittedAt: null,
+                version: 0,
+              },
+            ],
             qualifications: [],
             documents: {
               applicationId,
@@ -2519,8 +2774,126 @@ test.describe("Core Identity authentication and RBAC", () => {
             missingRequirements: [],
             declarationAcceptedAt: "2027-06-09T14:05:00Z",
             declarationVersion: "2027.1",
-          }),
+            workflowProgress: {
+              currentStageCode: "OFFER",
+              stages: [
+                {
+                  sequence: 1,
+                  code: "VERIFICATION",
+                  label: "Verification",
+                  state: "COMPLETED",
+                  statusLabel: "Complete",
+                  detail: "Evidence verified",
+                  occurredAt: "2027-06-09T14:00:00Z",
+                },
+                {
+                  sequence: 2,
+                  code: "ELIGIBILITY",
+                  label: "Eligibility",
+                  state: "COMPLETED",
+                  statusLabel: "Eligible",
+                  detail: "Eligibility complete",
+                  occurredAt: "2027-06-09T14:10:00Z",
+                },
+                {
+                  sequence: 3,
+                  code: "ACADEMIC_REVIEW",
+                  label: "Academic review",
+                  state: "COMPLETED",
+                  statusLabel: "Recommended",
+                  detail: "Academic review complete",
+                  occurredAt: "2027-06-09T14:20:00Z",
+                },
+                {
+                  sequence: 4,
+                  code: "ADMISSION_DECISION",
+                  label: "Admission decision",
+                  state: "COMPLETED",
+                  statusLabel: "Admitted",
+                  detail: "Final decision recorded",
+                  occurredAt: "2027-06-09T14:30:00Z",
+                },
+                {
+                  sequence: 5,
+                  code: "OFFER",
+                  label: "Offer",
+                  state: "CURRENT",
+                  statusLabel: "Draft",
+                  detail: "Offer letter generated",
+                  occurredAt: "2027-06-09T14:40:00Z",
+                },
+                {
+                  sequence: 6,
+                  code: "RESPONSE",
+                  label: "Response",
+                  state: "PENDING",
+                  statusLabel: "Pending",
+                  detail: "Publish the offer first",
+                  occurredAt: null,
+                },
+              ],
+            },
+          },
+          academicReview: null,
+          academicRecommendation: null,
+          admissionDecision: null,
+          offer: {
+            id: offerId,
+            offerBatchId: null,
+            offerNumber: "OFR-AUG2027-00000142",
+            applicationId,
+            applicationNumber: application.applicationNumber,
+            applicantNumber: application.applicantNumber,
+            applicantName: application.applicantName,
+            programmeChoiceId: application.programmeChoices[0].id,
+            programmeId: application.programmeChoices[0].programmeId,
+            programmeVersionId:
+              application.programmeChoices[0].programmeVersionId,
+            programmeCode: application.programmeChoices[0].programmeCode,
+            programmeName: application.programmeChoices[0].programmeName,
+            intakeId: application.intakeId,
+            offerType: "FIRM",
+            status: "DRAFT",
+            currentDocumentVersionId: offerDocumentVersionId,
+            currentPublicationId: null,
+            amendmentPending: false,
+            conditionsText: null,
+            acceptanceDeadline: "2027-07-15T23:59:59Z",
+            registrationDate: null,
+            orientationDate: null,
+            commencementDate: "2027-08-01",
+            generatedDocumentId: offerGeneratedDocumentId,
+            approvedAt: null,
+            sentAt: null,
+            expiredAt: null,
+            expiryReason: null,
+            conversionRequestedAt: null,
+            conversionRequestId: null,
+            convertedStudentId: null,
+            convertedStudentNumber: null,
+            convertedAt: null,
+            conditions: [],
+            response: null,
+          },
+          documentVersions: [
+            {
+              id: offerDocumentVersionId,
+              version: 1,
+              status: "STORED",
+              generatedDocumentId: offerGeneratedDocumentId,
+              documentNumber: "OFR-AUG2027-00000142-V1",
+              checksumSha256: "offer-letter-checksum",
+              requestedAt: "2027-06-09T14:35:00Z",
+              storedAt: "2027-06-09T14:40:00Z",
+              failureReason: null,
+            },
+          ],
+          publications: [],
+          auditHistory: [],
+          blockers: [],
+          availableActions: ["UPDATE_OFFER", "PUBLISH_AND_SEND"],
         }),
+      }),
     );
     await page.route(
       `**/api/documents/uploads/${documentId}/download**`,
@@ -2543,6 +2916,27 @@ test.describe("Core Identity authentication and RBAC", () => {
         });
       },
     );
+    await page.route(
+      `**/api/documents/${offerGeneratedDocumentId}/download**`,
+      (route) => {
+        requestedOfferDocumentDispositions.push(
+          new URL(route.request().url()).searchParams.get("disposition") ??
+            "inline",
+        );
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            documentId: offerGeneratedDocumentId,
+            documentNumber: "OFR-AUG2027-00000142-V1",
+            contentType: "application/pdf",
+            checksumSha256: "offer-letter-checksum",
+            downloadUrl: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0YK",
+            expiresAt: "2027-06-10T09:30:00Z",
+          }),
+        });
+      },
+    );
 
     await page.goto("/operations/admissions");
     await expect(page).toHaveURL(
@@ -2551,9 +2945,9 @@ test.describe("Core Identity authentication and RBAC", () => {
     );
     await loginWithKeycloak(page, username);
 
-    await expect(
-      page.getByRole("heading", { name: "Admissions review queue" }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/operations\/admissions$/, {
+      timeout: 15_000,
+    });
     await page.goto(`/operations/admissions/${applicationId}`);
 
     await expect(page).toHaveURL(
@@ -2568,6 +2962,36 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(
       page.getByRole("heading", { name: "Programme choices" }),
     ).toBeVisible();
+    await expect(
+      page.getByText("Reference received", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Invitation sent", { exact: true }),
+    ).toBeVisible();
+    const confidentialReference = page.getByTestId(
+      "confidential-reference-response",
+    );
+    await expect(confidentialReference).toHaveCount(1);
+    await expect(confidentialReference).toContainText("Strongly Recommend");
+    await expect(confidentialReference).toContainText(
+      "Ruvimbo demonstrates sound judgement and readiness for postgraduate study.",
+    );
+    const offerLetterPanel = page.getByTestId("staff-offer-letter");
+    await expect(
+      offerLetterPanel.getByText("OFR-AUG2027-00000142-V1", { exact: true }),
+    ).toBeVisible();
+    await offerLetterPanel
+      .getByRole("button", { name: "Preview offer letter", exact: true })
+      .click();
+    await expect
+      .poll(() => requestedOfferDocumentDispositions)
+      .toContain("inline");
+    await offerLetterPanel
+      .getByRole("button", { name: "Download offer letter", exact: true })
+      .click();
+    await expect
+      .poll(() => requestedOfferDocumentDispositions)
+      .toContain("attachment");
     const documentsPanel = page.getByTestId("application-documents-panel");
     await expect(
       documentsPanel.getByText("national-id.pdf").first(),
@@ -2747,9 +3171,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       page.getByRole("navigation", { name: "Admissions workflow stages" }),
     ).toBeVisible();
     await expect(page.getByText("Batch applicants in two steps")).toBeVisible();
-    await expect(
-      page.getByText("1 applicant ready to release"),
-    ).toBeVisible();
+    await expect(page.getByText("1 applicant ready to release")).toBeVisible();
     await expect(page.getByText("1 applicant in this batch")).toBeVisible();
     await expect(
       page.getByText("School of Computing → College of Science"),
@@ -2863,8 +3285,7 @@ test.describe("Core Identity authentication and RBAC", () => {
               {
                 id: programmeChoiceId,
                 programmeId,
-                programmeVersionId:
-                  "ac000000-0000-0000-0000-000000000010",
+                programmeVersionId: "ac000000-0000-0000-0000-000000000010",
                 programmeCode: "HSC",
                 programmeName: "Bachelor of Science Computer Science",
                 awardName: "Bachelor of Science",
@@ -3028,7 +3449,9 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(
       page.getByText("Applicant APP-00000762", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByText("Ready for offer", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Ready for offer", { exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "View full profile" }),
     ).toHaveAttribute("href", `/operations/admissions/${applicationId}`);

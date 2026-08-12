@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.admissions.web;
 
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+
+import zw.ac.uz.emhare.admissions.application.command.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
@@ -22,11 +26,13 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import zw.ac.uz.emhare.admissions.application.AdmissionsApplicationService;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationConfigurationService;
 import zw.ac.uz.emhare.admissions.application.ApplicationSummary;
-import zw.ac.uz.emhare.admissions.application.CreateApplicationCommand;
+import zw.ac.uz.emhare.admissions.application.command.CreateApplicationCommand;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient.CoreCurrentUserProfile;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient.CoreUserSummary;
 import zw.ac.uz.emhare.admissions.security.ApplicantRegistrationIdentityResolver;
+import zw.ac.uz.emhare.admissions.api.controller.AdmissionsApplicationController;
+import zw.ac.uz.emhare.admissions.api.model.CreateApplicationRequest;
 
 @ExtendWith(MockitoExtension.class)
 class AdmissionsApplicationControllerTest {

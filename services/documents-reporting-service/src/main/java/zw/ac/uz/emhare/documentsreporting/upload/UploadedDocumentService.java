@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.documentsreporting.upload;
 
+import zw.ac.uz.emhare.documentsreporting.upload.domain.model.UploadedDocument;
+import zw.ac.uz.emhare.documentsreporting.upload.infrastructure.persistence.UploadedDocumentRepository;
+
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -33,8 +36,8 @@ import zw.ac.uz.emhare.common.security.EmhareCurrentUserResolver;
 import zw.ac.uz.emhare.documentsreporting.document.DocumentsStorageProperties;
 import zw.ac.uz.emhare.documentsreporting.integration.DocumentVerificationOutboxService;
 import zw.ac.uz.emhare.documentsreporting.upload.DocumentContentInspector.InspectedContent;
-import zw.ac.uz.emhare.documentsreporting.upload.UploadedDocumentViews.UploadedDocumentDownload;
-import zw.ac.uz.emhare.documentsreporting.upload.UploadedDocumentViews.UploadedDocumentSummary;
+import zw.ac.uz.emhare.documentsreporting.upload.api.model.UploadedDocumentResponses.UploadedDocumentDownload;
+import zw.ac.uz.emhare.documentsreporting.upload.api.model.UploadedDocumentResponses.UploadedDocumentSummary;
 
 /** @author Tinashe K */
 @Service

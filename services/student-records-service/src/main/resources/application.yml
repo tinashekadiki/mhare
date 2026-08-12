@@ -6,6 +6,12 @@ spring:
     import: classpath:emhare-service-common.yml
   application:
     name: student-records-service
+  http:
+    serviceclient:
+      academic-setup:
+        base-url: lb://academic-setup-service
+      core-identity:
+        base-url: lb://core-identity-service
   datasource:
     url: ${STUDENT_RECORDS_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_student_records}
     username: ${EMHARE_SERVICE_DB_USER:emhare_service}

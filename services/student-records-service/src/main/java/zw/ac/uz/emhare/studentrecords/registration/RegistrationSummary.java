@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.studentrecords.registration;
 
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.ModuleSelectionSource;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationStatus;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationType;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;

@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.academicsetup.domain;
 
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicModule;
+import zw.ac.uz.emhare.academicsetup.domain.model.CurriculumModule;
+import zw.ac.uz.emhare.academicsetup.domain.model.CurriculumModuleType;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeVersion;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.admissions.application.AdmissionsSelectionOfferService;
+import zw.ac.uz.emhare.admissions.application.DirectAdmissionOfferService;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.OfferLetterStoredEvent;
 
@@ -17,11 +18,20 @@ import zw.ac.uz.emhare.common.messaging.OfferLetterStoredEvent;
 public class OfferLetterStoredEventListener {
     private final AdmissionsIntegrationInbox inbox;
     private final AdmissionsSelectionOfferService offerService;
+    private final DirectAdmissionOfferService directOfferService;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    @org.springframework.beans.factory.annotation.Autowired
     public OfferLetterStoredEventListener(AdmissionsIntegrationInbox inbox,
+            DirectAdmissionOfferService directOfferService, ObjectMapper objectMapper, Clock clock) {
+        this.inbox = inbox; this.offerService = null; this.directOfferService = directOfferService;
+        this.objectMapper = objectMapper; this.clock = clock;
+    }
+
+    OfferLetterStoredEventListener(AdmissionsIntegrationInbox inbox,
             AdmissionsSelectionOfferService offerService, ObjectMapper objectMapper, Clock clock) {
-        this.inbox = inbox; this.offerService = offerService; this.objectMapper = objectMapper; this.clock = clock;
+        this.inbox = inbox; this.offerService = offerService; this.directOfferService = null;
+        this.objectMapper = objectMapper; this.clock = clock;
     }
     @RabbitListener(queues = EmhareMessagingTopology.OFFER_LETTER_STORED_ADMISSIONS_QUEUE)
     @Transactional
@@ -36,7 +46,13 @@ public class OfferLetterStoredEventListener {
         }
         if (!inbox.claim(event.eventId(), EmhareMessagingTopology.OFFER_LETTER_STORED_EVENT,
                 "documents-reporting-service", payload, clock.instant())) return;
-        offerService.linkStoredOfferLetter(event.offerId(), event.offerVersion(), event.generatedDocumentId());
+        if (directOfferService == null) {
+            offerService.linkStoredOfferLetter(event.offerId(), event.offerVersion(), event.generatedDocumentId());
+        } else {
+            directOfferService.linkStoredDocument(event.offerId(), event.offerVersion(), event.documentVersion(),
+                    event.generatedDocumentId(), event.documentNumber(), event.storageBucket(), event.storageKey(),
+                    event.checksumSha256(), event.storedAt());
+        }
         inbox.markProcessed(event.eventId(), clock.instant());
     }
 }

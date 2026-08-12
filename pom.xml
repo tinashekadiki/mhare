@@ -16,13 +16,22 @@
         <java.version>21</java.version>
         <spring-boot.version>4.1.0</spring-boot.version>
         <spring-cloud.version>2025.1.2</spring-cloud.version>
+        <archunit.version>1.4.1</archunit.version>
+        <jacoco.version>0.8.15</jacoco.version>
+        <maven-enforcer.version>3.6.2</maven-enforcer.version>
         <mockito.version>5.23.0</mockito.version>
+        <jacocoArgLine></jacocoArgLine>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>${java.version}</maven.compiler.release>
     </properties>
 
     <modules>
         <module>libraries/service-common</module>
+        <module>libraries/service-foundation</module>
+        <module>libraries/persistence-audit</module>
+        <module>libraries/integration-contracts</module>
+        <module>libraries/test-support</module>
+        <module>services/discovery-server</module>
         <module>services/api-gateway</module>
         <module>services/core-identity-service</module>
         <module>services/academic-setup-service</module>
@@ -57,6 +66,57 @@
     </dependencyManagement>
 
     <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven-enforcer.version}</version>
+                <executions>
+                    <execution>
+                        <id>enforce-emhare-service-boundaries</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <searchTransitive>true</searchTransitive>
+                                    <excludes>
+                                        <exclude>org.springframework.cloud:spring-cloud-starter-openfeign</exclude>
+                                        <exclude>io.github.openfeign:*</exclude>
+                                        <exclude>zw.ac.uz.emhare:*-service</exclude>
+                                    </excludes>
+                                    <message>eMhare services use Spring HTTP Service Clients and may not depend directly on another service artifact.</message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-unit-test-coverage</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                        <configuration>
+                            <propertyName>jacocoArgLine</propertyName>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>report-unit-test-coverage</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -87,7 +147,7 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.5.5</version>
                     <configuration>
-                        <argLine>-javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
+                        <argLine>@{jacocoArgLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
                     </configuration>
                 </plugin>
             </plugins>

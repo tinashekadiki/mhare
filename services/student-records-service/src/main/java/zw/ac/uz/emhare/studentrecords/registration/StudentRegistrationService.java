@@ -1,5 +1,17 @@
 package zw.ac.uz.emhare.studentrecords.registration;
 
+import zw.ac.uz.emhare.studentrecords.conversion.infrastructure.persistence.StudentProfileRepository;
+import zw.ac.uz.emhare.studentrecords.conversion.infrastructure.persistence.StudentProgrammeEnrolmentRepository;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.ModuleSelectionSource;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationModule;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationSession;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationStatus;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationStatusEvent;
+import zw.ac.uz.emhare.studentrecords.registration.domain.model.RegistrationType;
+import zw.ac.uz.emhare.studentrecords.registration.infrastructure.persistence.RegistrationModuleRepository;
+import zw.ac.uz.emhare.studentrecords.registration.infrastructure.persistence.RegistrationSessionRepository;
+import zw.ac.uz.emhare.studentrecords.registration.infrastructure.persistence.RegistrationStatusEventRepository;
+
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -9,15 +21,13 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentProfile;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentProfileRepository;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentProgrammeEnrolment;
-import zw.ac.uz.emhare.studentrecords.conversion.StudentProgrammeEnrolmentRepository;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProfile;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProgrammeEnrolment;
 import zw.ac.uz.emhare.studentrecords.integration.StudentRecordsIntegrationOutboxService;
 import zw.ac.uz.emhare.studentrecords.registration.AcademicRegistrationCatalogueClient.RegistrationCatalogue;
 import zw.ac.uz.emhare.studentrecords.registration.AcademicRegistrationCatalogueClient.RegistrationModuleOption;
-import zw.ac.uz.emhare.studentrecords.registration.RegistrationCommands.CreateRegistration;
-import zw.ac.uz.emhare.studentrecords.registration.RegistrationCommands.CreateOwnRegistration;
+import zw.ac.uz.emhare.studentrecords.registration.api.model.RegistrationRequests.CreateRegistration;
+import zw.ac.uz.emhare.studentrecords.registration.api.model.RegistrationRequests.CreateOwnRegistration;
 import zw.ac.uz.emhare.studentrecords.registration.RegistrationSummary.RegisteredModuleSummary;
 
 /** @author Tinashe K */

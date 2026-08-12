@@ -1,5 +1,12 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantCategoryCode;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantRepository;
+
+import zw.ac.uz.emhare.admissions.application.command.*;
+
 import jakarta.transaction.Transactional;
 import java.util.Collections;
 import java.util.List;
@@ -16,6 +23,8 @@ import zw.ac.uz.emhare.admissions.application.ApplicantViews.ApplicantProfile;
 import zw.ac.uz.emhare.admissions.application.ApplicantViews.ApplicantRegisterPage;
 import zw.ac.uz.emhare.admissions.application.ApplicantViews.ApplicantRegisterRow;
 import zw.ac.uz.emhare.common.persistence.EmhareRevisionContext;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatus;
 
 @Service
 public class AdmissionsApplicantService {
@@ -94,7 +103,7 @@ public class AdmissionsApplicantService {
         String correlationId = EmhareRevisionContext.getCorrelationId().orElse(null);
         EmhareRevisionContext.setRequestMetadata(correlationId, command.changeReason().trim());
         try {
-            applicant.correctProfile(command);
+            applicant.correctProfile(command.toProfileCorrection());
             applicantRepository.saveAndFlush(applicant);
             return new ApplicantDetails(
                     profile(applicant),

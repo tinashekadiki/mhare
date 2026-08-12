@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.assessmentresults.roster;
 
+import zw.ac.uz.emhare.assessmentresults.roster.domain.model.AssessmentRosterEntry;
+import zw.ac.uz.emhare.assessmentresults.roster.domain.model.RegistrationRosterImport;
+import zw.ac.uz.emhare.assessmentresults.roster.infrastructure.persistence.AssessmentRosterEntryRepository;
+import zw.ac.uz.emhare.assessmentresults.roster.infrastructure.persistence.RegistrationRosterImportRepository;
+
 import java.time.Clock;
 import java.util.HashSet;
 import java.util.Set;

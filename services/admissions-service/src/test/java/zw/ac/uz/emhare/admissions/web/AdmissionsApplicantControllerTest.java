@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.admissions.web;
 
+import zw.ac.uz.emhare.admissions.application.command.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,10 +18,12 @@ import org.springframework.security.core.Authentication;
 import zw.ac.uz.emhare.admissions.application.AdmissionsApplicantService;
 import zw.ac.uz.emhare.admissions.application.ApplicantViews.ApplicantDetails;
 import zw.ac.uz.emhare.admissions.application.ApplicantViews.ApplicantProfile;
-import zw.ac.uz.emhare.admissions.application.UpdateApplicantProfileCommand;
+import zw.ac.uz.emhare.admissions.application.command.UpdateApplicantProfileCommand;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient.CoreCurrentUserProfile;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient.CoreUserSummary;
+import zw.ac.uz.emhare.admissions.api.controller.AdmissionsApplicantController;
+import zw.ac.uz.emhare.admissions.api.model.UpdateApplicantProfileRequest;
 
 @ExtendWith(MockitoExtension.class)
 class AdmissionsApplicantControllerTest {

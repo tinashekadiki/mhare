@@ -1,5 +1,11 @@
 package zw.ac.uz.emhare.academicsetup.domain;
 
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicUnit;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicUnitType;
+import zw.ac.uz.emhare.academicsetup.domain.model.Programme;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeLevel;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeType;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

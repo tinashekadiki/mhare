@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantCategoryCode;
+
 import java.util.ArrayList;
 import java.util.List;
 import zw.ac.uz.emhare.admissions.application.ApplicantViews.ApplicantProfile;

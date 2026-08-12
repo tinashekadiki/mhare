@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.documentsreporting.document;
 
+import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.model.GeneratedDocument;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -11,8 +13,8 @@ import java.util.Collections;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
-import zw.ac.uz.emhare.documentsreporting.projection.ProgressionDecisionProjection;
-import zw.ac.uz.emhare.documentsreporting.projection.PublishedResultProjection;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.model.ProgressionDecisionProjection;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.model.PublishedResultProjection;
 
 /** @author Tinashe K */
 class OfficialResultSlipPdfRendererTest {

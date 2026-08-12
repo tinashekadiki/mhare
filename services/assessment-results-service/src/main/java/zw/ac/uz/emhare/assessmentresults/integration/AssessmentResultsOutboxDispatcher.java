@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.assessmentresults.integration;
 
+import zw.ac.uz.emhare.assessmentresults.infrastructure.messaging.model.AssessmentResultsOutboxEvent;
+import zw.ac.uz.emhare.assessmentresults.infrastructure.persistence.messaging.AssessmentResultsOutboxEventRepository;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;

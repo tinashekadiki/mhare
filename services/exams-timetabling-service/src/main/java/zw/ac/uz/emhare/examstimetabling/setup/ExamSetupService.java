@@ -1,11 +1,24 @@
 package zw.ac.uz.emhare.examstimetabling.setup;
 
+import zw.ac.uz.emhare.examstimetabling.setup.domain.model.ExamSession;
+import zw.ac.uz.emhare.examstimetabling.setup.domain.model.ExamSessionSlot;
+import zw.ac.uz.emhare.examstimetabling.setup.domain.model.ExamVenue;
+import zw.ac.uz.emhare.examstimetabling.setup.domain.model.ExamVenueAvailabilityWindow;
+import zw.ac.uz.emhare.examstimetabling.setup.domain.model.ExamVenueType;
+import zw.ac.uz.emhare.examstimetabling.setup.domain.model.ModuleExamRequirement;
+import zw.ac.uz.emhare.examstimetabling.setup.infrastructure.persistence.ExamSessionRepository;
+import zw.ac.uz.emhare.examstimetabling.setup.infrastructure.persistence.ExamSessionSlotRepository;
+import zw.ac.uz.emhare.examstimetabling.setup.infrastructure.persistence.ExamVenueAvailabilityRepository;
+import zw.ac.uz.emhare.examstimetabling.setup.infrastructure.persistence.ExamVenueRepository;
+import zw.ac.uz.emhare.examstimetabling.setup.infrastructure.persistence.ExamVenueTypeRepository;
+import zw.ac.uz.emhare.examstimetabling.setup.infrastructure.persistence.ModuleExamRequirementRepository;
+
 import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.examstimetabling.setup.ExamSetupContracts.*;
+import zw.ac.uz.emhare.examstimetabling.setup.api.model.ExamSetupApiModels.*;
 
 /** @author Tinashe K */
 @Service

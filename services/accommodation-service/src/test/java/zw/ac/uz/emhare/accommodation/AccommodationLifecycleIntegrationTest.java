@@ -1,5 +1,13 @@
 package zw.ac.uz.emhare.accommodation;
 
+import zw.ac.uz.emhare.accommodation.operations.domain.model.AccommodationApplication;
+import zw.ac.uz.emhare.accommodation.operations.domain.model.AccommodationRate;
+import zw.ac.uz.emhare.accommodation.operations.domain.model.RoomAllocation;
+import zw.ac.uz.emhare.accommodation.operations.domain.model.RoomAllocationEvent;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationApplicationPeriod;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.AccommodationRoom;
+import zw.ac.uz.emhare.accommodation.setup.domain.model.ResidenceHall;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
@@ -17,9 +25,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import zw.ac.uz.emhare.accommodation.operations.*;
-import zw.ac.uz.emhare.accommodation.operations.AccommodationOperationsContracts.*;
+import zw.ac.uz.emhare.accommodation.operations.api.model.AccommodationOperationsApiModels.*;
 import zw.ac.uz.emhare.accommodation.setup.*;
-import zw.ac.uz.emhare.accommodation.setup.AccommodationSetupContracts.*;
+import zw.ac.uz.emhare.accommodation.setup.api.model.AccommodationSetupApiModels.*;
 
 /** @author Tinashe K */
 @Testcontainers

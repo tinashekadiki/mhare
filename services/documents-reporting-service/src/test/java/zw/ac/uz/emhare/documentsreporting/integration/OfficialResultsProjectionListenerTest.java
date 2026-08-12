@@ -1,5 +1,12 @@
 package zw.ac.uz.emhare.documentsreporting.integration;
 
+import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.GeneratedDocumentRepository;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.messaging.model.DocumentsReportingIntegrationInbox;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.messaging.DocumentsReportingIntegrationInboxRepository;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.ProgressionDecisionProjectionRepository;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.ProgressionDecisionResultProjectionRepository;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.PublishedResultProjectionRepository;
+
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -17,11 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.MessageBuilder;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.ProgressionDecisionPublishedEvent;
-import zw.ac.uz.emhare.documentsreporting.document.GeneratedDocumentRepository;
-import zw.ac.uz.emhare.documentsreporting.projection.ProgressionDecisionProjectionRepository;
-import zw.ac.uz.emhare.documentsreporting.projection.ProgressionDecisionResultProjectionRepository;
-import zw.ac.uz.emhare.documentsreporting.projection.PublishedResultProjection;
-import zw.ac.uz.emhare.documentsreporting.projection.PublishedResultProjectionRepository;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.model.PublishedResultProjection;
 
 /** @author Tinashe K */
 class OfficialResultsProjectionListenerTest {

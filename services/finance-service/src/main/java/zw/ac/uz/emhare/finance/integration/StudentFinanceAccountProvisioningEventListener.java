@@ -10,7 +10,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.StudentFinanceAccountProvisioningRequestedEvent;
-import zw.ac.uz.emhare.finance.student.StudentFinanceAccount;
+import zw.ac.uz.emhare.finance.student.domain.model.StudentFinanceAccount;
 import zw.ac.uz.emhare.finance.student.StudentFinanceAccountService;
 
 /** @author Tinashe K */

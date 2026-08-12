@@ -300,6 +300,12 @@ The new eMhare shall be organised into these product modules:
 
 **FR-ADM-012:** Application types shall be independently activated or deactivated.
 
+**FR-ADM-013:** The first-class routes shall be `UNDERGRAD`, `POSTGRAD`, `MBA`, and `EDUCATION`. Diploma programmes belong to `UNDERGRAD`; MBA and Education programme ownership shall come from explicit programme mappings rather than faculty codes.
+
+**FR-ADM-014:** Route activation shall be atomic and shall require at least one active programme mapping, internally consistent governed sections, required document definitions, an explicit fee structure or audited fee-free decision, and the route reference threshold. `POSTGRAD` requires employment history and two completed confidential references; `MBA` requires prior-UZ and professional-achievement declarations, employment history, and three references; `EDUCATION` requires employment history and three references; `UNDERGRAD` requires no references by default.
+
+**FR-ADM-015:** An applicant shall only see route/intake combinations whose configured programme mapping intersects the intake catalogue. Draft creation shall snapshot the eligible programmes and entry options, governed sections, documents, fee policy, and thresholds so later setup changes cannot mutate the draft.
+
 ### 10.3 Fees And Quotas
 
 **FR-ADM-020:** The system shall maintain application fees by application type, applicant category, currency, and effective date.
@@ -432,6 +438,8 @@ The applicant's first and last name shall be sourced from the authenticated acco
 
 **FR-CHOICE-010:** The applicant portal shall allow applicants to download the current list of programmes on offer.
 
+**FR-CHOICE-011:** A programme choice shall capture ranked entry-option or specialization preferences from its versioned Academic Setup catalogue and enforce the configured minimum and maximum selections. These preferences are conversion evidence and do not automatically assign a curriculum or register Modules.
+
 ## 14. Eligibility And Selection Requirements
 
 ### 14.1 Requirement Sets
@@ -447,6 +455,10 @@ The applicant's first and last name shall be sourced from the authenticated acco
 **FR-SEL-005:** Requirement sets shall support a small versioned expression/rules JSON for advanced local rules that cannot be represented cleanly by relational subject and points rules.
 
 **FR-SEL-006:** The rules JSON shall be treated as configuration data, stored with the approved requirement-set version, and included in evaluation audit output.
+
+**FR-SEL-007:** Relational qualification groups shall express alternatives by qualification level, minimum count, optional minimum points, and minimum satisfied items. `advanced_rules_v1` shall allow only `all`, `any`, `not`, and allow-listed fact/operator conditions; it shall never execute dynamic code. Supported facts cover applicant category, qualification counts, employment duration, professional-achievement count, prior-UZ history, and entry-option count.
+
+**FR-SEL-008:** Requirement-set approval shall reject malformed or unsupported rules. Every relational and advanced condition shall persist machine-readable evidence, including missing facts and failed conditions.
 
 ### 14.2 Evaluation
 

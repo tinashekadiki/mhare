@@ -1,9 +1,14 @@
 package zw.ac.uz.emhare.studentrecords.conversion;
 
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProfile;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProgrammeEnrolment;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.ProgrammeEnrolmentStatus;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentStatus;
 
 /** @author Tinashe K */
 public record StudentWorkspaceSummary(

@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationPaymentReference;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationPaymentReferenceRepository;
+
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import zw.ac.uz.emhare.admissions.integration.DocumentsReportingClient;

@@ -1,5 +1,12 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantReferee;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantRefereeInvitation;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationRefereeNomination;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantRefereeInvitationRepository;
+
 import jakarta.transaction.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -17,7 +24,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import zw.ac.uz.emhare.admissions.application.ApplicantRefereeInvitationViews.PublicReferenceRequest;
-import zw.ac.uz.emhare.admissions.application.ApplicantRefereeInvitationViews.SubmitReferenceCommand;
+import zw.ac.uz.emhare.admissions.application.command.SubmitReferenceCommand;
 import zw.ac.uz.emhare.admissions.integration.AdmissionsIntegrationOutboxService;
 
 /** Creates one-time referee links and records confidential postgraduate references. @author Tinashe K */
@@ -45,6 +52,12 @@ public class ApplicantRefereeInvitationService {
 
     @Transactional
     public ApplicantRefereeInvitation issueInvitation(Application application, ApplicantReferee referee) {
+        return issueInvitation(application, referee, null);
+    }
+
+    @Transactional
+    public ApplicantRefereeInvitation issueInvitation(
+            Application application, ApplicantReferee referee, ApplicationRefereeNomination nomination) {
         List<ApplicantRefereeInvitation> previousInvitations = invitationRepository
                 .findAllByApplicationIdAndRefereeIdAndDeletedAtIsNullOrderByCreatedAtDesc(
                         application.getId(), referee.getId());
@@ -61,6 +74,7 @@ public class ApplicantRefereeInvitationService {
                 new ApplicantRefereeInvitation(
                         application,
                         referee,
+                        nomination,
                         hash(token),
                         token.substring(0, Math.min(12, token.length())),
                         sentAt,
@@ -118,6 +132,13 @@ public class ApplicantRefereeInvitationService {
         invitationRepository.findAllByApplicationIdAndDeletedAtIsNullOrderByCreatedAtDesc(applicationId)
                 .forEach(invitation -> latestByRefereeId.putIfAbsent(invitation.getReferee().getId(), invitation));
         return latestByRefereeId;
+    }
+
+    @Transactional
+    public long countCurrentSubmittedReferences(UUID applicationId) {
+        return latestInvitations(applicationId).values().stream()
+                .filter(invitation -> invitation.getStatus() == ApplicantRefereeInvitation.Status.SUBMITTED)
+                .count();
     }
 
     private ApplicantRefereeInvitation requireInvitation(String token) {

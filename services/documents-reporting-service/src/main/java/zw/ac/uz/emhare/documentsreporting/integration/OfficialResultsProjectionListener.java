@@ -1,5 +1,12 @@
 package zw.ac.uz.emhare.documentsreporting.integration;
 
+import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.GeneratedDocumentRepository;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.messaging.model.DocumentsReportingIntegrationInbox;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.messaging.DocumentsReportingIntegrationInboxRepository;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.ProgressionDecisionProjectionRepository;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.ProgressionDecisionResultProjectionRepository;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.PublishedResultProjectionRepository;
+
 import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -17,14 +24,10 @@ import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.ProgressionDecisionPublishedEvent;
 import zw.ac.uz.emhare.common.messaging.PublishedResultVersionCreatedEvent;
-import zw.ac.uz.emhare.documentsreporting.document.GeneratedDocument;
-import zw.ac.uz.emhare.documentsreporting.document.GeneratedDocumentRepository;
-import zw.ac.uz.emhare.documentsreporting.projection.ProgressionDecisionProjection;
-import zw.ac.uz.emhare.documentsreporting.projection.ProgressionDecisionProjectionRepository;
-import zw.ac.uz.emhare.documentsreporting.projection.ProgressionDecisionResultProjection;
-import zw.ac.uz.emhare.documentsreporting.projection.ProgressionDecisionResultProjectionRepository;
-import zw.ac.uz.emhare.documentsreporting.projection.PublishedResultProjection;
-import zw.ac.uz.emhare.documentsreporting.projection.PublishedResultProjectionRepository;
+import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.model.GeneratedDocument;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.model.ProgressionDecisionProjection;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.model.ProgressionDecisionResultProjection;
+import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.model.PublishedResultProjection;
 
 /** @author Tinashe K */
 @Component

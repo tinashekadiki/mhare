@@ -3,16 +3,16 @@ server:
 
 spring:
   config:
-    import: classpath:emhare-service-common.yml
+    import: classpath:emhare-service-foundation.yml
   application:
     name: academic-setup-service
+  http:
+    serviceclient:
+      student-records:
+        base-url: lb://student-records-service
+      assessment-results:
+        base-url: lb://assessment-results-service
   datasource:
     url: ${ACADEMIC_SETUP_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_academic_setup}
     username: ${EMHARE_SERVICE_DB_USER:emhare_service}
     password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}
-
-emhare:
-  student-records:
-    url: ${STUDENT_RECORDS_SERVICE_URL:http://localhost:8085}
-  assessment-results:
-    url: ${ASSESSMENT_RESULTS_SERVICE_URL:http://localhost:8086}

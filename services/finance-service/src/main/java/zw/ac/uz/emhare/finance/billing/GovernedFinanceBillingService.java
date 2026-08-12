@@ -1,21 +1,35 @@
 package zw.ac.uz.emhare.finance.billing;
 
+import zw.ac.uz.emhare.finance.billing.domain.model.FinanceBillingEvent;
+import zw.ac.uz.emhare.finance.billing.domain.model.FinanceBillingEventScope;
+import zw.ac.uz.emhare.finance.billing.domain.model.FinanceBillingPolicy;
+import zw.ac.uz.emhare.finance.billing.domain.model.FinanceInvoice;
+import zw.ac.uz.emhare.finance.billing.domain.model.FinanceInvoiceLine;
+import zw.ac.uz.emhare.finance.billing.infrastructure.persistence.FinanceBillingEventRepository;
+import zw.ac.uz.emhare.finance.billing.infrastructure.persistence.FinanceBillingEventScopeRepository;
+import zw.ac.uz.emhare.finance.billing.infrastructure.persistence.FinanceBillingPolicyRepository;
+import zw.ac.uz.emhare.finance.billing.infrastructure.persistence.FinanceInvoiceLineRepository;
+import zw.ac.uz.emhare.finance.billing.infrastructure.persistence.FinanceInvoiceRepository;
+import zw.ac.uz.emhare.finance.student.domain.model.StudentFinanceAccount;
+import zw.ac.uz.emhare.finance.student.infrastructure.persistence.StudentFinanceAccountRepository;
+
 import java.math.BigDecimal;
 import java.time.*;
 import java.util.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.finance.billing.FinanceBillingContracts.*;
+import zw.ac.uz.emhare.finance.billing.api.model.FinanceBillingApiModels.*;
 import zw.ac.uz.emhare.finance.catalogue.FinanceFeePricingResolver;
 import zw.ac.uz.emhare.finance.catalogue.FinanceFeePricingResolver.PricingScope;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeCatalogue;
-import zw.ac.uz.emhare.finance.catalogue.FinanceFeeRuleScope;
-import zw.ac.uz.emhare.finance.catalogue.FinanceStudentDiscountContracts.ResolveDiscount;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeCatalogue;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeRuleScope;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceStudentDiscountApiModels.ResolveDiscount;
 import zw.ac.uz.emhare.finance.catalogue.GovernedFinanceStudentDiscountService;
 import zw.ac.uz.emhare.finance.payment.FinanceReferenceGenerator;
 import zw.ac.uz.emhare.finance.student.*;
 import zw.ac.uz.emhare.common.messaging.*;
+import zw.ac.uz.emhare.finance.catalogue.api.model.FinanceStudentDiscountApiModels;
 
 /** Approval-controlled billing events and atomic immutable invoice posting. @author Tinashe K */
 @Service
@@ -45,7 +59,7 @@ public class GovernedFinanceBillingService {
         String programmeLevelCode=referenceCode(command.scopes(),FinanceFeeRuleScope.Dimension.PROGRAMME_LEVEL);
         Integer programmePeriodNumber=programmePeriodNumber(command.scopes());
         var discount=programmeId==null||academicUnitId==null||programmeLevelId==null||programmeLevelCode==null||programmePeriodNumber==null
-                ?Optional.<zw.ac.uz.emhare.finance.catalogue.FinanceStudentDiscountContracts.AppliedDiscount>empty()
+                ?Optional.<zw.ac.uz.emhare.finance.catalogue.domain.model.AppliedStudentDiscount>empty()
                 :studentDiscountService.resolve(new ResolveDiscount(command.feeCatalogueId(),programmeId,academicUnitId,
                         programmeLevelId,programmeLevelCode,programmeStudyLevel(programmePeriodNumber),command.effectiveAt()));
         FinanceBillingEvent event=new FinanceBillingEvent(referenceGenerator.nextBillingEventNumber(),command.sourceService(),command.sourceEventType(),command.sourceEventId(),command.sourceAggregateType(),command.sourceAggregateId(),command.sourceLineReference(),account,price.catalogue(),price.rule(),command.description(),command.quantity(),command.effectiveAt(),discount.orElse(null),actor,now);

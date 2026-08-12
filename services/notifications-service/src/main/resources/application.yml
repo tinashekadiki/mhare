@@ -10,9 +10,31 @@ spring:
     url: ${NOTIFICATIONS_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_notifications}
     username: ${EMHARE_SERVICE_DB_USER:emhare_service}
     password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.ssl.enable: ${SMTP_SSL_ENABLE:false}
+      mail.smtp.connectiontimeout: ${SMTP_CONNECTION_TIMEOUT_MILLISECONDS:300000}
+      mail.smtp.timeout: ${SMTP_READ_TIMEOUT_MILLISECONDS:300000}
+      mail.smtp.writetimeout: ${SMTP_WRITE_TIMEOUT_MILLISECONDS:300000}
 
 emhare:
   notifications:
     provider: ${NOTIFICATIONS_DELIVERY_PROVIDER:disabled}
+    smtp:
+      from-address: ${SMTP_FROM_ADDRESS:admissions@emhare.local}
+      from-name: ${SMTP_FROM_NAME:eMhare}
+    attachments:
+      storage:
+        endpoint: ${DOCUMENTS_STORAGE_ENDPOINT:http://localhost:9000}
+        region: ${DOCUMENTS_STORAGE_REGION:us-east-1}
+        access-key: ${DOCUMENTS_STORAGE_ACCESS_KEY:emhare-dev-access}
+        secret-key: ${DOCUMENTS_STORAGE_SECRET_KEY:emhare-dev-secret-change-me}
+        path-style-access: ${DOCUMENTS_STORAGE_PATH_STYLE_ACCESS:true}
     webhooks:
       maximum-clock-skew: ${NOTIFICATIONS_WEBHOOK_MAXIMUM_CLOCK_SKEW:5m}

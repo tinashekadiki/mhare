@@ -20,6 +20,7 @@ const offers = ref<AdmissionOfferSummary[]>([]);
 const loadingApplications = ref(false);
 const submittingApplicationId = ref<string | null>(null);
 const respondingOfferId = ref<string | null>(null);
+const openingOfferId = ref<string | null>(null);
 const loadError = ref("");
 const documentRegisters = reactive<
   Record<string, ApplicationDocumentRegister | undefined>
@@ -317,6 +318,35 @@ async function respondToOffer(
   } finally {
     respondingOfferId.value = null;
   }
+}
+
+async function openOfferLetter(offer: AdmissionOfferSummary, disposition: "inline" | "attachment") {
+  if (!offer.currentPublicationId) {
+    await showError(
+      "Offer letter is not available",
+      "Admissions has not published the current offer letter yet.",
+    );
+    return;
+  }
+  const offerLetterWindow = window.open("about:blank", "_blank");
+  if (!offerLetterWindow) {
+    await showError(
+      "Offer letter could not be opened",
+      "Allow pop-ups for eMhare, then try again.",
+    );
+    return;
+  }
+  offerLetterWindow.opener = null;
+  openingOfferId.value = offer.id;
+  try {
+    const access = await api.request<{ generatedDocumentId: string }>(`/api/admissions/applicant/offers/${offer.id}/published-document`);
+    const document = await api.request<{ downloadUrl: string }>(`/api/documents/${access.generatedDocumentId}/applicant-download?disposition=${disposition}`);
+    offerLetterWindow.location.href = document.downloadUrl;
+  } catch (error) {
+    offerLetterWindow.close();
+    await showError("Offer letter could not be opened", api.errorMessage(error));
+  }
+  finally { openingOfferId.value = null; }
 }
 
 function offerStatusTone(status: AdmissionOfferSummary["status"]) {
@@ -682,6 +712,7 @@ function formatDate(value: string) {
             <UCard
               v-for="offer in paginatedOffers"
               :key="offer.id"
+              :data-testid="`admission-offer-${offer.id}`"
               variant="outline"
             >
               <template #header>
@@ -783,22 +814,60 @@ function formatDate(value: string) {
                 </div>
 
                 <div
-                  v-if="offer.status === 'SENT'"
-                  class="flex flex-wrap justify-end gap-2"
+                  v-if="offer.currentPublicationId || offer.status === 'SENT'"
+                  class="space-y-3"
                 >
-                  <UButton
-                    label="Decline"
-                    color="error"
-                    variant="outline"
-                    :loading="respondingOfferId === offer.id"
-                    @click="declineOffer(offer)"
+                  <div
+                    v-if="offer.currentPublicationId"
+                    class="flex flex-wrap justify-end gap-2"
+                  >
+                    <UButton
+                      label="Preview"
+                      icon="i-lucide-eye"
+                      color="neutral"
+                      variant="outline"
+                      :loading="openingOfferId === offer.id"
+                      @click="openOfferLetter(offer, 'inline')"
+                    />
+                    <UButton
+                      label="Download"
+                      icon="i-lucide-download"
+                      color="neutral"
+                      variant="outline"
+                      :loading="openingOfferId === offer.id"
+                      @click="openOfferLetter(offer, 'attachment')"
+                    />
+                    <UButton
+                      v-if="offer.status === 'SENT' && !offer.amendmentPending"
+                      label="Decline"
+                      color="error"
+                      variant="outline"
+                      :loading="respondingOfferId === offer.id"
+                      @click="declineOffer(offer)"
+                    />
+                    <UButton
+                      v-if="offer.status === 'SENT' && !offer.amendmentPending"
+                      label="Accept offer"
+                      icon="i-lucide-badge-check"
+                      color="primary"
+                      :loading="respondingOfferId === offer.id"
+                      @click="acceptOffer(offer)"
+                    />
+                  </div>
+                  <UAlert
+                    v-if="offer.status === 'SENT' && !offer.currentPublicationId"
+                    color="info"
+                    variant="soft"
+                    icon="i-lucide-file-clock"
+                    title="Offer letter being prepared"
+                    description="Admissions has not published the current offer letter yet. Preview, download and response actions will appear after publication."
                   />
-                  <UButton
-                    label="Accept offer"
-                    icon="i-lucide-badge-check"
-                    color="primary"
-                    :loading="respondingOfferId === offer.id"
-                    @click="acceptOffer(offer)"
+                  <UAlert
+                    v-else-if="offer.status === 'SENT' && offer.amendmentPending"
+                    color="warning"
+                    variant="soft"
+                    title="Updated letter pending"
+                    description="Admissions is preparing a replacement letter. Accept and decline will return after it is published."
                   />
                 </div>
               </div>

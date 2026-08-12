@@ -110,6 +110,27 @@ class ApplicationWorkspaceMigrationTest {
                 """, 1);
     }
 
+    @Test
+    void seedsInactiveFirstClassRoutesAndCreatesRouteEvidenceAuditTables() throws SQLException {
+        assertCount("""
+                SELECT count(*) FROM application_types
+                WHERE code IN ('UNDERGRAD', 'POSTGRAD', 'MBA', 'EDUCATION')
+                  AND is_active = false AND deleted_at IS NULL
+                """, 4);
+        assertCount("""
+                SELECT count(*) FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name IN (
+                    'application_type_programme_mappings', 'application_type_programme_mappings_aud',
+                    'application_programme_option_snapshots', 'application_programme_option_snapshots_aud',
+                    'application_document_requirement_snapshots', 'application_document_requirement_snapshots_aud',
+                    'application_prior_uz_declarations', 'application_prior_uz_declarations_aud',
+                    'application_professional_achievements', 'application_professional_achievements_aud',
+                    'application_referee_nominations', 'application_referee_nominations_aud',
+                    'admission_qualification_requirement_groups', 'admission_qualification_requirement_groups_aud',
+                    'admission_qualification_requirement_items', 'admission_qualification_requirement_items_aud')
+                """, 16);
+    }
+
     private void assertCount(String sql, int expected) throws SQLException {
         try (Connection connection = DriverManager.getConnection(
                     POSTGRESQL.getJdbcUrl(), POSTGRESQL.getUsername(), POSTGRESQL.getPassword());

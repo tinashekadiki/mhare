@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.studentrecords.conversion;
 
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentConversionRequest;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProfile;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentProgrammeEnrolment;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -11,6 +15,10 @@ import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import zw.ac.uz.emhare.common.messaging.AcceptedOfferReadyForConversionEvent;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.ProgrammeEnrolmentStatus;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.ProvisioningStatus;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentConversionStatus;
+import zw.ac.uz.emhare.studentrecords.conversion.domain.model.StudentStatus;
 
 /** @author Tinashe K */
 class StudentConversionDomainTest {

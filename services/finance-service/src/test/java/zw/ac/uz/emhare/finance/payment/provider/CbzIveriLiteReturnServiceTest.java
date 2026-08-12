@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.finance.payment.provider;
 
+import zw.ac.uz.emhare.finance.payment.provider.infrastructure.persistence.ApplicationPaymentProviderAttemptRepository;
+import zw.ac.uz.emhare.finance.payment.provider.infrastructure.persistence.model.ApplicationPaymentProviderAttempt;
+import zw.ac.uz.emhare.finance.payment.provider.infrastructure.persistence.model.CbzIveriLiteTransactionStatus;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -15,7 +19,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.LinkedMultiValueMap;
-import zw.ac.uz.emhare.finance.payment.ApplicationPaymentReference;
+import zw.ac.uz.emhare.finance.payment.domain.model.ApplicationPaymentReference;
 import zw.ac.uz.emhare.finance.payment.FinanceApplicationPaymentService;
 
 /** @author Tinashe K */

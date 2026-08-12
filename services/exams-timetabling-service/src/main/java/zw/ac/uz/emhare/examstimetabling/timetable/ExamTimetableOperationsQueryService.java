@@ -1,5 +1,11 @@
 package zw.ac.uz.emhare.examstimetabling.timetable;
 
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamStudentTimetableEntry;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamTimetableGenerationRun;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamTimetableVenueAllocation;
+import zw.ac.uz.emhare.examstimetabling.timetable.infrastructure.persistence.ExamStudentTimetableEntryRepository;
+import zw.ac.uz.emhare.examstimetabling.timetable.infrastructure.persistence.ExamTimetableVenueAllocationRepository;
+
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;

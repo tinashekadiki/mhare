@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.studentrecords.registration;
 
+import zw.ac.uz.emhare.studentrecords.registration.infrastructure.persistence.RegistrationModuleRepository;
+
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

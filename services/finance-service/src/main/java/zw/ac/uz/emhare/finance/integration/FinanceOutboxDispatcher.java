@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.finance.integration;
 
+import zw.ac.uz.emhare.finance.infrastructure.messaging.model.FinanceOutboxEvent;
+import zw.ac.uz.emhare.finance.infrastructure.persistence.messaging.FinanceOutboxEventRepository;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;

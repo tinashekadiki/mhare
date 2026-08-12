@@ -1,5 +1,9 @@
 package zw.ac.uz.emhare.finance.payment.provider;
 
+import zw.ac.uz.emhare.finance.payment.infrastructure.persistence.ApplicationPaymentReferenceRepository;
+import zw.ac.uz.emhare.finance.payment.provider.infrastructure.persistence.ApplicationPaymentProviderAttemptRepository;
+import zw.ac.uz.emhare.finance.payment.provider.infrastructure.persistence.model.ApplicationPaymentProviderAttempt;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -16,8 +20,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.test.util.ReflectionTestUtils;
-import zw.ac.uz.emhare.finance.payment.ApplicationPaymentReference;
-import zw.ac.uz.emhare.finance.payment.ApplicationPaymentReferenceRepository;
+import zw.ac.uz.emhare.finance.payment.domain.model.ApplicationPaymentReference;
 
 /** @author Tinashe K */
 class CbzIveriLiteCheckoutServiceTest {

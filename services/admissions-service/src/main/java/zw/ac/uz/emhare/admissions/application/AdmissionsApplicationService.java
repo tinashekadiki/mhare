@@ -1,5 +1,33 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
+import zw.ac.uz.emhare.admissions.domain.model.Applicant;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantCategoryCode;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicantQualificationSitting;
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ProgrammeSelectionSnapshot;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationClearance;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationFee;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationPaymentReference;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeChoice;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationSection;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatusEvent;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationClearanceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationEvaluationRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationFeeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationPaymentReferenceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeChoiceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationSectionRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationStatusEventRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeProgrammeMappingRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeOptionSnapshotRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeOptionSnapshot;
+
+import zw.ac.uz.emhare.admissions.application.command.*;
+
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -11,10 +39,17 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.admissions.integration.AdmissionsIntegrationOutboxService;
 import zw.ac.uz.emhare.admissions.integration.AcademicSetupCatalogueClient.AcademicProgrammeOption;
 import zw.ac.uz.emhare.admissions.integration.FinanceCatalogueClient;
 import zw.ac.uz.emhare.common.messaging.ApplicationPaymentReferenceUpdatedEvent;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicantQualificationSittingRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationClearanceOutcome;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatus;
+import zw.ac.uz.emhare.admissions.domain.model.QualificationResultStatus;
 
 @Service
 public class AdmissionsApplicationService {
@@ -22,6 +57,8 @@ public class AdmissionsApplicationService {
     private final ApplicantRepository applicantRepository;
     private final AdmissionsIntakeProjectionService admissionsIntakeProjectionService;
     private final ApplicationTypeRepository applicationTypeRepository;
+    private final ApplicationTypeProgrammeMappingRepository programmeMappingRepository;
+    private final ApplicationProgrammeOptionSnapshotRepository programmeOptionSnapshotRepository;
     private final ApplicationFeeRepository applicationFeeRepository;
     private final ApplicationRepository applicationRepository;
     private final ApplicationProgrammeChoiceRepository programmeChoiceRepository;
@@ -38,11 +75,14 @@ public class AdmissionsApplicationService {
     private final ApplicantApplicationWorkspaceService applicantApplicationWorkspaceService;
     private final QualificationEligibilityService qualificationEligibilityService;
     private final Clock clock;
+    private final ObjectMapper objectMapper;
 
     public AdmissionsApplicationService(
             ApplicantRepository applicantRepository,
             AdmissionsIntakeProjectionService admissionsIntakeProjectionService,
             ApplicationTypeRepository applicationTypeRepository,
+            ApplicationTypeProgrammeMappingRepository programmeMappingRepository,
+            ApplicationProgrammeOptionSnapshotRepository programmeOptionSnapshotRepository,
             ApplicationFeeRepository applicationFeeRepository,
             ApplicationRepository applicationRepository,
             ApplicationProgrammeChoiceRepository programmeChoiceRepository,
@@ -58,10 +98,13 @@ public class AdmissionsApplicationService {
             AdmissionsDocumentService admissionsDocumentService,
             ApplicantApplicationWorkspaceService applicantApplicationWorkspaceService,
             QualificationEligibilityService qualificationEligibilityService,
-            Clock clock) {
+            Clock clock,
+            ObjectMapper objectMapper) {
         this.applicantRepository = applicantRepository;
         this.admissionsIntakeProjectionService = admissionsIntakeProjectionService;
         this.applicationTypeRepository = applicationTypeRepository;
+        this.programmeMappingRepository = programmeMappingRepository;
+        this.programmeOptionSnapshotRepository = programmeOptionSnapshotRepository;
         this.applicationFeeRepository = applicationFeeRepository;
         this.applicationRepository = applicationRepository;
         this.programmeChoiceRepository = programmeChoiceRepository;
@@ -78,6 +121,7 @@ public class AdmissionsApplicationService {
         this.applicantApplicationWorkspaceService = applicantApplicationWorkspaceService;
         this.qualificationEligibilityService = qualificationEligibilityService;
         this.clock = clock;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -91,7 +135,10 @@ public class AdmissionsApplicationService {
         if (!applicationType.isActive()) {
             throw new IllegalStateException("Application type is not active.");
         }
-        List<ProgrammeSelectionSnapshot> programmeSelections = validateProgrammeSelections(resolvedIntake, command.programmeIds());
+        List<AcademicProgrammeOption> eligibleProgrammes = eligibleProgrammes(
+                resolvedIntake, command.applicationTypeId());
+        List<ProgrammeSelectionSnapshot> programmeSelections = validateProgrammeSelections(
+                resolvedIntake, eligibleProgrammes, command.programmeIds());
 
         ResolvedApplicationFee resolvedFee = resolveApplicationFee(
                 command.applicationTypeId(), applicationType, applicantCategoryCode, LocalDate.now(clock));
@@ -124,6 +171,11 @@ public class AdmissionsApplicationService {
                 admissionsIdentifierGenerator.nextApplicationNumber(intakeProjection),
                 paymentRequired);
         Application savedApplication = applicationRepository.saveAndFlush(application);
+        programmeOptionSnapshotRepository.saveAllAndFlush(eligibleProgrammes.stream()
+                .map(option -> new ApplicationProgrammeOptionSnapshot(
+                        savedApplication, option, serializeEntryOptions(option)))
+                .toList());
+        admissionsDocumentService.snapshotRequirements(savedApplication);
         List<ApplicationProgrammeChoice> programmeChoices = new java.util.ArrayList<>();
         for (int index = 0; index < programmeSelections.size(); index++) {
             programmeChoices.add(new ApplicationProgrammeChoice(savedApplication, programmeSelections.get(index), index + 1));
@@ -327,6 +379,7 @@ public class AdmissionsApplicationService {
 
     private List<ProgrammeSelectionSnapshot> validateProgrammeSelections(
             AdmissionsIntakeProjectionService.ResolvedAdmissionsIntake resolvedIntake,
+            List<AcademicProgrammeOption> eligibleProgrammes,
             List<UUID> programmeIds) {
         if (programmeIds == null || programmeIds.isEmpty()) return List.of();
         if (programmeIds.size() > resolvedIntake.intake().maximumProgrammeChoices()) {
@@ -337,18 +390,54 @@ public class AdmissionsApplicationService {
         if (new LinkedHashSet<>(programmeIds).size() != programmeIds.size()) {
             throw new IllegalArgumentException("The same programme cannot be selected more than once.");
         }
-        Map<UUID, AcademicProgrammeOption> availableProgrammes = resolvedIntake.intake().programmes().stream()
+        Map<UUID, AcademicProgrammeOption> availableProgrammes = eligibleProgrammes.stream()
                 .collect(Collectors.toMap(AcademicProgrammeOption::programmeId, Function.identity()));
         return programmeIds.stream()
                 .map(programmeId -> {
                     AcademicProgrammeOption option = availableProgrammes.get(programmeId);
                     if (option == null) {
                         throw new IllegalArgumentException(
-                                "Selected programme is not available for this intake: " + programmeId);
+                                "Selected programme is not available for this application route and intake: " + programmeId);
                     }
-                    return ProgrammeSelectionSnapshot.from(option);
+                    return programmeSelectionSnapshot(option);
                 })
                 .toList();
+    }
+
+    private List<AcademicProgrammeOption> eligibleProgrammes(
+            AdmissionsIntakeProjectionService.ResolvedAdmissionsIntake resolvedIntake,
+            UUID applicationTypeId) {
+        java.util.Set<UUID> mappedProgrammeIds = programmeMappingRepository
+                .findAllByApplicationTypeIdAndActiveTrueAndDeletedAtIsNullOrderByProgrammeCodeAsc(applicationTypeId)
+                .stream().map(mapping -> mapping.getProgrammeId()).collect(java.util.stream.Collectors.toSet());
+        List<AcademicProgrammeOption> eligibleProgrammes = resolvedIntake.intake().programmes().stream()
+                .filter(programme -> mappedProgrammeIds.contains(programme.programmeId()))
+                .toList();
+        if (eligibleProgrammes.isEmpty()) {
+            throw new IllegalStateException(
+                    "This application route has no configured programmes available in the selected intake.");
+        }
+        return eligibleProgrammes;
+    }
+
+    private String serializeEntryOptions(AcademicProgrammeOption option) {
+        try {
+            return objectMapper.writeValueAsString(option.entryOptions());
+        } catch (JacksonException exception) {
+            throw new IllegalStateException("Programme entry options could not be snapshotted.", exception);
+        }
+    }
+
+    private ProgrammeSelectionSnapshot programmeSelectionSnapshot(AcademicProgrammeOption option) {
+        return new ProgrammeSelectionSnapshot(
+                option.programmeId(),
+                option.programmeVersionId(),
+                option.programmeCode(),
+                option.programmeName(),
+                option.awardName(),
+                option.owningAcademicUnitId(),
+                option.owningAcademicUnitName(),
+                option.programmeVersionCode());
     }
 
     private ApplicationSummary summary(Application application, ApplicationPaymentReference paymentReference) {

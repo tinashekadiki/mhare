@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const adminBaseUrl = process.env.ADMIN_PORTAL_URL ?? 'http://localhost:3000'
+const applicantBaseUrl = process.env.APPLICANT_PORTAL_URL ?? 'http://localhost:3001'
 const workbenchBaseUrl = process.env.UI_WORKBENCH_URL ?? 'http://localhost:3003'
 const studentPortalBaseUrl = process.env.STUDENT_PORTAL_URL ?? 'http://localhost:3002'
 
@@ -20,6 +21,12 @@ export default defineConfig({
     {
       command: 'npm run admin:dev',
       url: adminBaseUrl,
+      reuseExistingServer: true,
+      timeout: 120_000
+    },
+    {
+      command: 'npm run applicant:dev',
+      url: applicantBaseUrl,
       reuseExistingServer: true,
       timeout: 120_000
     },

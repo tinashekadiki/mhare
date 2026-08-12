@@ -366,6 +366,172 @@ async function loginWithKeycloak(page: Page, fixture: AcademicUiFixture) {
 }
 
 test.describe('Academic Setup operational UI', () => {
+  test('guides intake creation through details, eligibility, and opening review', async ({ page }) => {
+    let fixture: AcademicUiFixture | null = null
+    try {
+      fixture = await createFixture()
+      await page.goto('/operations/academic-structure')
+      await loginWithKeycloak(page, fixture)
+      await page.goto('/operations/academic-calendar')
+      await page.getByRole('tab', { name: /Intakes/ }).click()
+      await page.getByRole('button', { name: 'Create intake' }).click()
+
+      await expect(page).toHaveURL(/\/operations\/academic-calendar\/intakes\/new$/)
+      await expect(page.getByRole('dialog', { name: 'Create and open intake' })).toHaveCount(0)
+      const intakeWorkspace = page.getByTestId('intake-setup-workspace')
+      await expect(intakeWorkspace.getByText('Step 1 of 5', { exact: true })).toBeVisible()
+      await expect(intakeWorkspace.getByLabel('Programme Levels')).toHaveCount(0)
+      await intakeWorkspace.getByLabel('Academic year').click()
+      await page.getByRole('option', { name: fixture.academicYearName }).click()
+      await intakeWorkspace.getByLabel('Intake code').fill(`FEB_${fixture.calendarYear}`)
+      await intakeWorkspace.getByLabel('Applicant-facing name').fill(`February ${fixture.calendarYear} Intake`)
+      await intakeWorkspace.getByLabel('Applications open').fill(`${fixture.calendarYear}-03-01`)
+      await intakeWorkspace.getByLabel('Applications close').fill(`${fixture.calendarYear}-04-30`)
+      await intakeWorkspace.getByRole('button', { name: 'Continue to eligibility' }).click()
+
+      await expect(intakeWorkspace.getByText('Step 2 of 5', { exact: true })).toBeVisible()
+      await intakeWorkspace.getByLabel('Programme Levels').click()
+      await page.getByRole('option', { name: new RegExp(`UG_${fixture.codeSuffix}`) }).click()
+      await page.keyboard.press('Escape')
+      await intakeWorkspace.getByRole('button', { name: 'Continue to routes and fees' }).click()
+
+      await expect(intakeWorkspace.getByText('Step 3 of 5', { exact: true })).toBeVisible()
+      await intakeWorkspace.getByLabel('UNDERGRAD Programmes').click()
+      await page.getByRole('option', { name: new RegExp(`B${fixture.codeSuffix.slice(0, 4)}`) }).click()
+      await page.keyboard.press('Escape')
+      await intakeWorkspace.getByRole('button', { name: 'Continue to Programme quotas' }).click()
+
+      await expect(intakeWorkspace.getByText('Step 4 of 5', { exact: true })).toBeVisible()
+      await intakeWorkspace.getByLabel(`B${fixture.codeSuffix.slice(0, 4)} total capacity`).fill('80')
+      await intakeWorkspace.getByRole('button', { name: 'Review admissions opening' }).click()
+
+      await expect(intakeWorkspace.getByText('Step 5 of 5', { exact: true })).toBeVisible()
+      await expect(intakeWorkspace.getByRole('heading', { name: 'Review and open applications' })).toBeVisible()
+      await expect(intakeWorkspace.getByText(`February ${fixture.calendarYear} Intake`, { exact: true })).toBeVisible()
+      await intakeWorkspace.getByLabel('Opening reason').fill('Configured all admission opening controls for browser verification.')
+      await expect(intakeWorkspace.getByRole('button', { name: 'Save draft' })).toBeVisible()
+      await expect(intakeWorkspace.getByRole('button', { name: 'Create and open intake' })).toBeVisible()
+
+      const createdIntakeId = randomUUID()
+      const openingRequests: string[] = []
+      const intakeResponse = (status: 'DRAFT' | 'OPEN', version: number) => ({
+        id: createdIntakeId,
+        academicYearId: fixture!.academicYearId,
+        academicYearName: fixture!.academicYearName,
+        code: `FEB_${fixture!.calendarYear}`,
+        name: `February ${fixture!.calendarYear} Intake`,
+        startsOn: `${fixture!.calendarYear}-03-01`,
+        endsOn: `${fixture!.calendarYear}-04-30`,
+        status,
+        maximumProgrammeChoices: 3,
+        changeReason: 'Configured all admission opening controls for browser verification.',
+        programmeLevels: [{ id: fixture!.programmeLevelId, code: `UG_${fixture!.codeSuffix}`, name: 'Undergraduate' }],
+        specificProgrammes: [],
+        allProgrammesInSelectedLevels: true,
+        version
+      })
+      await page.route('**/api/academic/intakes', async route => {
+        if (route.request().method() !== 'POST') return route.continue()
+        openingRequests.push('create intake')
+        await route.fulfill({ json: intakeResponse('DRAFT', 0) })
+      })
+      await page.route(`**/api/academic/intakes/${createdIntakeId}/open`, async route => {
+        openingRequests.push('open intake')
+        await route.fulfill({ json: intakeResponse('OPEN', 1) })
+      })
+      await page.route('**/api/admissions/application-types/*/route-configuration', async route => {
+        if (route.request().method() !== 'PUT') return route.continue()
+        openingRequests.push('configure routes and fees')
+        const request = route.request().postDataJSON()
+        await route.fulfill({ json: {
+          applicationTypeId: route.request().url().split('/').at(-2),
+          code: 'UNDERGRAD',
+          name: 'Undergraduate',
+          active: true,
+          readyForActivation: true,
+          readinessBlockers: [],
+          programmes: request.programmes,
+          sections: request.sections,
+          documents: request.documents,
+          feePolicyStatus: 'FEE_STRUCTURE',
+          version: 1
+        } })
+      })
+      await page.route(`**/api/admissions/intakes/${createdIntakeId}/programme-quotas`, async route => {
+        openingRequests.push('configure Programme quotas')
+        await route.fulfill({ json: [] })
+      })
+      await intakeWorkspace.getByRole('button', { name: 'Create and open intake' }).click()
+      await expect(page.getByText(`February ${fixture.calendarYear} Intake configured and opened`, { exact: true })).toBeVisible()
+      expect(openingRequests).toEqual([
+        'create intake',
+        'configure routes and fees',
+        'configure Programme quotas',
+        'open intake'
+      ])
+    } finally {
+      await cleanupFixture(fixture)
+    }
+  })
+
+  test('submits the visible change reason when correcting a published intake', async ({ page }) => {
+    let fixture: AcademicUiFixture | null = null
+    try {
+      fixture = await createFixture()
+      await page.goto('/operations/academic-structure')
+      await loginWithKeycloak(page, fixture)
+
+      await page.route('**/api/academic/overview', async (route) => {
+        const response = await route.fetch()
+        const overview = await response.json()
+        await route.fulfill({ response, json: {
+          ...overview,
+          intakes: overview.intakes.filter((intake: { id: string }) => intake.id === fixture!.intakeId)
+        } })
+      })
+
+      const correctionReason = 'Corrected the published intake dates after the approved calendar review.'
+      let submittedCorrection: Record<string, unknown> | null = null
+      await page.route(`**/api/academic/intakes/${fixture.intakeId}`, async (route) => {
+        if (route.request().method() !== 'PUT') return route.continue()
+        submittedCorrection = route.request().postDataJSON()
+        await route.fulfill({ json: {
+          id: fixture!.intakeId,
+          academicYearId: fixture!.academicYearId,
+          academicYearName: fixture!.academicYearName,
+          code: `JAN${fixture!.calendarYear}_${fixture!.codeSuffix}`,
+          name: `January ${fixture!.calendarYear} Intake`,
+          startsOn: `${fixture!.calendarYear}-01-01`,
+          endsOn: `${fixture!.calendarYear}-02-28`,
+          status: 'OPEN',
+          maximumProgrammeChoices: 3,
+          changeReason: correctionReason,
+          programmeLevels: [{ id: fixture!.programmeLevelId, code: `UG_${fixture!.codeSuffix}`, name: 'Undergraduate' }],
+          specificProgrammes: [],
+          allProgrammesInSelectedLevels: true,
+          version: 2
+        } })
+      })
+
+      await page.goto('/operations/academic-calendar')
+      await page.getByRole('tab', { name: /Intakes/ }).click()
+      const intakeRow = page.getByRole('row').filter({ hasText: `January ${fixture.calendarYear} Intake` })
+      await intakeRow.getByRole('button', { name: 'Edit' }).click()
+      const editIntakeDrawer = page.getByRole('dialog', { name: 'Edit intake' })
+      await editIntakeDrawer.getByLabel('Change reason').fill(correctionReason)
+      await editIntakeDrawer.getByRole('button', { name: 'Save changes' }).click()
+
+      await expect(page.getByText('Intake updated', { exact: true })).toBeVisible()
+      expect(submittedCorrection).toMatchObject({
+        changeReason: correctionReason,
+        expectedVersion: 1
+      })
+      await expect(page.locator('.swal2-popup')).toHaveCount(0)
+    } finally {
+      await cleanupFixture(fixture)
+    }
+  })
+
   test('shows the academic period switcher only on scoped pages and filters admissions by the selected period', async ({ page }) => {
     let fixture: AcademicUiFixture | null = null
     try {
@@ -485,7 +651,7 @@ test.describe('Academic Setup operational UI', () => {
       await page.screenshot({ path: testInfo.outputPath('academic-structure.png'), fullPage: true })
 
       await page.goto('/operations/admissions')
-      await expect(page.getByRole('heading', { name: 'Admissions review queue' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Admissions', exact: true })).toBeVisible()
       await academicPeriodSwitcher.click()
       await page.getByRole('menuitem', { name: new RegExp(fixtureAcademicPeriodLabel) }).click()
       await expect(academicPeriodSwitcher).toContainText(fixtureAcademicPeriodLabel)
@@ -526,24 +692,42 @@ test.describe('Academic Setup operational UI', () => {
 
       await page.getByRole('tab', { name: /Intakes/ }).click()
       await page.getByRole('button', { name: 'Create intake' }).click()
-      const createIntakeDrawer = page.getByRole('dialog', { name: 'Create intake' })
-      await expect(createIntakeDrawer.getByText('Spaces are not allowed.', { exact: false })).toBeVisible()
-      await createIntakeDrawer.getByLabel('Programme Levels').click()
+      const intakeWorkspace = page.getByTestId('intake-setup-workspace')
+      await expect(intakeWorkspace.getByText('Step 1 of 5', { exact: true })).toBeVisible()
+      await expect(intakeWorkspace.getByLabel('Programme Levels')).toHaveCount(0)
+      await expect(intakeWorkspace.getByText('Letters, numbers, hyphens, and underscores only.', { exact: true })).toBeVisible()
+      await intakeWorkspace.getByLabel('Academic year').click()
+      await page.getByRole('option', { name: fixture.academicYearName }).click()
+      await intakeWorkspace.getByLabel('Intake code').fill(`FEB ${fixture.calendarYear}`)
+      await intakeWorkspace.getByLabel('Applicant-facing name').fill(`February ${fixture.calendarYear} Intake`)
+      await intakeWorkspace.getByLabel('Applications open').fill(`${fixture.calendarYear}-02-01`)
+      await intakeWorkspace.getByLabel('Applications close').fill(`${fixture.calendarYear}-02-28`)
+      await intakeWorkspace.getByRole('button', { name: 'Continue to eligibility' }).click()
+      await expect(intakeWorkspace.getByText('Step 2 of 5', { exact: true })).toBeVisible()
+      await intakeWorkspace.getByLabel('Programme Levels').click()
       await page.getByRole('option', { name: new RegExp(`UG_${fixture.codeSuffix}`) }).click()
       await page.keyboard.press('Escape')
-      await createIntakeDrawer.getByLabel('Specific Programmes').click()
+      await intakeWorkspace.getByLabel('Specific Programmes').click()
       await page.getByRole('option', { name: new RegExp(`B${fixture.codeSuffix.slice(0, 4)}`) }).click()
       await page.keyboard.press('Escape')
-      await expect(createIntakeDrawer.getByText('Specific Programme whitelist', { exact: true })).toBeVisible()
-      await createIntakeDrawer.getByLabel('Code').fill(`FEB ${fixture.calendarYear}`)
-      await createIntakeDrawer.getByLabel('Name').fill(`February ${fixture.calendarYear} Intake`)
-      await createIntakeDrawer.getByLabel('Starts on').fill(`${fixture.calendarYear}-02-01`)
-      await createIntakeDrawer.getByLabel('Ends on').fill(`${fixture.calendarYear}-02-28`)
+      await expect(intakeWorkspace.getByText('Specific Programme whitelist', { exact: true })).toBeVisible()
+      await intakeWorkspace.getByRole('button', { name: 'Continue to routes and fees' }).click()
+      await expect(intakeWorkspace.getByText('Step 3 of 5', { exact: true })).toBeVisible()
+      await intakeWorkspace.getByLabel('UNDERGRAD Programmes').click()
+      await page.getByRole('option', { name: new RegExp(`B${fixture.codeSuffix.slice(0, 4)}`) }).click()
+      await page.keyboard.press('Escape')
+      await intakeWorkspace.getByRole('button', { name: 'Continue to Programme quotas' }).click()
+      await expect(intakeWorkspace.getByText('Step 4 of 5', { exact: true })).toBeVisible()
+      await intakeWorkspace.getByLabel(`B${fixture.codeSuffix.slice(0, 4)} total capacity`).fill('80')
+      await intakeWorkspace.getByRole('button', { name: 'Review admissions opening' }).click()
+      await expect(intakeWorkspace.getByText('Step 5 of 5', { exact: true })).toBeVisible()
+      await expect(intakeWorkspace.getByRole('heading', { name: 'Review and open applications' })).toBeVisible()
+      await intakeWorkspace.getByLabel('Opening reason').fill('Configured the complete intake opening for validation testing.')
       const [invalidIntakeResponse] = await Promise.all([
         page.waitForResponse(response =>
           response.url().endsWith('/api/academic/intakes') && response.request().method() === 'POST'
         ),
-        createIntakeDrawer.getByRole('button', { name: 'Create intake' }).click()
+        intakeWorkspace.getByRole('button', { name: 'Save draft' }).click()
       ])
       expect(invalidIntakeResponse.status()).toBe(400)
       expect(invalidIntakeResponse.request().postDataJSON().programmeLevelIds).toEqual([fixture.programmeLevelId])

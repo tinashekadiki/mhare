@@ -1,5 +1,21 @@
 package zw.ac.uz.emhare.academicsetup.application;
 
+import zw.ac.uz.emhare.academicsetup.domain.model.ReferenceStatus;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicModuleRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicPeriodRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicPeriodTypeRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicUnitRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicUnitTypeRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.AcademicYearRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.CurriculumModuleRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.IntakeProgrammeLevelTargetRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.IntakeProgrammeTargetRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.IntakeRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.ProgrammeLevelRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.ProgrammeRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.ProgrammeTypeRepository;
+import zw.ac.uz.emhare.academicsetup.infrastructure.persistence.ProgrammeVersionRepository;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -16,35 +32,22 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicModuleRepository;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicPeriod;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicPeriodRepository;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicPeriodType;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicPeriodTypeRepository;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicUnitRepository;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicUnit;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicUnitType;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicUnitTypeRepository;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicYear;
-import zw.ac.uz.emhare.academicsetup.domain.AcademicYearRepository;
-import zw.ac.uz.emhare.academicsetup.domain.CalendarStatus;
-import zw.ac.uz.emhare.academicsetup.domain.CurriculumModuleRepository;
-import zw.ac.uz.emhare.academicsetup.domain.IntakeRepository;
-import zw.ac.uz.emhare.academicsetup.domain.Intake;
-import zw.ac.uz.emhare.academicsetup.domain.IntakeProgrammeLevelTarget;
-import zw.ac.uz.emhare.academicsetup.domain.IntakeProgrammeLevelTargetRepository;
-import zw.ac.uz.emhare.academicsetup.domain.IntakeProgrammeTargetRepository;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeLevelRepository;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeLevel;
-import zw.ac.uz.emhare.academicsetup.domain.Programme;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeVersion;
-import zw.ac.uz.emhare.academicsetup.domain.IntakeProgrammeTarget;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeRepository;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeTypeRepository;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeType;
-import zw.ac.uz.emhare.academicsetup.domain.ProgrammeVersionRepository;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicPeriod;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicPeriodType;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicUnit;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicUnitType;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicYear;
+import zw.ac.uz.emhare.academicsetup.domain.model.CalendarStatus;
+import zw.ac.uz.emhare.academicsetup.domain.model.Intake;
+import zw.ac.uz.emhare.academicsetup.domain.model.IntakeProgrammeLevelTarget;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeLevel;
+import zw.ac.uz.emhare.academicsetup.domain.model.Programme;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeVersion;
+import zw.ac.uz.emhare.academicsetup.domain.model.IntakeProgrammeTarget;
+import zw.ac.uz.emhare.academicsetup.domain.model.ProgrammeType;
 import zw.ac.uz.emhare.common.security.EmhareCurrentUserResolver;
 import org.springframework.test.util.ReflectionTestUtils;
+import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests;
 
 /** @author Tinashe K */
 @ExtendWith(MockitoExtension.class)
@@ -138,7 +141,7 @@ class AcademicSetupCalendarLifecycleServiceTest {
         AcademicUnit leaf = new AcademicUnit(leafType, inactiveRoot, "COMP", "School of Computing", null, null);
         ReflectionTestUtils.setField(inactiveRoot, "id", UUID.randomUUID());
         ReflectionTestUtils.setField(inactiveRoot, "status",
-                zw.ac.uz.emhare.academicsetup.domain.ReferenceStatus.INACTIVE);
+                zw.ac.uz.emhare.academicsetup.domain.model.ReferenceStatus.INACTIVE);
         ReflectionTestUtils.setField(leaf, "id", UUID.randomUUID());
         Programme programme = activeProgramme(leaf, "BSC-CS");
         when(programmeRepository.findById(programme.getId())).thenReturn(Optional.of(programme));
@@ -228,7 +231,7 @@ class AcademicSetupCalendarLifecycleServiceTest {
 
         var result = academicSetupService.updateIntake(
                 intakeId,
-                new zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.UpdateIntake(
+                new zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateIntake(
                         academicYearId,
                         "JAN-2028",
                         "January and February 2028 Intake",
@@ -259,7 +262,7 @@ class AcademicSetupCalendarLifecycleServiceTest {
 
         assertThatThrownBy(() -> academicSetupService.updateAcademicYear(
                 academicYearId,
-                new zw.ac.uz.emhare.academicsetup.web.AcademicSetupCommands.UpdateAcademicYear(
+                new zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicYear(
                         "2028 Academic Year",
                         LocalDate.parse("2028-01-01"),
                         LocalDate.parse("2028-11-30"),

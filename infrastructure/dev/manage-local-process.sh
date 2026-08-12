@@ -220,7 +220,11 @@ start_process() {
     read -r -a jvm_arguments <<< "${jvm_arguments_text}"
     screen -dmS "${screen_session_name}" bash -c \
       'working_directory="$1"; log_path="$2"; shift 2; cd "${working_directory}"; exec "$@" >"${log_path}" 2>&1' \
-      _ "${project_root}/services/${process_name}" "${log_file}" java "${jvm_arguments[@]}" -jar "${service_jar}"
+      _ "${project_root}/services/${process_name}" "${log_file}" env \
+      EUREKA_INSTANCE_IP_ADDRESS="${EUREKA_INSTANCE_IP_ADDRESS:-127.0.0.1}" \
+      EUREKA_PREFER_IP_ADDRESS="${EUREKA_PREFER_IP_ADDRESS:-true}" \
+      NOTIFICATIONS_DELIVERY_PROVIDER="${NOTIFICATIONS_DELIVERY_PROVIDER:-local-log}" \
+      java "${jvm_arguments[@]}" -jar "${service_jar}"
   else
     local npm_script
     case "${process_name}" in

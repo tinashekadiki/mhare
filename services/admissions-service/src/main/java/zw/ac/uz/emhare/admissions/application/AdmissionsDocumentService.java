@@ -1,5 +1,16 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.Application;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationDocument;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeDocumentRequirement;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationDocumentRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeChoiceRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeDocumentRequirementRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationDocumentRequirementSnapshotRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationDocumentRequirementSnapshot;
+
 import jakarta.transaction.Transactional;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -17,6 +28,8 @@ import zw.ac.uz.emhare.admissions.integration.AdmissionsIntegrationOutboxService
 import zw.ac.uz.emhare.admissions.integration.DocumentsReportingClient;
 import zw.ac.uz.emhare.admissions.integration.DocumentsReportingClient.UploadedDocumentSnapshot;
 import zw.ac.uz.emhare.common.messaging.DocumentVerificationChangedEvent;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRepository;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatus;
 
 /** @author Tinashe K */
 @Service
@@ -24,6 +37,7 @@ public class AdmissionsDocumentService {
     private final ApplicationRepository applicationRepository;
     private final ApplicationTypeRepository applicationTypeRepository;
     private final ApplicationTypeDocumentRequirementRepository requirementRepository;
+    private final ApplicationDocumentRequirementSnapshotRepository requirementSnapshotRepository;
     private final ApplicationDocumentRepository documentRepository;
     private final ApplicationProgrammeChoiceRepository programmeChoiceRepository;
     private final DocumentsReportingClient documentsReportingClient;
@@ -34,6 +48,7 @@ public class AdmissionsDocumentService {
             ApplicationRepository applicationRepository,
             ApplicationTypeRepository applicationTypeRepository,
             ApplicationTypeDocumentRequirementRepository requirementRepository,
+            ApplicationDocumentRequirementSnapshotRepository requirementSnapshotRepository,
             ApplicationDocumentRepository documentRepository,
             ApplicationProgrammeChoiceRepository programmeChoiceRepository,
             DocumentsReportingClient documentsReportingClient,
@@ -42,6 +57,7 @@ public class AdmissionsDocumentService {
         this.applicationRepository = applicationRepository;
         this.applicationTypeRepository = applicationTypeRepository;
         this.requirementRepository = requirementRepository;
+        this.requirementSnapshotRepository = requirementSnapshotRepository;
         this.documentRepository = documentRepository;
         this.programmeChoiceRepository = programmeChoiceRepository;
         this.documentsReportingClient = documentsReportingClient;
@@ -78,6 +94,20 @@ public class AdmissionsDocumentService {
     }
 
     @Transactional
+    public void snapshotRequirements(Application application) {
+        if (!requirementSnapshotRepository
+                .findAllByApplicationIdAndDeletedAtIsNullOrderBySortOrderAscRequirementCodeAsc(application.getId())
+                .isEmpty()) {
+            return;
+        }
+        List<ApplicationDocumentRequirementSnapshot> snapshots = requirementRepository
+                .findAllByApplicationTypeIdAndActiveTrueAndDeletedAtIsNullOrderBySortOrderAscRequirementCodeAsc(
+                        application.getApplicationType().getId())
+                .stream().map(requirement -> new ApplicationDocumentRequirementSnapshot(application, requirement)).toList();
+        if (!snapshots.isEmpty()) requirementSnapshotRepository.saveAllAndFlush(snapshots);
+    }
+
+    @Transactional
     public ApplicationDocumentRegister linkApplicantDocument(
             UUID applicationId,
             UUID applicantUserId,
@@ -86,11 +116,7 @@ public class AdmissionsDocumentService {
         Application application = requireApplicantOwnedApplication(applicationId, applicantUserId);
         assertDocumentIntakeOpen(application);
         String normalizedCode = normalizeCode(requirementCode);
-        ApplicationTypeDocumentRequirement requirement = requirementRepository
-                .findByApplicationTypeIdAndRequirementCodeAndActiveTrueAndDeletedAtIsNull(
-                        application.getApplicationType().getId(), normalizedCode)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Document requirement is not configured for this application type."));
+        DocumentRule requirement = documentRule(application, normalizedCode);
         UploadedDocumentSnapshot document = documentsReportingClient.getUploadedDocument(documentId);
         validateUploadedDocument(application, requirement, document);
 
@@ -111,8 +137,8 @@ public class AdmissionsDocumentService {
         ApplicationDocument linked = new ApplicationDocument(
                 application,
                 document.id(),
-                requirement.getRequirementCode(),
-                requirement.isRequired(),
+                requirement.code(),
+                requirement.required(),
                 document.originalFileName(),
                 document.mimeType(),
                 document.checksumSha256(),
@@ -160,10 +186,13 @@ public class AdmissionsDocumentService {
 
     @Transactional
     public void assertReadyForReview(Application application) {
-        ApplicationDocumentRegister register = register(application);
-        if (!register.requiredDocumentsVerified()) {
+        if (!isReadyForReview(application)) {
             throw new IllegalStateException("All required documents must be verified before application review begins.");
         }
+    }
+
+    public boolean isReadyForReview(Application application) {
+        return register(application).requiredDocumentsVerified();
     }
 
     @Transactional
@@ -186,12 +215,12 @@ public class AdmissionsDocumentService {
 
     private void validateUploadedDocument(
             Application application,
-            ApplicationTypeDocumentRequirement requirement,
+            DocumentRule requirement,
             UploadedDocumentSnapshot document) {
         if (!"APPLICATION".equals(document.ownerType()) || !application.getId().equals(document.ownerId())) {
             throw new IllegalArgumentException("Uploaded document must be owned by this application.");
         }
-        if (!requirement.getRequirementCode().equals(document.documentTypeCode())) {
+        if (!requirement.code().equals(document.documentTypeCode())) {
             throw new IllegalArgumentException("Uploaded document type does not match the selected requirement.");
         }
         if (!"PENDING".equals(document.verificationStatus())) {
@@ -200,9 +229,7 @@ public class AdmissionsDocumentService {
     }
 
     private ApplicationDocumentRegister register(Application application) {
-        List<ApplicationTypeDocumentRequirement> requirements = requirementRepository
-                .findAllByApplicationTypeIdAndActiveTrueAndDeletedAtIsNullOrderBySortOrderAscRequirementCodeAsc(
-                        application.getApplicationType().getId());
+        List<DocumentRule> requirements = documentRules(application);
         Map<String, ApplicationDocument> currentDocuments = new LinkedHashMap<>();
         documentRepository.findAllByApplicationIdAndCurrentTrueAndDeletedAtIsNullOrderByRequirementCodeAsc(
                         application.getId())
@@ -211,19 +238,19 @@ public class AdmissionsDocumentService {
         List<String> pending = new ArrayList<>();
         List<String> rejected = new ArrayList<>();
         List<ApplicationDocumentRequirementState> states = new ArrayList<>();
-        for (ApplicationTypeDocumentRequirement requirement : requirements) {
-            ApplicationDocument document = currentDocuments.get(requirement.getRequirementCode());
+        for (DocumentRule requirement : requirements) {
+            ApplicationDocument document = currentDocuments.get(requirement.code());
             String state = document == null ? "MISSING" : document.getStatus().name();
-            if (requirement.isRequired()) {
-                if (document == null) missing.add(requirement.getRequirementCode());
+            if (requirement.required()) {
+                if (document == null) missing.add(requirement.code());
                 else if (document.getStatus() == ApplicationDocument.VerificationStatus.PENDING) {
-                    pending.add(requirement.getRequirementCode());
+                    pending.add(requirement.code());
                 } else if (document.getStatus() == ApplicationDocument.VerificationStatus.REJECTED) {
-                    rejected.add(requirement.getRequirementCode());
+                    rejected.add(requirement.code());
                 }
             }
             states.add(new ApplicationDocumentRequirementState(
-                    requirement.getRequirementCode(), requirement.getRequirementName(), requirement.isRequired(), state,
+                    requirement.code(), requirement.name(), requirement.required(), state,
                     document == null ? null : document.getId(), document == null ? null : document.getDocumentId(),
                     document == null ? null : document.getDocumentFileName(),
                     document == null ? null : document.getDocumentMimeType(),
@@ -242,6 +269,30 @@ public class AdmissionsDocumentService {
                 hasRequirements && missing.isEmpty() && pending.isEmpty() && rejected.isEmpty(),
                 List.copyOf(missing), List.copyOf(pending), List.copyOf(rejected), List.copyOf(states));
     }
+
+    private DocumentRule documentRule(Application application, String requirementCode) {
+        return documentRules(application).stream()
+                .filter(requirement -> requirement.code().equals(requirementCode))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Document requirement is not part of this application's snapshot."));
+    }
+
+    private List<DocumentRule> documentRules(Application application) {
+        List<ApplicationDocumentRequirementSnapshot> snapshots = requirementSnapshotRepository
+                .findAllByApplicationIdAndDeletedAtIsNullOrderBySortOrderAscRequirementCodeAsc(application.getId());
+        if (!snapshots.isEmpty()) {
+            return snapshots.stream().map(snapshot -> new DocumentRule(
+                    snapshot.getRequirementCode(), snapshot.getRequirementName(), snapshot.isRequired())).toList();
+        }
+        return requirementRepository
+                .findAllByApplicationTypeIdAndActiveTrueAndDeletedAtIsNullOrderBySortOrderAscRequirementCodeAsc(
+                        application.getApplicationType().getId())
+                .stream().map(requirement -> new DocumentRule(
+                        requirement.getRequirementCode(), requirement.getRequirementName(), requirement.isRequired())).toList();
+    }
+
+    private record DocumentRule(String code, String name, boolean required) { }
 
     private Application requireApplicantOwnedApplication(UUID applicationId, UUID applicantUserId) {
         Application application = requireApplication(applicationId);

@@ -1,5 +1,8 @@
 package zw.ac.uz.emhare.finance.student;
 
+import zw.ac.uz.emhare.finance.student.domain.model.StudentFinanceAccount;
+import zw.ac.uz.emhare.finance.student.infrastructure.persistence.StudentFinanceAccountRepository;
+
 import java.time.Clock;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;

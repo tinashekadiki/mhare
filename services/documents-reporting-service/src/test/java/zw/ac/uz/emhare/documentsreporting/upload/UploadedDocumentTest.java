@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.documentsreporting.upload;
 
+import zw.ac.uz.emhare.documentsreporting.upload.domain.model.UploadedDocument;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 

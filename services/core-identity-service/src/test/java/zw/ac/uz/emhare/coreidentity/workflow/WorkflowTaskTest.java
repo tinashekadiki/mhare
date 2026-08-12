@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.coreidentity.workflow;
 
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowInstance;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowScopeType;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowTask;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowTaskStatus;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -7,7 +12,7 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
-import zw.ac.uz.emhare.coreidentity.rbac.PlatformUser;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.PlatformUser;
 
 /** @author Tinashe K */
 class WorkflowTaskTest {

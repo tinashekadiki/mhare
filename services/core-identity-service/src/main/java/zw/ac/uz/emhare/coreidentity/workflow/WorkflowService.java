@@ -1,5 +1,21 @@
 package zw.ac.uz.emhare.coreidentity.workflow;
 
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.PlatformUserRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.RoleRepository;
+import zw.ac.uz.emhare.coreidentity.rbac.infrastructure.persistence.UserRoleAssignmentRepository;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowAssigneeType;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowDecision;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowInstance;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowScopeType;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowStatus;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowTask;
+import zw.ac.uz.emhare.coreidentity.workflow.domain.model.WorkflowTaskStatus;
+import zw.ac.uz.emhare.coreidentity.workflow.infrastructure.persistence.WorkflowDecisionRepository;
+import zw.ac.uz.emhare.coreidentity.workflow.infrastructure.persistence.WorkflowInstanceRepository;
+import zw.ac.uz.emhare.coreidentity.workflow.infrastructure.persistence.WorkflowTaskRepository;
+
+import zw.ac.uz.emhare.coreidentity.workflow.application.command.*;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -10,12 +26,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zw.ac.uz.emhare.coreidentity.integration.CoreIdentityIntegrationOutboxService;
-import zw.ac.uz.emhare.coreidentity.rbac.PlatformUser;
-import zw.ac.uz.emhare.coreidentity.rbac.PlatformUserRepository;
-import zw.ac.uz.emhare.coreidentity.rbac.Role;
-import zw.ac.uz.emhare.coreidentity.rbac.RoleRepository;
-import zw.ac.uz.emhare.coreidentity.rbac.UserRoleAssignmentRepository;
-import zw.ac.uz.emhare.coreidentity.rbac.UserStatus;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.PlatformUser;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.Role;
+import zw.ac.uz.emhare.coreidentity.rbac.domain.model.UserStatus;
 
 /** @author Tinashe K */
 @Service

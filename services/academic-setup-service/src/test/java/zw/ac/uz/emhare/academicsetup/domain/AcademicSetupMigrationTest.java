@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.academicsetup.domain;
 
+import zw.ac.uz.emhare.academicsetup.domain.model.Intake;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -332,6 +334,20 @@ class AcademicSetupMigrationTest {
                     12.00, 1, 'ACTIVE', now(), now(), 0)
                 """, moduleId, ownerId, "CSC_" + moduleId.toString().substring(0, 8).toUpperCase());
         return moduleId;
+    }
+
+    @Test
+    void createsVersionedProgrammeEntryOptionsAndSelectionLimits() throws SQLException {
+        assertEquals(2, queryInteger("""
+                SELECT count(*) FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'programme_versions'
+                  AND column_name IN ('minimum_entry_option_selections', 'maximum_entry_option_selections')
+                """));
+        assertEquals(2, queryInteger("""
+                SELECT count(*) FROM information_schema.tables
+                WHERE table_schema = 'public'
+                  AND table_name IN ('programme_entry_options', 'programme_entry_options_aud')
+                """));
     }
 
     private void execute(String sql, Object... values) throws SQLException {

@@ -1,5 +1,10 @@
 package zw.ac.uz.emhare.assessmentresults.result;
 
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.ModuleResult;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.PublishedResult;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.PublishedResultAmendment;
+import zw.ac.uz.emhare.assessmentresults.result.domain.model.ResultBatch;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;

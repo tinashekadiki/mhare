@@ -1,5 +1,20 @@
 package zw.ac.uz.emhare.examstimetabling.timetable;
 
+import zw.ac.uz.emhare.examstimetabling.setup.domain.model.ExamSession;
+import zw.ac.uz.emhare.examstimetabling.setup.domain.model.ExamSessionSlot;
+import zw.ac.uz.emhare.examstimetabling.setup.domain.model.ExamVenue;
+import zw.ac.uz.emhare.examstimetabling.setup.domain.model.ModuleExamRequirement;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamMasterTimetableEntry;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamStudentTimetableEntry;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamTimetableGenerationRun;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamTimetableRunEvent;
+import zw.ac.uz.emhare.examstimetabling.timetable.domain.model.ExamTimetableVenueAllocation;
+import zw.ac.uz.emhare.examstimetabling.timetable.infrastructure.persistence.ExamMasterTimetableEntryRepository;
+import zw.ac.uz.emhare.examstimetabling.timetable.infrastructure.persistence.ExamStudentTimetableEntryRepository;
+import zw.ac.uz.emhare.examstimetabling.timetable.infrastructure.persistence.ExamTimetableGenerationRunRepository;
+import zw.ac.uz.emhare.examstimetabling.timetable.infrastructure.persistence.ExamTimetableRunEventRepository;
+import zw.ac.uz.emhare.examstimetabling.timetable.infrastructure.persistence.ExamTimetableVenueAllocationRepository;
+
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -9,10 +24,10 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import zw.ac.uz.emhare.examstimetabling.roster.ExamCandidateModule;
+import zw.ac.uz.emhare.examstimetabling.roster.domain.model.ExamCandidateModule;
 import zw.ac.uz.emhare.examstimetabling.roster.ExamRosterQueryService;
 import zw.ac.uz.emhare.examstimetabling.setup.*;
-import zw.ac.uz.emhare.examstimetabling.timetable.ExamTimetableContracts.*;
+import zw.ac.uz.emhare.examstimetabling.timetable.api.model.ExamTimetableApiModels.*;
 
 /** Deterministic, evidence-preserving exam timetable workflow. @author Tinashe K */
 @Service

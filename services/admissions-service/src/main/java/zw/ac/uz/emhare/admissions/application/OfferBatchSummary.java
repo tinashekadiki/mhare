@@ -1,5 +1,7 @@
 package zw.ac.uz.emhare.admissions.application;
 
+import zw.ac.uz.emhare.admissions.domain.model.OfferBatch;
+
 import java.time.Instant;
 import java.util.UUID;
 
