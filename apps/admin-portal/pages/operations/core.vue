@@ -188,6 +188,25 @@ type LoginEvent = {
   outcome: string;
 };
 
+type AuditEvent = {
+  id: string;
+  actorUserId?: string;
+  eventType: string;
+  subjectType: string;
+  subjectId?: string;
+  summary: string;
+  beforeJson?: string;
+  afterJson?: string;
+  occurredAt: string;
+};
+
+type CoreOperationalReport = {
+  generatedAt: string;
+  inventory: CoreStatistics;
+  loginSessionsLast24Hours: number;
+  auditEventsLast24Hours: number;
+};
+
 type WorkflowDecision = {
   id: string;
   decisionCode: string;
@@ -288,8 +307,8 @@ const coreWorkspaceTabs = [
   },
   {
     id: "audit",
-    label: "Login History",
-    icon: "i-lucide-clock",
+    label: "Audit & Reports",
+    icon: "i-lucide-clipboard-list",
     requiredPermissions: ["CORE_AUDIT_READ"],
   },
 ];
@@ -321,6 +340,18 @@ const aLevelSubjects = ref<QualificationSubjectReference[]>([]);
 const oLevelGrades = ref<QualificationGradeReference[]>([]);
 const aLevelGrades = ref<QualificationGradeReference[]>([]);
 const loginEvents = ref<LoginEvent[]>([]);
+const auditEvents = ref<AuditEvent[]>([]);
+const operationalReport = ref<CoreOperationalReport>({
+  generatedAt: "",
+  inventory: {
+    userCount: 0,
+    roleCount: 0,
+    permissionCount: 0,
+    lookupSetCount: 0,
+  },
+  auditEventsLast24Hours: 0,
+  loginSessionsLast24Hours: 0,
+});
 const workflowTasks = ref<WorkflowTask[]>([]);
 const selectedWorkflowTask = ref<WorkflowTask | null>(null);
 
@@ -450,6 +481,7 @@ const aLevelSubjectTableState = ref<TableState>({ page: 1, pageSize: 8 });
 const oLevelGradeTableState = ref<TableState>({ page: 1, pageSize: 8 });
 const aLevelGradeTableState = ref<TableState>({ page: 1, pageSize: 8 });
 const loginTableState = ref<TableState>({ page: 1, pageSize: 10 });
+const auditTableState = ref<TableState>({ page: 1, pageSize: 10 });
 const grantTableState = ref<TableState>({ page: 1, pageSize: 10 });
 const assignmentTableState = ref<TableState>({ page: 1, pageSize: 10 });
 const workflowTableState = ref<TableState>({ page: 1, pageSize: 10 });
@@ -542,6 +574,14 @@ const loginColumns = [
   { key: "username", label: "Username" },
   { key: "outcome", label: "Outcome", sortable: true },
   { key: "ipAddress", label: "IP address" },
+];
+
+const auditColumns = [
+  { key: "occurredAt", label: "Occurred", sortable: true, frozen: true },
+  { key: "summary", label: "Activity", sortable: true },
+  { key: "subjectType", label: "Record type", sortable: true },
+  { key: "eventType", label: "Event", sortable: true },
+  { key: "actorUserId", label: "Actor" },
 ];
 
 const grantColumns = [
@@ -1186,11 +1226,17 @@ async function loadCoreData() {
         }
         break;
       }
-      case "audit":
-        loginEvents.value = await api.request<LoginEvent[]>(
-          "/api/core/login-events",
-        );
+      case "audit": {
+        const [auditResult, loginResult, reportResult] = await Promise.all([
+          api.request<AuditEvent[]>("/api/core/audit-events"),
+          api.request<LoginEvent[]>("/api/core/login-events"),
+          api.request<CoreOperationalReport>("/api/core/reports/overview"),
+        ]);
+        auditEvents.value = auditResult;
+        loginEvents.value = loginResult;
+        operationalReport.value = reportResult;
         break;
+      }
     }
   } catch (caught) {
     error.value = api.errorMessage(
@@ -3249,46 +3295,70 @@ function rowAction(
         </section>
 
         <section v-if="activeTab === 'audit'">
-          <EmhareRegisterPanel
-            title="Login history"
-            description="Authentication outcomes retained for security review and operational support."
-            :record-count="loginEvents.length"
-          >
-            <EmhareDataTable
-              :columns="loginColumns"
-              :rows="
-                tableRows(
-                  loginEvents as unknown as Record<string, unknown>[],
-                  loginTableState,
-                )
-              "
-              :total="
-                tableTotal(
-                  loginEvents as unknown as Record<string, unknown>[],
-                  loginTableState,
-                )
-              "
-              :state="loginTableState"
-              :loading="loading"
-              @update:state="loginTableState = $event"
+          <div class="space-y-5">
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <EmhareKpiCard label="Users" :value="operationalReport.inventory.userCount" icon="i-lucide-users" />
+              <EmhareKpiCard label="Roles" :value="operationalReport.inventory.roleCount" icon="i-lucide-shield-check" />
+              <EmhareKpiCard label="Audit activity · 24h" :value="operationalReport.auditEventsLast24Hours" icon="i-lucide-clipboard-check" tone="success" />
+              <EmhareKpiCard label="Login sessions · 24h" :value="operationalReport.loginSessionsLast24Hours" icon="i-lucide-log-in" tone="info" />
+            </div>
+
+            <EmhareRegisterPanel
+              title="Core activity"
+              description="Who changed what, when, with before-and-after evidence retained for review."
+              :record-count="auditEvents.length"
             >
-              <template #occurredAt-cell="{ value }">
-                <span>{{
-                  value ? new Date(String(value)).toLocaleString() : ""
-                }}</span>
-              </template>
-              <template #outcome-cell="{ value }">
-                <EmhareStatusPill
-                  :label="String(value)"
-                  :tone="value === 'SUCCESS' ? 'success' : 'error'"
-                />
-              </template>
-            </EmhareDataTable>
-          </EmhareRegisterPanel>
+              <EmhareDataTable
+                :columns="auditColumns"
+                :rows="tableRows(auditEvents as unknown as Record<string, unknown>[], auditTableState)"
+                :total="tableTotal(auditEvents as unknown as Record<string, unknown>[], auditTableState)"
+                :state="auditTableState"
+                :loading="loading"
+                @update:state="auditTableState = $event"
+              >
+                <template #occurredAt-cell="{ value }">
+                  <span>{{ new Date(String(value)).toLocaleString() }}</span>
+                </template>
+                <template #eventType-cell="{ value }">
+                  <span class="font-mono text-xs">{{ String(value) }}</span>
+                </template>
+                <template #actorUserId-cell="{ value }">
+                  <span class="font-mono text-xs">{{ value || "System" }}</span>
+                </template>
+              </EmhareDataTable>
+            </EmhareRegisterPanel>
+
+            <EmhareRegisterPanel
+              title="Login sessions"
+              description="One entry per authenticated identity session for security review and support."
+              :record-count="loginEvents.length"
+            >
+              <EmhareDataTable
+                :columns="loginColumns"
+                :rows="tableRows(loginEvents as unknown as Record<string, unknown>[], loginTableState)"
+                :total="tableTotal(loginEvents as unknown as Record<string, unknown>[], loginTableState)"
+                :state="loginTableState"
+                :loading="loading"
+                @update:state="loginTableState = $event"
+              >
+                <template #occurredAt-cell="{ value }">
+                  <span>{{ new Date(String(value)).toLocaleString() }}</span>
+                </template>
+                <template #outcome-cell="{ value }">
+                  <EmhareStatusPill :label="String(value)" tone="success" />
+                </template>
+              </EmhareDataTable>
+            </EmhareRegisterPanel>
+          </div>
         </section>
 
         <EmhareRecordDrawer
           v-model:open="drawerOpen"
+          :presentation="
+            drawerKind === 'profile' || drawerKind === 'user'
+              ? 'page'
+              : 'sidepanel'
+          "
           :title="drawerTitle"
           :description="drawerDescription"
           :submit-label="

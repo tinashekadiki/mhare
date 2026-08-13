@@ -180,13 +180,13 @@ class AdmissionsDocumentServiceTest {
     }
 
     @Test
-    void documentReplacementCannotBypassTheAdmissionCycleDeadline() {
+    void documentReplacementCannotBypassTheIntakeDeadline() {
         UUID applicantUserId = UUID.randomUUID();
         Applicant applicant = new Applicant(
                 applicantUserId, "APP-0002", "LOCAL", "Tariro", "Dube", "tariro@example.test");
         AdmissionCycle closedCycle = new AdmissionCycle(
                 UUID.randomUUID(), UUID.randomUUID(), "2026-AUG", "August 2026",
-                now.minusSeconds(86400), now.minusSeconds(1));
+                now.minusSeconds(172800), now.minusSeconds(86400));
         Application closedApplication = new Application(
                 closedCycle, applicant, applicationType, "EMH-2026-0099", false);
         ReflectionTestUtils.setField(closedApplication, "id", UUID.randomUUID());

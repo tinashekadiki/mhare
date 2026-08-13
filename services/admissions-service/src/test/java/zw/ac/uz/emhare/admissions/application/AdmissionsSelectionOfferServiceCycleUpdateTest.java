@@ -4,6 +4,7 @@ import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
 import zw.ac.uz.emhare.admissions.domain.model.AdmissionRequirementSet;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeDocumentRequirement;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeSection;
 import zw.ac.uz.emhare.admissions.domain.model.OfferBatch;
 import zw.ac.uz.emhare.admissions.domain.model.SelectionRound;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AcademicReviewAssignmentRepository;
@@ -18,6 +19,7 @@ import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgramm
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationStatusEventRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeDocumentRequirementRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeSectionRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferBatchRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferConditionRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferDispatchRepository;
@@ -57,6 +59,7 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
     @Mock private AdmissionCycleArchiveSummaryRepository admissionCycleArchiveSummaryRepository;
     @Mock private ApplicationTypeRepository applicationTypeRepository;
     @Mock private ApplicationTypeDocumentRequirementRepository applicationTypeDocumentRequirementRepository;
+    @Mock private ApplicationTypeSectionRepository applicationTypeSectionRepository;
     @Mock private ApplicationRepository applicationRepository;
     @Mock private ApplicationProgrammeChoiceRepository programmeChoiceRepository;
     @Mock private AdmissionRequirementSetRepository requirementSetRepository;
@@ -187,6 +190,18 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
                             "ACADEMIC_QUALIFICATION_EVIDENCE".equals(requirement.getRequirementCode())
                                     && requirement.isRequired());
                 }));
+        verify(applicationTypeSectionRepository)
+                .saveAllAndFlush(org.mockito.ArgumentMatchers.argThat(sections -> {
+                    List<ApplicationTypeSection> sectionList =
+                            java.util.stream.StreamSupport.stream(sections.spliterator(), false).toList();
+                    return sectionList.size() == 9
+                            && sectionList.stream().allMatch(ApplicationTypeSection::isRequired)
+                            && sectionList.stream().anyMatch(section ->
+                            "EMPLOYMENT_HISTORY".equals(section.getSectionCode()))
+                            && sectionList.stream().anyMatch(section ->
+                            "REFEREES".equals(section.getSectionCode())
+                                    && section.getMinimumRecords() == 2);
+                }));
     }
 
     @Test
@@ -259,7 +274,7 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
         ReflectionTestUtils.setField(replacement, "id", requirementSetId);
         when(requirementSetRepository.findById(requirementSetId)).thenReturn(Optional.of(replacement));
         when(requirementSetRepository.findApprovedForRouteForUpdate(
-                programmeId, applicationTypeId, admissionCycleId)).thenReturn(List.of(previous));
+                programmeId, applicationTypeId, admissionCycle.getIntakeId())).thenReturn(List.of(previous));
         when(clock.instant()).thenReturn(Instant.parse("2027-01-15T10:00:00Z"));
         when(requirementSetRepository.saveAndFlush(replacement)).thenReturn(replacement);
 

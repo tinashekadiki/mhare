@@ -39,6 +39,10 @@ public class ApplicationClearance extends AuditableEntity {
     private boolean requiredDocumentsVerified;
     @Column(name = "qualifications_verified", nullable = false)
     private boolean qualificationsVerified;
+    @Column(name = "duplicate_checks_passed", nullable = false)
+    private boolean duplicateChecksPassed;
+    @Column(name = "duplicate_check_summary", nullable = false, length = 1000)
+    private String duplicateCheckSummary;
     @Column(name = "confirmed_by_user_id", nullable = false)
     private UUID confirmedByUserId;
     @Column(name = "confirmed_at", nullable = false)
@@ -55,13 +59,20 @@ public class ApplicationClearance extends AuditableEntity {
     protected ApplicationClearance() {
     }
 
-    public ApplicationClearance(Application application, UUID actorUserId, String reason, Instant now) {
+    public ApplicationClearance(
+            Application application,
+            UUID actorUserId,
+            String reason,
+            String duplicateCheckSummary,
+            Instant now) {
         this.application = application;
         this.outcome = ApplicationClearanceOutcome.CONFIRMED;
         this.paymentCleared = true;
         this.sectionsComplete = true;
         this.requiredDocumentsVerified = true;
         this.qualificationsVerified = true;
+        this.duplicateChecksPassed = true;
+        this.duplicateCheckSummary = requireDuplicateCheckSummary(duplicateCheckSummary);
         this.confirmedByUserId = actorUserId;
         this.confirmedAt = now;
         this.reason = requireReason(reason);
@@ -81,9 +92,18 @@ public class ApplicationClearance extends AuditableEntity {
     public UUID getConfirmedByUserId() { return confirmedByUserId; }
     public Instant getConfirmedAt() { return confirmedAt; }
     public String getReason() { return reason; }
+    public boolean isDuplicateChecksPassed() { return duplicateChecksPassed; }
+    public String getDuplicateCheckSummary() { return duplicateCheckSummary; }
 
     private static String requireReason(String value) {
         if (value == null || value.isBlank()) throw new IllegalArgumentException("A clearance reason is required.");
+        return value.trim();
+    }
+
+    private static String requireDuplicateCheckSummary(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Duplicate-check evidence is required.");
+        }
         return value.trim();
     }
 }

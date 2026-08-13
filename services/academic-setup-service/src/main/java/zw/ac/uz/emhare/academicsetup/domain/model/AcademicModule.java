@@ -79,6 +79,32 @@ public class AcademicModule extends AuditableEntity {
         status = AcademicOfferingStatus.ACTIVE;
     }
 
+    public void update(
+            AcademicUnit owningAcademicUnit,
+            String code,
+            String name,
+            String description,
+            BigDecimal creditValue,
+            int academicLevel,
+            String legacyCourseCode,
+            long expectedVersion) {
+        if (getVersion() != expectedVersion) {
+            throw new IllegalStateException("Module was changed by another user. Refresh before retrying.");
+        }
+        String normalizedCode = code.trim().toUpperCase(Locale.ROOT);
+        if (status != AcademicOfferingStatus.DRAFT
+                && (!this.code.equals(normalizedCode) || !this.owningAcademicUnit.getId().equals(owningAcademicUnit.getId()))) {
+            throw new IllegalStateException("An active Module's code and owning academic unit cannot be changed.");
+        }
+        this.owningAcademicUnit = owningAcademicUnit;
+        this.code = normalizedCode;
+        this.name = name.trim();
+        this.description = description.trim();
+        this.creditValue = creditValue;
+        this.academicLevel = academicLevel;
+        this.legacyCourseCode = trimToNull(legacyCourseCode);
+    }
+
     public AcademicUnit getOwningAcademicUnit() {
         return owningAcademicUnit;
     }

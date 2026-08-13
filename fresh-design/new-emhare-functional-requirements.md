@@ -2,9 +2,9 @@
 
 Author: Tinashe K
 
-Version: 0.1  
-Date: 2026-08-08  
-Status: Draft baseline for enhancement
+Version: 0.2
+Date: 2026-08-12
+Status: Refined Release 1 acceptance baseline
 
 ## 1. Purpose
 
@@ -155,6 +155,8 @@ The new eMhare shall be organised into these product modules:
 **FR-CORE-022:** Lookup values shall be configurable for the eMhare institution.
 
 **FR-CORE-023:** Global reference data such as countries and nationalities shall be reusable across modules.
+
+**FR-CORE-024:** Applicant and student reference-number formats shall be configurable without code changes. The default applicant reference shall be `A` followed by six digits. The default permanent student/registration number shall use `R` for local students or `FR` for foreign students, followed by the final two digits of the cohort year, four allocation digits, and a non-ambiguous check letter. Database constraints shall remain the final uniqueness authority.
 
 ### 8.4 Documents
 
@@ -308,11 +310,13 @@ The new eMhare shall be organised into these product modules:
 
 ### 10.3 Fees And Quotas
 
-**FR-ADM-020:** The system shall maintain application fees by application type, applicant category, currency, and effective date.
+**FR-ADM-020:** Finance shall own effective-dated application-fee structures. At application draft creation, the system shall resolve exactly one active fee using the configured application route, the route's programme level, the applicant category, and the effective instant. A category-specific fee shall take precedence over a category-neutral fee for the same programme level. A missing or equally applicable fee shall fail closed and prevent the draft from being priced; Admissions shall not bypass scope or effectivity checks by reading a linked fee-structure ID directly.
 
 **FR-ADM-021:** Per ADR-0014, the system may retain admission quotas by intake, programme, quota type, capacity, and reserved capacity for institutional planning and reporting only. Quotas shall not gate eligibility evaluation, academic recommendation, or admission decisions.
 
 **FR-ADM-022:** Where retained, quotas shall support local categories such as disability, sport, staff dependent, international, or institution-defined categories, for reporting purposes only.
+
+**FR-ADM-023:** Application-route activation shall require an unambiguous Finance fee policy for every applicant category and programme level admitted by that route, or an audited fee-free decision. Admissions shall snapshot the resolved Finance fee-structure ID, code, amount, transaction currency, effective instant, and applicant category on the application so later catalogue changes do not alter an existing draft.
 
 ### 10.4 Subject And Grade Setup
 
@@ -532,6 +536,8 @@ The applicant's first and last name shall be sourced from the authenticated acco
 
 **FR-PAY-010:** The applicant portal shall show the fee amount, payment reference, payment status, and next action before submission.
 
+**FR-PAY-011:** A payment confirmation, waiver, or override shall clear the Admissions payment gate only through an idempotent, auditable contract. A browser return, uploaded payment evidence, or applicant-visible success message shall not clear the gate by itself.
+
 ## 16. Offer Requirements
 
 ### 16.1 Offer Generation
@@ -600,7 +606,7 @@ The applicant's first and last name shall be sourced from the authenticated acco
 
 **FR-CONV-003:** Conversion shall be idempotent so repeated requests do not create duplicate students.
 
-**FR-CONV-004:** Conversion shall generate or assign a student number.
+**FR-CONV-004:** Conversion shall generate one unique permanent student/registration number. By default, local numbers shall use `RYY####C` and foreign numbers shall use `FRYY####C`, where `YY` is the final two digits of the cohort year and `C` is selected from configured letters that exclude characters easily confused with numbers. When the four-digit allocation range overflows, the allocator shall use another safe check letter without creating a duplicate.
 
 **FR-CONV-005:** Conversion shall create a student profile linked to the source applicant and accepted offer.
 
@@ -642,11 +648,13 @@ These requirements are in scope for the product architecture and future phases. 
 
 **FR-REG-006:** Confirmed registration shall be available to finance for billing and to assessment/exams for operational planning.
 
-**FR-REG-007:** The system shall prevent duplicate registration records for the same registration number and programme combination.
+**FR-REG-007:** The permanent student number shall also be the registration number. Registration sessions shall reuse it and shall not generate a separate `REG-` identifier. The system shall prevent duplicate registration records for the same student, academic period, and programme version.
 
 ## 20. Finance Requirements
 
 **FR-FIN-001:** The system shall maintain student finance accounts.
+
+**FR-FIN-001A:** A student finance account shall use the permanent student/registration number as its account number. Finance shall not allocate a separate student-account identifier.
 
 **FR-FIN-002:** The system shall support fee catalogues for application fees, programme fees, module fees, accommodation fees, dining fees, graduation fees, and institution-defined charges.
 
@@ -659,6 +667,10 @@ These requirements are in scope for the product architecture and future phases. 
 **FR-FIN-006:** The system shall support cashbook, bank reconciliation, payment suspense, and GL postings in later finance phases.
 
 **FR-FIN-007:** All finance posting shall preserve USD base currency and rate-source evidence for foreign or ZWG transactions.
+
+**FR-FIN-008:** Finance officers shall be able to configure an application fee as a draft with programme level, optional applicant category, amount, transaction currency, effective-from instant, and optional effective-until instant; activation shall require complete rated pricing and an independent authorised Finance operator.
+
+**FR-FIN-009:** Finance shall expose one application-fee resolution contract that evaluates fee context, programme level, applicant category, and effective instant, rejects ambiguous matches, and returns the resolved structure and total transaction amount. Admissions shall use this contract when pricing a new application.
 
 ## 21. Assessment Requirements
 
@@ -852,9 +864,17 @@ These requirements are in scope for the product architecture and future phases. 
 
 **NFR-UX-003:** User-facing academic text shall use Module terminology.
 
+**NFR-UX-004:** Each operational page shall serve one primary user goal, expose one visually clear primary action for that goal, use plain task-oriented labels, and show the current status and next required action without requiring the user to infer the workflow from internal status codes.
+
+**NFR-UX-005:** Release 1 applicant and staff workflows shall be keyboard operable, expose accessible names for interactive controls, preserve visible focus, and avoid page-level horizontal scrolling at viewport widths from 390 pixels upward. Data tables may use a labelled, intentionally scrollable region where a compact alternative would hide essential information.
+
+**NFR-UX-006:** Before Release 1 acceptance, representative users from applicant, Admissions, Finance, and system-administration roles shall complete the scripted acceptance journeys without coaching. At least 90 percent of tasks shall be completed successfully, no participant shall encounter a release-blocking usability defect, and all observed confusion or facilitator intervention shall be recorded as acceptance evidence.
+
+**NFR-UX-007:** A form shall use a dedicated main-content workspace inside the authenticated application shell when it contains seven or more data-entry fields, two or more semantic form sections, a step-by-step journey, or a repeatable collection whose size is controlled by the user. The system sidebar and global top bar shall remain visible and usable; opening the form shall replace the register or detail content, not launch a full-screen overlay outside the system skin. Side panels shall be limited to short contextual edits and read-only supporting detail. Large-form workspaces shall provide a clear title, purpose, back or cancel path, one primary completion action, and a mobile layout that does not introduce nested horizontal scrolling.
+
 ## 32. Release Scope Recommendation
 
-### Release 1: Core And Admissions
+### Release 1: Core, Admissions, And Application-Fee Finance
 
 Release 1 should include:
 
@@ -865,7 +885,8 @@ Release 1 should include:
 - Academic calendar and intakes.
 - Programme and Module setup.
 - Intake-owned admissions windows.
-- Application types and fees.
+- Application types and route readiness.
+- Finance-owned application-fee catalogue, effective pricing, route linkage, payment references, payment confirmation, waiver, reconciliation evidence, and receipts.
 - Subject catalogue and grading scales.
 - Applicant portal.
 - Qualification capture.
@@ -879,7 +900,7 @@ Release 1 should include:
 - Generated offer documents.
 - Audit events and core reports.
 
-### Release 2: Student Registration And Finance
+### Release 2: Student Registration And Full Student Finance
 
 Release 2 should include:
 
@@ -917,19 +938,25 @@ Release 4 should include:
 Release 1 shall be accepted only when:
 
 1. The eMhare institution profile can be configured with academic units, periods, intakes, programmes, and modules.
-2. An intake can be opened as the application window.
-3. An applicant can sign up or log in, complete an application, upload documents, capture qualifications, select programme choices, pay or confirm application fee, review, and submit.
-4. Admissions staff can verify application sections and documents.
-5. The system can evaluate programme choices and show eligibility outcomes.
-6. Admissions can release eligible choices to the resolved highest academic unit, authorised root-unit staff can record advisory recommendations across the descendant programme tree, and Admissions can approve, return, or override them into final decisions.
-7. The system can generate and dispatch offer letters.
-8. Applicants can accept or decline offers.
-9. Accepted offers can be converted into student records without duplicate students.
-10. Conversion creates student profile, programme enrolment, finance account hook, and student portal access hook.
-11. All major status changes and decisions are auditable.
-12. Official offer letters are stored as generated documents.
-13. Programme-choice duplicate constraints are enforced.
-14. ZWG payment handling does not hardcode a 1:1 USD rate.
+2. A system administrator can manage users, roles, permissions, scoped role assignments, reference data, workflows, login events, audit events, and the Core operational report from the Core workspace.
+3. An intake can be opened as the application window only after its programme targets, route mappings, required sections, documents, references, and fee or fee-free policy are ready.
+4. A Finance officer can configure a draft application fee by programme level and applicant category, with currency and effective dates, and a different authorised Finance operator can activate it only when its price is complete and rated.
+5. Application creation resolves the one applicable active Finance fee by route, programme level, applicant category, and effective instant; a missing, expired, future, category-mismatched, or ambiguous fee prevents pricing and exposes a clear corrective action.
+6. An applicant can sign up or log in, complete an application, upload documents, capture qualifications, select unique ordered programme choices, see the fee amount/reference/status/next action, pay or submit evidence, review, and submit.
+7. A fee-required application cannot enter verification, eligibility, or academic review until Finance confirms payment or an authorised waiver/override is recorded; neither uploaded evidence nor a hosted-payment browser return clears the gate by itself.
+8. Admissions staff can inspect one consolidated case workspace, verify required sections, documents, qualifications, duplicate-check evidence, and payment clearance, and confirm or invalidate the clearance with an audit reason.
+9. On confirmed clearance, the system automatically evaluates each programme choice and shows the eligible, conditionally eligible, not eligible, or requires-review outcome with the rule evidence used.
+10. For the highest-ranked open eligible choice, the system automatically creates an academic review at the resolved highest academic unit; authorised staff can recommend admit or reject, and Admissions can approve admission, reject, or return the recommendation with the required reason. No selection round, academic release, quota gate, or offer batch is required.
+11. Rejecting a higher-ranked choice opens the next eligible choice, while an open review or admitted decision blocks lower-ranked choices.
+12. An approved admission decision can generate, publish, and dispatch one official offer letter that is stored as a versioned generated document.
+13. Applicants can accept or decline published offers, and duplicate or conflicting responses are rejected idempotently.
+14. An accepted offer can be converted once into a student profile and programme enrolment, with idempotent finance-account and student-portal-access provisioning hooks and no duplicate student.
+15. Major status changes, administrative corrections, payment decisions, workflow decisions, offer actions, and conversion actions are queryable as immutable audit evidence with actor, timestamp, subject, and reason where required.
+16. Database constraints reject duplicate programme ranks and duplicate programmes within one application.
+17. ZWG pricing or payment remains unrated when no effective rate exists and never substitutes a 1:1 USD rate.
+18. The Release 1 scripted browser journeys pass at desktop and 390-pixel mobile widths without unexpected page-level horizontal scrolling, inaccessible primary controls, browser alert/confirm dialogs, unclear next actions, or a form that violates the in-shell workspace rule in NFR-UX-007.
+19. Focused backend, contract, frontend unit, and Playwright suites for changed Release 1 behaviour pass, changed executable code meets the project coverage threshold, and the full repository quality gate has no unresolved Release 1 failure.
+20. Representative-user usability acceptance satisfies NFR-UX-006 and its observations are retained with the release evidence.
 
 ## 34. Open Questions
 

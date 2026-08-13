@@ -92,6 +92,19 @@ public class AcademicUnit extends AuditableEntity {
         return legacyDepartmentCode;
     }
 
+    public void updateDescriptiveDetails(
+            String name,
+            String legacyFacultyCode,
+            String legacyDepartmentCode,
+            long expectedVersion) {
+        if (getVersion() != expectedVersion) {
+            throw new IllegalStateException("Academic unit was changed by another user. Refresh before retrying.");
+        }
+        this.name = name.trim();
+        this.legacyFacultyCode = trimToNull(legacyFacultyCode);
+        this.legacyDepartmentCode = trimToNull(legacyDepartmentCode);
+    }
+
     private static String trimToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }

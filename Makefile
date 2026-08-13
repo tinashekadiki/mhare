@@ -139,11 +139,6 @@ build-commons: ## Install the shared Java library into the local Maven repositor
 
 build-all: ## Build installable modules and executable service jars without tests
 	mvn -DskipTests install
-	@set -euo pipefail; \
-	for service_name in $(SERVICES); do \
-		echo "== packaging executable jar: $$service_name =="; \
-		mvn -q -f "services/$$service_name/pom.xml" -DskipTests package spring-boot:repackage; \
-	done
 
 template-validate: ## Build and test the canonical Spring service template
 	mvn -pl libraries/service-foundation,libraries/test-support -am install -DskipTests

@@ -124,7 +124,9 @@ class AdmissionsIntegrationOutboxServiceTest {
         assertEquals(documentId, workflowEvent.documentId());
         assertEquals(4, workflowEvent.documentVersion());
         assertEquals(verifierUserId, workflowEvent.initiatedByUserId());
-        assertEquals(application.getAdmissionCycle().getClosesAt(), workflowEvent.dueAt());
+        assertEquals(
+                application.getIntakeEndsOn().plusDays(1).atStartOfDay(ZoneOffset.UTC).minusNanos(1).toInstant(),
+                workflowEvent.dueAt());
     }
 
     @Test

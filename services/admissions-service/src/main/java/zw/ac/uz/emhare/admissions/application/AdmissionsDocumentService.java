@@ -308,7 +308,7 @@ public class AdmissionsDocumentService {
             throw new IllegalStateException(
                     "Documents can only be uploaded while the application is in draft or awaiting review.");
         }
-        if (clock.instant().isAfter(application.getAdmissionCycle().getClosesAt())) {
+        if (java.time.LocalDate.now(clock).isAfter(application.getIntakeEndsOn())) {
             throw new IllegalStateException(
                     "The application document deadline has passed. Contact Admissions for an authorised exception.");
         }

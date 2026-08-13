@@ -14,6 +14,7 @@ import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeChoice;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatusEvent;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeDocumentRequirement;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeSection;
 import zw.ac.uz.emhare.admissions.domain.model.OfferBatch;
 import zw.ac.uz.emhare.admissions.domain.model.OfferCondition;
 import zw.ac.uz.emhare.admissions.domain.model.OfferDispatch;
@@ -33,6 +34,7 @@ import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgramm
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationStatusEventRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeDocumentRequirementRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationTypeSectionRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferBatchRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferConditionRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferDispatchRepository;
@@ -77,6 +79,7 @@ public class AdmissionsSelectionOfferService {
     private final AdmissionCycleArchiveSummaryRepository admissionCycleArchiveSummaryRepository;
     private final ApplicationTypeRepository applicationTypeRepository;
     private final ApplicationTypeDocumentRequirementRepository applicationTypeDocumentRequirementRepository;
+    private final ApplicationTypeSectionRepository applicationTypeSectionRepository;
     private final ApplicationRepository applicationRepository;
     private final ApplicationProgrammeChoiceRepository programmeChoiceRepository;
     private final AdmissionRequirementSetRepository requirementSetRepository;
@@ -106,6 +109,7 @@ public class AdmissionsSelectionOfferService {
             AdmissionCycleArchiveSummaryRepository admissionCycleArchiveSummaryRepository,
             ApplicationTypeRepository applicationTypeRepository,
             ApplicationTypeDocumentRequirementRepository applicationTypeDocumentRequirementRepository,
+            ApplicationTypeSectionRepository applicationTypeSectionRepository,
             ApplicationRepository applicationRepository,
             ApplicationProgrammeChoiceRepository programmeChoiceRepository,
             AdmissionRequirementSetRepository requirementSetRepository,
@@ -133,6 +137,7 @@ public class AdmissionsSelectionOfferService {
         this.admissionCycleArchiveSummaryRepository = admissionCycleArchiveSummaryRepository;
         this.applicationTypeRepository = applicationTypeRepository;
         this.applicationTypeDocumentRequirementRepository = applicationTypeDocumentRequirementRepository;
+        this.applicationTypeSectionRepository = applicationTypeSectionRepository;
         this.applicationRepository = applicationRepository;
         this.programmeChoiceRepository = programmeChoiceRepository;
         this.requirementSetRepository = requirementSetRepository;
@@ -187,7 +192,21 @@ public class AdmissionsSelectionOfferService {
         applicationType.associateFeeStructure(financeFeeStructureId, financeFeeStructureCode, financeFeeStructureName);
         ApplicationType savedApplicationType = applicationTypeRepository.saveAndFlush(applicationType);
         applicationTypeDocumentRequirementRepository.saveAllAndFlush(defaultDocumentRequirements(savedApplicationType));
+        applicationTypeSectionRepository.saveAllAndFlush(defaultSections(savedApplicationType));
         return ApplicationTypeSummary.from(savedApplicationType);
+    }
+
+    private List<ApplicationTypeSection> defaultSections(ApplicationType applicationType) {
+        return ApplicationSectionTemplate.defaults(applicationType).stream()
+                .map(section -> new ApplicationTypeSection(
+                        applicationType,
+                        section.code(),
+                        section.name(),
+                        section.required(),
+                        section.repeatable(),
+                        section.minimumRecords(),
+                        section.sortOrder()))
+                .toList();
     }
 
     private List<ApplicationTypeDocumentRequirement> defaultDocumentRequirements(ApplicationType applicationType) {
@@ -328,7 +347,7 @@ public class AdmissionsSelectionOfferService {
     @Transactional
     public AdmissionCycleArchiveSummaryView archiveAdmissionCycle(UUID admissionCycleId, UUID actorUserId) {
         AdmissionCycle cycle = admissionCycle(admissionCycleId);
-        List<Application> applications = applicationRepository.findByAdmissionCycleId(admissionCycleId);
+        List<Application> applications = applicationRepository.findByIntakeId(cycle.getIntakeId());
         Map<ApplicationStatus, Long> byStatus = applications.stream()
                 .collect(java.util.stream.Collectors.groupingBy(Application::getStatus, java.util.stream.Collectors.counting()));
         cycle.archive();
@@ -383,10 +402,9 @@ public class AdmissionsSelectionOfferService {
             List<QualificationRequirementGroupInput> qualificationGroups) {
         ApplicationType applicationType = applicationTypeRepository.findById(applicationTypeId)
                 .orElseThrow(() -> new IllegalArgumentException("Application type not found."));
-        AdmissionCycle cycle = intakeId == null ? null : admissionsIntakeProjectionService.requireProjection(intakeId);
         String advancedRulesJson = advancedRules == null ? null : serialize(advancedRules);
         AdmissionRequirementSet requirementSet = requirementSetRepository.saveAndFlush(new AdmissionRequirementSet(
-                programmeId, applicationType, cycle, requiredText(versionCode, "Requirement-set version"),
+                programmeId, applicationType, intakeId, requiredText(versionCode, "Requirement-set version"),
                 effectiveFrom, effectiveTo, minimumTotalPoints, maleCutoffPoints, femaleCutoffPoints,
                 requiresEnglish, requiresMathematicsOrScience, advancedRulesJson,
                 advancedRulesJson == null ? null : requiredText(advancedRulesVersion, "Advanced-rules version")));
@@ -419,7 +437,7 @@ public class AdmissionsSelectionOfferService {
         List<AdmissionRequirementSet> supersededRequirementSets = requirementSetRepository.findApprovedForRouteForUpdate(
                         requirementSet.getProgrammeId(),
                         requirementSet.getApplicationType().getId(),
-                        requirementSet.getAdmissionCycle() == null ? null : requirementSet.getAdmissionCycle().getId())
+                        requirementSet.getIntakeId())
                 .stream()
                 .filter(existing -> !existing.getId().equals(requirementSet.getId()))
                 .filter(existing -> existing.overlapsEffectivePeriod(requirementSet))
@@ -467,7 +485,7 @@ public class AdmissionsSelectionOfferService {
         if (!requirementSet.isApprovedAndEffectiveFor(
                 choice.getProgrammeId(),
                 application.getApplicationType().getId(),
-                application.getAdmissionCycle().getId(),
+                application.getIntakeId(),
                 LocalDate.now(clock))) {
             throw new IllegalStateException("The requirement set is not approved and effective for this application route.");
         }

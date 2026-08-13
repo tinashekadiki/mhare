@@ -24,6 +24,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceService;
+import zw.ac.uz.emhare.admissions.application.AdmissionsRollingWorkflowService;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.QualificationSittingSummary;
 import zw.ac.uz.emhare.admissions.application.command.CreateQualificationResultCommand;
 import zw.ac.uz.emhare.admissions.application.command.UpdateApplicantProfileCommand;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient;
@@ -33,6 +35,7 @@ import zw.ac.uz.emhare.admissions.security.ApplicantRegistrationIdentityResolver
 import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.SaveOwnProfileRequest;
 import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.AddQualificationResultItemRequest;
 import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.AddQualificationResultsRequest;
+import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.QualificationDecisionRequest;
 import zw.ac.uz.emhare.admissions.api.controller.ApplicantApplicationWorkspaceController;
 
 /** Verifies applicant-owned profile fields that are governed by registration identity. @author Tinashe K */
@@ -45,6 +48,9 @@ class ApplicantApplicationWorkspaceControllerTest {
     @Mock
     private CoreIdentityClient coreIdentityClient;
 
+    @Mock
+    private AdmissionsRollingWorkflowService rollingWorkflowService;
+
     private ApplicantApplicationWorkspaceController controller;
 
     @BeforeEach
@@ -52,7 +58,8 @@ class ApplicantApplicationWorkspaceControllerTest {
         controller = new ApplicantApplicationWorkspaceController(
                 workspaceService,
                 coreIdentityClient,
-                new ApplicantRegistrationIdentityResolver());
+                new ApplicantRegistrationIdentityResolver(),
+                rollingWorkflowService);
     }
 
     @Test
@@ -131,6 +138,36 @@ class ApplicantApplicationWorkspaceControllerTest {
                 List.of(
                         new CreateQualificationResultCommand(englishSubjectId, "A", false),
                         new CreateQualificationResultCommand(mathematicsSubjectId, "B", true)));
+    }
+
+    @Test
+    void recordQualificationDecision_shouldAdvanceRollingWorkflow_afterVerification() {
+        UUID applicationId = UUID.randomUUID();
+        UUID sittingId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt());
+        QualificationSittingSummary verifiedSummary = org.mockito.Mockito.mock(QualificationSittingSummary.class);
+        when(coreIdentityClient.syncCurrentUser(authentication)).thenReturn(new CoreCurrentUserProfile(
+                new CoreUserSummary(
+                        userId,
+                        UUID.randomUUID(),
+                        "admissions.officer",
+                        "officer@example.test",
+                        "Admissions Officer",
+                        "ACTIVE"),
+                List.of()));
+        when(workspaceService.recordQualificationDecision(
+                applicationId, sittingId, userId, "VERIFIED", "Evidence matched.", 2L))
+                .thenReturn(verifiedSummary);
+
+        QualificationSittingSummary result = controller.recordQualificationDecision(
+                authentication,
+                applicationId,
+                sittingId,
+                new QualificationDecisionRequest("VERIFIED", "Evidence matched.", 2L));
+
+        assertEquals(verifiedSummary, result);
+        verify(rollingWorkflowService).advance(applicationId, userId);
     }
 
     private Jwt jwt() {

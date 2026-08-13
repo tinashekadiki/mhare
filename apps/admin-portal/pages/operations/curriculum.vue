@@ -411,7 +411,7 @@ function versionTone(status: string) {
     <template #footer><UButton label="Cancel" color="neutral" variant="outline" @click="versionModalOpen = false" /><UButton type="submit" form="version-form" label="Create draft version" :loading="saving" /></template>
   </EmhareRecordDrawer>
 
-  <EmhareRecordDrawer v-model:open="curriculumModalOpen" :title="curriculumDrawerTitle" :description="curriculumDrawerDescription">
+  <EmhareRecordDrawer v-model:open="curriculumModalOpen" presentation="page" :title="curriculumDrawerTitle" :description="curriculumDrawerDescription">
     <template #body>
       <form id="curriculum-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="saveCurriculumModule">
         <UFormField v-if="curriculumDrawerMode === 'add'" label="Module" required class="sm:col-span-2"><USelect v-model="curriculumForm.moduleId" :items="availableModuleItems" value-key="value" searchable class="w-full" /></UFormField>

@@ -10,17 +10,25 @@ import org.springframework.stereotype.Component;
 public class AdmissionsIdentifierGenerator {
 
     private final JdbcTemplate jdbcTemplate;
+    private final ApplicantReferenceNumberProperties applicantReferenceNumberProperties;
 
-    public AdmissionsIdentifierGenerator(JdbcTemplate jdbcTemplate) {
+    public AdmissionsIdentifierGenerator(
+            JdbcTemplate jdbcTemplate,
+            ApplicantReferenceNumberProperties applicantReferenceNumberProperties) {
         this.jdbcTemplate = jdbcTemplate;
+        this.applicantReferenceNumberProperties = applicantReferenceNumberProperties;
     }
 
     public String nextApplicantNumber() {
-        return "APP-%08d".formatted(nextSequenceValue("applicant_number_sequence"));
+        return applicantReferenceNumberProperties.format(nextSequenceValue("applicant_number_sequence"));
     }
 
     public String nextApplicationNumber(AdmissionCycle admissionCycle) {
-        String cycleCode = admissionCycle.getCode()
+        return nextApplicationNumber(admissionCycle.getCode());
+    }
+
+    public String nextApplicationNumber(String intakeCode) {
+        String cycleCode = intakeCode
                 .trim()
                 .toUpperCase(Locale.ROOT)
                 .replaceAll("[^A-Z0-9]+", "-")
@@ -29,7 +37,11 @@ public class AdmissionsIdentifierGenerator {
     }
 
     public String nextOfferNumber(AdmissionCycle admissionCycle) {
-        String cycleCode = admissionCycle.getCode()
+        return nextOfferNumber(admissionCycle.getCode());
+    }
+
+    public String nextOfferNumber(String intakeCode) {
+        String cycleCode = intakeCode
                 .trim()
                 .toUpperCase(Locale.ROOT)
                 .replaceAll("[^A-Z0-9]+", "-")

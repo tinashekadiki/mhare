@@ -247,7 +247,8 @@ function selectPeriod(period: EmhareAcademicPeriod) {
     <div class="relative flex min-w-0 flex-1 flex-col">
       <header class="sticky top-0 z-20 border-b border-muted bg-default/95 backdrop-blur">
         <div class="flex min-h-14 flex-wrap items-center gap-2 px-4">
-          <UDashboardSidebarCollapse />
+          <UDashboardSidebarToggle class="lg:hidden" />
+          <UDashboardSidebarCollapse class="hidden lg:inline-flex" />
           <UBreadcrumb :items="breadcrumbs" class="min-w-0 flex-1" />
 
           <UBadge
@@ -286,7 +287,17 @@ function selectPeriod(period: EmhareAcademicPeriod) {
         </div>
       </header>
 
-      <slot />
+      <div class="relative flex min-h-0 flex-1">
+        <div id="emhare-route-content" class="contents">
+          <slot />
+        </div>
+
+        <div
+          id="emhare-main-workspace"
+          class="pointer-events-none absolute inset-0 z-30"
+          aria-live="polite"
+        />
+      </div>
 
       <div
         v-if="searchOpen"

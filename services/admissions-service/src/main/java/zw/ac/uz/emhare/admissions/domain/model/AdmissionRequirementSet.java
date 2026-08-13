@@ -26,7 +26,7 @@ import zw.ac.uz.emhare.common.persistence.AuditableEntity;
         name = "admission_requirement_sets",
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_requirement_set_version",
-                columnNames = {"programme_id", "application_type_id", "admission_cycle_id", "version_code"}))
+                columnNames = {"programme_id", "application_type_id", "intake_id", "version_code"}))
 public class AdmissionRequirementSet extends AuditableEntity {
 
     @Column(name = "programme_id", nullable = false)
@@ -39,6 +39,9 @@ public class AdmissionRequirementSet extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "admission_cycle_id")
     private AdmissionCycle admissionCycle;
+
+    @Column(name = "intake_id")
+    private UUID intakeId;
 
     @Column(name = "version_code", nullable = false, length = 50)
     private String versionCode;
@@ -88,9 +91,46 @@ public class AdmissionRequirementSet extends AuditableEntity {
         this.programmeId = programmeId;
         this.applicationType = applicationType;
         this.admissionCycle = admissionCycle;
+        this.intakeId = admissionCycle == null ? null : admissionCycle.getIntakeId();
         this.versionCode = versionCode;
         this.effectiveFrom = effectiveFrom;
         this.status = RequirementSetStatus.DRAFT;
+    }
+
+    public AdmissionRequirementSet(
+            UUID programmeId,
+            ApplicationType applicationType,
+            UUID intakeId,
+            String versionCode,
+            LocalDate effectiveFrom,
+            LocalDate effectiveTo,
+            BigDecimal minimumTotalPoints,
+            BigDecimal maleCutoffPoints,
+            BigDecimal femaleCutoffPoints,
+            boolean requiresEnglish,
+            boolean requiresMathematicsOrScience,
+            String advancedRulesJson,
+            String advancedRulesVersion) {
+        this.programmeId = programmeId;
+        this.applicationType = applicationType;
+        this.intakeId = intakeId;
+        this.versionCode = versionCode;
+        this.effectiveFrom = effectiveFrom;
+        this.status = RequirementSetStatus.DRAFT;
+        if (effectiveTo != null && effectiveTo.isBefore(effectiveFrom)) {
+            throw new IllegalArgumentException("Requirement-set effective end date cannot precede its start date.");
+        }
+        if ((advancedRulesJson == null) != (advancedRulesVersion == null)) {
+            throw new IllegalArgumentException("Advanced rules and their schema version must be supplied together.");
+        }
+        this.effectiveTo = effectiveTo;
+        this.minimumTotalPoints = minimumTotalPoints;
+        this.maleCutoffPoints = maleCutoffPoints;
+        this.femaleCutoffPoints = femaleCutoffPoints;
+        this.requiresEnglish = requiresEnglish;
+        this.requiresMathematicsOrScience = requiresMathematicsOrScience;
+        this.advancedRulesJson = advancedRulesJson;
+        this.advancedRulesVersion = advancedRulesVersion;
     }
 
     public AdmissionRequirementSet(
@@ -149,12 +189,12 @@ public class AdmissionRequirementSet extends AuditableEntity {
     public boolean isApprovedAndEffectiveFor(
             UUID selectedProgrammeId,
             UUID applicationTypeId,
-            UUID admissionCycleId,
+            UUID intakeId,
             LocalDate effectiveDate) {
         return status == RequirementSetStatus.APPROVED
                 && programmeId.equals(selectedProgrammeId)
                 && applicationType.getId().equals(applicationTypeId)
-                && (admissionCycle == null || admissionCycle.getId().equals(admissionCycleId))
+                && (this.intakeId == null || this.intakeId.equals(intakeId))
                 && !effectiveFrom.isAfter(effectiveDate)
                 && (effectiveTo == null || !effectiveTo.isBefore(effectiveDate));
     }
@@ -166,6 +206,7 @@ public class AdmissionRequirementSet extends AuditableEntity {
     public UUID getProgrammeId() { return programmeId; }
     public ApplicationType getApplicationType() { return applicationType; }
     public AdmissionCycle getAdmissionCycle() { return admissionCycle; }
+    public UUID getIntakeId() { return intakeId; }
     public LocalDate getEffectiveFrom() { return effectiveFrom; }
     public LocalDate getEffectiveTo() { return effectiveTo; }
     public RequirementSetStatus getStatus() { return status; }

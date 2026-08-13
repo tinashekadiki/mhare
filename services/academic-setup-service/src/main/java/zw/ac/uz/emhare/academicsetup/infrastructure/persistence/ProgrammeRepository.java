@@ -13,4 +13,5 @@ public interface ProgrammeRepository extends JpaRepository<Programme, UUID> {
     List<Programme> findAllByOrderByCodeAsc();
     boolean existsByCodeIgnoreCase(String code);
     boolean existsByOwningAcademicUnitId(UUID academicUnitId);
+    boolean existsByOwningAcademicUnitAcademicUnitTypeId(UUID academicUnitTypeId);
 }

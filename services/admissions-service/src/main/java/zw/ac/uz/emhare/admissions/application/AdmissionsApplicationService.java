@@ -1,6 +1,5 @@
 package zw.ac.uz.emhare.admissions.application;
 
-import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
 import zw.ac.uz.emhare.admissions.domain.model.Applicant;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicantCategoryCode;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicantQualificationSitting;
@@ -76,6 +75,7 @@ public class AdmissionsApplicationService {
     private final QualificationEligibilityService qualificationEligibilityService;
     private final Clock clock;
     private final ObjectMapper objectMapper;
+    private final ApplicationDuplicateCheckService duplicateCheckService;
 
     public AdmissionsApplicationService(
             ApplicantRepository applicantRepository,
@@ -99,7 +99,8 @@ public class AdmissionsApplicationService {
             ApplicantApplicationWorkspaceService applicantApplicationWorkspaceService,
             QualificationEligibilityService qualificationEligibilityService,
             Clock clock,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ApplicationDuplicateCheckService duplicateCheckService) {
         this.applicantRepository = applicantRepository;
         this.admissionsIntakeProjectionService = admissionsIntakeProjectionService;
         this.applicationTypeRepository = applicationTypeRepository;
@@ -122,6 +123,7 @@ public class AdmissionsApplicationService {
         this.qualificationEligibilityService = qualificationEligibilityService;
         this.clock = clock;
         this.objectMapper = objectMapper;
+        this.duplicateCheckService = duplicateCheckService;
     }
 
     @Transactional
@@ -129,7 +131,7 @@ public class AdmissionsApplicationService {
         String applicantCategoryCode = ApplicantCategoryCode.from(command.applicantCategoryCode()).name();
         AdmissionsIntakeProjectionService.ResolvedAdmissionsIntake resolvedIntake =
                 admissionsIntakeProjectionService.requireOpenIntake(command.intakeId());
-        AdmissionCycle intakeProjection = resolvedIntake.projection();
+        var intake = resolvedIntake.intake();
         ApplicationType applicationType = applicationTypeRepository.findById(command.applicationTypeId())
                 .orElseThrow(() -> new IllegalArgumentException("Application type not found."));
         if (!applicationType.isActive()) {
@@ -158,17 +160,22 @@ public class AdmissionsApplicationService {
             applicant.recordNationalIdNumber(command.nationalIdNumber());
         }
         if (applicant.getNationalIdNumber() != null
-                && !applicationRepository.findByAdmissionCycleIdAndApplicantNationalIdNumber(
-                        intakeProjection.getId(), applicant.getNationalIdNumber()).isEmpty()) {
+                && !applicationRepository.findByIntakeIdAndApplicantNationalIdNumber(
+                        intake.intakeId(), applicant.getNationalIdNumber()).isEmpty()) {
             throw new IllegalStateException(
                     "An application already exists for this national ID number in this intake.");
         }
 
         Application application = new Application(
-                intakeProjection,
+                intake.intakeId(),
+                intake.code(),
+                intake.name(),
+                intake.startsOn(),
+                intake.endsOn(),
+                intake.maximumProgrammeChoices(),
                 applicant,
                 applicationType,
-                admissionsIdentifierGenerator.nextApplicationNumber(intakeProjection),
+                admissionsIdentifierGenerator.nextApplicationNumber(intake.code()),
                 paymentRequired);
         Application savedApplication = applicationRepository.saveAndFlush(application);
         programmeOptionSnapshotRepository.saveAllAndFlush(eligibleProgrammes.stream()
@@ -206,7 +213,7 @@ public class AdmissionsApplicationService {
     @Transactional
     public ApplicationSummary submitApplication(UUID applicationId, UUID applicantUserId) {
         Application application = findApplicantOwnedApplication(applicationId, applicantUserId);
-        admissionsIntakeProjectionService.requireOpenIntake(application.getAdmissionCycle().getIntakeId());
+        admissionsIntakeProjectionService.requireOpenIntake(application.getIntakeId());
         ApplicationPaymentReference paymentReference = findPaymentReference(application.getId());
         applicantApplicationWorkspaceService.assertReadyForSubmission(application);
         admissionsDocumentService.assertReadyForSubmission(application);
@@ -291,9 +298,15 @@ public class AdmissionsApplicationService {
                 applicationId, ApplicationClearanceOutcome.CONFIRMED).isPresent()) {
             throw new IllegalStateException("Application has already been confirmed by Admissions.");
         }
+        ApplicationDuplicateCheckService.DuplicateCheckResult duplicateCheck = duplicateCheckService.check(application);
+        if (!duplicateCheck.passed()) {
+            throw new IllegalStateException(
+                    "Application duplicate checks must pass before Admissions confirmation: " + duplicateCheck.summary());
+        }
         ApplicationStatus fromStatus = application.getStatus();
         application.moveToUnderReview(actorUserId, reason);
-        clearanceRepository.save(new ApplicationClearance(application, actorUserId, reason, clock.instant()));
+        clearanceRepository.save(new ApplicationClearance(
+                application, actorUserId, reason, duplicateCheck.summary(), clock.instant()));
         statusEventRepository.save(new ApplicationStatusEvent(application, fromStatus, application.getStatus(), reason, actorUserId));
         integrationOutboxService.enqueueVerificationDecisionNotification(application);
         return summary(application, findPaymentReference(application.getId()));

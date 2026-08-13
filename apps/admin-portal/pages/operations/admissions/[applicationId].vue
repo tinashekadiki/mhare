@@ -16,7 +16,6 @@ definePageMeta({ layout: 'dashboard' })
 
 const route = useRoute()
 const api = useEmhareApi()
-const toast = useToast()
 const { confirmAction, showError, showSuccess } = useEmhareConfirm()
 
 const workspace = ref<ApplicantApplicationWorkspace | null>(null)
@@ -25,7 +24,6 @@ const workflowActionLoading = ref(false)
 const loading = ref(false)
 const refreshing = ref(false)
 const loadError = ref('')
-const movingToReview = ref(false)
 const returningToDraft = ref(false)
 const selectedDocument = ref<ApplicationDocumentRequirementState | null>(null)
 const documentDownload = ref<UploadedDocumentDownload | null>(null)
@@ -143,6 +141,25 @@ async function recordRecommendation() {
   await runWorkflowAction(`/api/admissions/applications/${applicationId.value}/choices/${currentChoiceId.value}/academic-recommendation`, { recommendation: result.value, reason: reason.value.trim() })
 }
 
+async function returnRecommendation() {
+  const result = await Swal.fire({
+    title: 'Return academic recommendation',
+    text: 'The academic reviewer will receive this choice again with your reason.',
+    input: 'textarea',
+    inputLabel: 'What must be reconsidered?',
+    inputPlaceholder: 'Give the reviewer a clear, actionable reason.',
+    showCancelButton: true,
+    confirmButtonText: 'Return to reviewer',
+    confirmButtonColor: '#b7791f',
+    inputValidator: value => value.trim().length >= 10 ? undefined : 'Record at least 10 characters.'
+  })
+  if (!result.isConfirmed) return
+  await runWorkflowAction(
+    `/api/admissions/applications/${applicationId.value}/choices/${currentChoiceId.value}/academic-recommendation/return`,
+    { reason: result.value.trim() }
+  )
+}
+
 async function recordDecision() {
   const result = await Swal.fire({ title: 'Final admission decision', input: 'select',
     inputOptions: { ADMIT: 'Admit', REJECT: 'Reject and continue to next eligible choice' }, inputPlaceholder: 'Select final decision',
@@ -238,36 +255,6 @@ async function loadDocumentPreview(requirement: ApplicationDocumentRequirementSt
   }
 }
 
-async function moveToReview() {
-  if (!application.value) return
-  const confirmed = await confirmAction({
-    title: 'Start admissions review?',
-    text: `${application.value.applicationNumber} is submitted and financially cleared. It will enter the active review queue.`,
-    confirmButtonText: 'Start review',
-    icon: 'question'
-  })
-  if (!confirmed) return
-
-  movingToReview.value = true
-  try {
-    const updatedApplication = await api.request<AdmissionsApplicationSummary>(
-      `/api/admissions/applications/${application.value.id}/review`,
-      { method: 'POST', body: { reason: 'Application accepted into the admissions review queue.' } }
-    )
-    if (workspace.value) workspace.value.application = updatedApplication
-    toast.add({
-      title: 'Review started',
-      description: `${updatedApplication.applicationNumber} is now under review.`,
-      color: 'success',
-      icon: 'i-lucide-file-check-2'
-    })
-  } catch (error) {
-    await showError('Review could not be started', api.errorMessage(error))
-  } finally {
-    movingToReview.value = false
-  }
-}
-
 async function returnApplicationToDraft() {
   if (!application.value) return
   const result = await Swal.fire({
@@ -304,14 +291,6 @@ async function returnApplicationToDraft() {
   } finally {
     returningToDraft.value = false
   }
-}
-
-function reviewGuidance() {
-  if (!application.value || application.value.canEnterReview) return []
-  if (application.value.paymentRequired && !['PAID', 'WAIVED'].includes(application.value.paymentClearanceStatus)) {
-    return ['Confirm the application fee in Finance or record an authorised fee waiver before starting review.']
-  }
-  return ['Complete the required application sections and document checks before starting review.']
 }
 
 async function verifySelectedDocument() {
@@ -691,18 +670,6 @@ function formatDateTime(value: string | null | undefined) {
                 :loading="returningToDraft"
                 @click="returnApplicationToDraft"
               />
-              <EmhareGuidedActionButton
-                v-if="application.status === 'SUBMITTED'"
-                label="Start review"
-                icon="i-lucide-file-check-2"
-                color="primary"
-                guidance-title="Application cannot enter review yet"
-                :guidance-instructions="reviewGuidance()"
-                :guidance-action-label="application.paymentRequired && !['PAID', 'WAIVED'].includes(application.paymentClearanceStatus) ? 'Open Cash collections' : undefined"
-                :loading="movingToReview"
-                @guidance-action="navigateTo('/operations/finance-collections')"
-                @click="moveToReview"
-              />
               <UButton
                 label="All Admissions cases"
                 icon="i-lucide-list-filter"
@@ -738,12 +705,22 @@ function formatDateTime(value: string | null | undefined) {
             <div><h2 class="text-lg font-semibold text-highlighted">Current Admissions action</h2><p class="mt-1 text-sm text-muted">Transitions and permissions are supplied by the server for this case.</p></div>
             <EmhareStatusPill :label="formatStatus(workspace.workflowProgress.currentStageCode)" tone="info" />
           </div>
+          <UAlert
+            v-if="application.status === 'SUBMITTED' && !workItem.blockers.length"
+            class="mt-4"
+            color="info"
+            variant="soft"
+            icon="i-lucide-loader-circle"
+            title="Review starts automatically"
+            description="Once payment, documents, qualifications and duplicate checks are clear, this application moves to the next action without a manual hand-off."
+          />
           <UAlert v-if="workItem.blockers.length" class="mt-4" color="warning" variant="soft" title="Processing blockers" :description="workItem.blockers.join(' · ')" />
           <div class="mt-4 flex flex-wrap gap-2">
             <UButton v-if="can('RECALCULATE_ELIGIBILITY')" label="Recalculate eligibility" icon="i-lucide-calculator" color="neutral" variant="outline" :loading="workflowActionLoading" @click="recalculateEligibility" />
             <UButton v-if="can('RESOLVE_ELIGIBILITY')" label="Resolve eligibility" icon="i-lucide-list-checks" :loading="workflowActionLoading" @click="resolveEligibility" />
             <UButton v-if="can('RECORD_ACADEMIC_RECOMMENDATION')" label="Record recommendation" icon="i-lucide-message-square-check" :loading="workflowActionLoading" @click="recordRecommendation" />
             <UButton v-if="can('RECORD_ADMISSION_DECISION')" label="Record final decision" icon="i-lucide-gavel" :loading="workflowActionLoading" @click="recordDecision" />
+            <UButton v-if="can('RETURN_ACADEMIC_RECOMMENDATION')" label="Return to academic reviewer" icon="i-lucide-undo-2" color="warning" variant="outline" :loading="workflowActionLoading" @click="returnRecommendation" />
             <UButton v-if="can('UPDATE_OFFER')" label="Edit offer terms" icon="i-lucide-pencil" color="neutral" variant="outline" :loading="workflowActionLoading" @click="updateOfferTerms" />
             <UButton v-if="can('GENERATE_OFFER_DOCUMENT')" label="Generate replacement PDF" icon="i-lucide-file-output" color="neutral" variant="outline" :loading="workflowActionLoading" @click="generateOfferDocument" />
             <UButton v-if="can('PUBLISH_AND_SEND')" label="Publish and send" icon="i-lucide-send" :loading="workflowActionLoading" @click="publishAndSend" />

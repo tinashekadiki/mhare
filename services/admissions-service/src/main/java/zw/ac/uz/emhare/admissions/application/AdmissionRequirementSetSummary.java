@@ -28,7 +28,7 @@ public record AdmissionRequirementSetSummary(
     static AdmissionRequirementSetSummary from(AdmissionRequirementSet requirementSet) {
         return new AdmissionRequirementSetSummary(
                 requirementSet.getId(), requirementSet.getProgrammeId(), requirementSet.getApplicationType().getId(),
-                requirementSet.getAdmissionCycle() == null ? null : requirementSet.getAdmissionCycle().getIntakeId(),
+                requirementSet.getIntakeId(),
                 requirementSet.getVersionCode(), requirementSet.getEffectiveFrom(), requirementSet.getEffectiveTo(),
                 requirementSet.getStatus().name(), requirementSet.getMinimumTotalPoints(),
                 requirementSet.isRequiresEnglish(), requirementSet.isRequiresMathematicsOrScience(),

@@ -33,6 +33,11 @@ import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.Upda
 import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicYear;
 import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicPeriodType;
 import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicPeriod;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicUnitType;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicUnit;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicModule;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateProgrammeLevel;
+import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateProgrammeType;
 import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateIntake;
 import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AcademicModuleSummary;
 import static zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AdmissionsCatalogue;
@@ -163,6 +168,27 @@ public class AcademicSetupService {
                 command.code(), command.name(), command.levelOrder(), command.leafAllowed())));
     }
 
+    public AcademicUnitTypeSummary updateAcademicUnitType(
+            UUID academicUnitTypeId, UpdateAcademicUnitType command) {
+        AcademicUnitType unitType = requireAcademicUnitType(academicUnitTypeId);
+        requireUnique(
+                !academicUnitTypeRepository.existsByCodeIgnoreCaseAndIdNot(command.code(), academicUnitTypeId),
+                "Academic unit type code already exists.");
+        if (!unitType.getCode().equalsIgnoreCase(command.code())
+                && academicUnitRepository.existsByAcademicUnitTypeId(academicUnitTypeId)) {
+            throw new IllegalStateException(
+                    "Academic unit type code cannot change after academic units reference it.");
+        }
+        if (unitType.isLeafAllowed() && !command.leafAllowed()
+                && (programmeRepository.existsByOwningAcademicUnitAcademicUnitTypeId(academicUnitTypeId)
+                || academicModuleRepository.existsByOwningAcademicUnitAcademicUnitTypeId(academicUnitTypeId))) {
+            throw new IllegalStateException(
+                    "Leaf ownership cannot be removed while units at this level own programmes or Modules.");
+        }
+        unitType.update(command.code(), command.name(), command.leafAllowed(), command.expectedVersion());
+        return unitTypeSummary(academicUnitTypeRepository.saveAndFlush(unitType));
+    }
+
     public AcademicUnitSummary createAcademicUnit(CreateAcademicUnit command) {
         requireUnique(!academicUnitRepository.existsByCodeIgnoreCase(command.code()), "Academic unit code already exists.");
         AcademicUnitType unitType = requireAcademicUnitType(command.academicUnitTypeId());
@@ -185,6 +211,16 @@ public class AcademicSetupService {
                 command.name(),
                 command.legacyFacultyCode(),
                 command.legacyDepartmentCode())));
+    }
+
+    public AcademicUnitSummary updateAcademicUnit(UUID academicUnitId, UpdateAcademicUnit command) {
+        AcademicUnit academicUnit = requireAcademicUnit(academicUnitId);
+        academicUnit.updateDescriptiveDetails(
+                command.name(),
+                command.legacyFacultyCode(),
+                command.legacyDepartmentCode(),
+                command.expectedVersion());
+        return unitSummary(academicUnitRepository.saveAndFlush(academicUnit));
     }
 
     public AcademicYearSummary createAcademicYear(CreateAcademicYear command) {
@@ -392,10 +428,25 @@ public class AcademicSetupService {
                 new ProgrammeLevel(command.code(), command.name(), command.sortOrder())));
     }
 
+    public ProgrammeLevelSummary updateProgrammeLevel(UUID programmeLevelId, UpdateProgrammeLevel command) {
+        ProgrammeLevel programmeLevel = requireProgrammeLevel(programmeLevelId);
+        requireUnique(
+                !programmeLevelRepository.existsBySortOrderAndIdNot(command.sortOrder(), programmeLevelId),
+                "Programme level order already exists.");
+        programmeLevel.update(command.name(), command.sortOrder(), command.expectedVersion());
+        return programmeLevelSummary(programmeLevelRepository.saveAndFlush(programmeLevel));
+    }
+
     public ProgrammeTypeSummary createProgrammeType(CreateProgrammeType command) {
         requireUnique(!programmeTypeRepository.existsByCodeIgnoreCase(command.code()), "Programme type code already exists.");
         return programmeTypeSummary(programmeTypeRepository.saveAndFlush(
                 new ProgrammeType(command.code(), command.name())));
+    }
+
+    public ProgrammeTypeSummary updateProgrammeType(UUID programmeTypeId, UpdateProgrammeType command) {
+        ProgrammeType programmeType = requireProgrammeType(programmeTypeId);
+        programmeType.update(command.name(), command.expectedVersion());
+        return programmeTypeSummary(programmeTypeRepository.saveAndFlush(programmeType));
     }
 
     public ProgrammeSummary createProgramme(CreateProgramme command) {
@@ -514,6 +565,24 @@ public class AcademicSetupService {
                 command.creditValue(),
                 command.academicLevel(),
                 command.legacyCourseCode())));
+    }
+
+    public AcademicModuleSummary updateAcademicModule(UUID moduleId, UpdateAcademicModule command) {
+        AcademicModule academicModule = requireAcademicModule(moduleId);
+        requireUnique(
+                !academicModuleRepository.existsByCodeIgnoreCaseAndIdNot(command.code(), moduleId),
+                "Module code already exists.");
+        AcademicUnit owner = requireLeafOwner(command.owningAcademicUnitId());
+        academicModule.update(
+                owner,
+                command.code(),
+                command.name(),
+                command.description(),
+                command.creditValue(),
+                command.academicLevel(),
+                command.legacyCourseCode(),
+                command.expectedVersion());
+        return moduleSummary(academicModuleRepository.saveAndFlush(academicModule));
     }
 
     public AcademicModuleSummary activateAcademicModule(UUID moduleId, long expectedVersion) {

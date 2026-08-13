@@ -790,6 +790,7 @@ function statusTone(value: string) {
   </UDashboardPanel>
 
   <EmhareRecordDrawer
+    presentation="page"
     v-model:open="drawerOpen"
     :title="drawerTitle"
     description="Complete the controlled record. Existing records require the version currently shown in the register."

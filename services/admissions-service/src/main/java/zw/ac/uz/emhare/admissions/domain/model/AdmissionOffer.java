@@ -173,7 +173,7 @@ public class AdmissionOffer extends AuditableEntity {
         this.programmeVersionId = programmeChoice.getProgrammeVersionId();
         this.programmeCode = programmeChoice.getProgrammeCode();
         this.programmeName = programmeChoice.getProgrammeName();
-        this.intakeId = application.getAdmissionCycle().getIntakeId();
+        this.intakeId = application.getIntakeId();
         this.offerNumber = offerNumber;
         this.offerType = offerType;
         this.status = OfferStatus.DRAFT;
@@ -204,7 +204,7 @@ public class AdmissionOffer extends AuditableEntity {
         this.programmeVersionId = programmeChoice.getProgrammeVersionId();
         this.programmeCode = programmeChoice.getProgrammeCode();
         this.programmeName = programmeChoice.getProgrammeName();
-        this.intakeId = application.getAdmissionCycle().getIntakeId();
+        this.intakeId = application.getIntakeId();
         this.offerNumber = offerNumber;
         this.status = OfferStatus.DRAFT;
         this.amendmentPending = false;

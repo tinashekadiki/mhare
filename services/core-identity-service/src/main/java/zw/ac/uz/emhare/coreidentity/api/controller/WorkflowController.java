@@ -30,6 +30,7 @@ import zw.ac.uz.emhare.coreidentity.workflow.application.command.WorkflowDecisio
 import zw.ac.uz.emhare.coreidentity.workflow.WorkflowInstanceSummary;
 import zw.ac.uz.emhare.coreidentity.workflow.WorkflowService;
 import zw.ac.uz.emhare.coreidentity.workflow.WorkflowTaskSummary;
+import zw.ac.uz.emhare.coreidentity.audit.CoreAuditService;
 
 /** @author Tinashe K */
 @RestController
@@ -39,14 +40,17 @@ public class WorkflowController {
     private final WorkflowService workflowService;
     private final EmhareCurrentUserResolver currentUserResolver;
     private final PlatformUserRepository platformUserRepository;
+    private final CoreAuditService coreAuditService;
 
     public WorkflowController(
             WorkflowService workflowService,
             EmhareCurrentUserResolver currentUserResolver,
-            PlatformUserRepository platformUserRepository) {
+            PlatformUserRepository platformUserRepository,
+            CoreAuditService coreAuditService) {
         this.workflowService = workflowService;
         this.currentUserResolver = currentUserResolver;
         this.platformUserRepository = platformUserRepository;
+        this.coreAuditService = coreAuditService;
     }
 
     @PostMapping
@@ -55,7 +59,8 @@ public class WorkflowController {
     public WorkflowInstanceSummary createWorkflow(
             Authentication authentication,
             @Valid @RequestBody CreateWorkflowRequest request) {
-        return workflowService.createWorkflow(new CreateWorkflowCommand(
+        UUID actorUserId = actorUserId(authentication);
+        WorkflowInstanceSummary result = workflowService.createWorkflow(new CreateWorkflowCommand(
                 request.workflowCode(),
                 request.subjectType(),
                 request.subjectId(),
@@ -67,16 +72,20 @@ public class WorkflowController {
                 request.assignedRoleId(),
                 request.scopeType(),
                 request.academicUnitId(),
-                request.dueAt()), actorUserId(authentication));
+                request.dueAt()), actorUserId);
+        coreAuditService.record(actorUserId, "CORE_WORKFLOW_CREATED", "WORKFLOW_INSTANCE", result.id(),
+                "Created workflow " + result.workflowCode() + ".", null, result);
+        return result;
     }
 
     @PostMapping("/{workflowInstanceId}/tasks")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("@coreRbac.has(authentication, 'CORE_WORKFLOW_MANAGE')")
     public WorkflowTaskSummary addTask(
+            Authentication authentication,
             @PathVariable UUID workflowInstanceId,
             @Valid @RequestBody CreateWorkflowTaskRequest request) {
-        return workflowService.addTask(workflowInstanceId, new CreateWorkflowTaskCommand(
+        WorkflowTaskSummary result = workflowService.addTask(workflowInstanceId, new CreateWorkflowTaskCommand(
                 request.title(),
                 request.description(),
                 request.assignedUserId(),
@@ -84,6 +93,9 @@ public class WorkflowController {
                 request.scopeType(),
                 request.academicUnitId(),
                 request.dueAt()));
+        coreAuditService.record(actorUserId(authentication), "CORE_WORKFLOW_TASK_ADDED", "WORKFLOW_TASK", result.id(),
+                "Added workflow task " + result.taskReference() + ".", null, result);
+        return result;
     }
 
     @GetMapping("/{workflowInstanceId}")
@@ -110,7 +122,13 @@ public class WorkflowController {
             Authentication authentication,
             @PathVariable UUID workflowTaskId,
             @Valid @RequestBody WorkflowTaskVersionRequest request) {
-        return workflowService.claimTask(workflowTaskId, request.expectedVersion(), actorUserId(authentication));
+        UUID actorUserId = actorUserId(authentication);
+        WorkflowTaskSummary before = workflowService.listAllTasks().stream()
+                .filter(task -> task.id().equals(workflowTaskId)).findFirst().orElse(null);
+        WorkflowTaskSummary result = workflowService.claimTask(workflowTaskId, request.expectedVersion(), actorUserId);
+        coreAuditService.record(actorUserId, "CORE_WORKFLOW_TASK_CLAIMED", "WORKFLOW_TASK", workflowTaskId,
+                "Claimed workflow task " + result.taskReference() + ".", before, result);
+        return result;
     }
 
     @PostMapping("/tasks/{workflowTaskId}/decision")
@@ -119,10 +137,16 @@ public class WorkflowController {
             Authentication authentication,
             @PathVariable UUID workflowTaskId,
             @Valid @RequestBody WorkflowTaskDecisionRequest request) {
-        return workflowService.decideTask(
+        UUID actorUserId = actorUserId(authentication);
+        WorkflowTaskSummary before = workflowService.listAllTasks().stream()
+                .filter(task -> task.id().equals(workflowTaskId)).findFirst().orElse(null);
+        WorkflowTaskSummary result = workflowService.decideTask(
                 workflowTaskId,
                 new WorkflowDecisionCommand(request.expectedVersion(), request.decisionCode(), request.comment()),
-                actorUserId(authentication));
+                actorUserId);
+        coreAuditService.record(actorUserId, "CORE_WORKFLOW_TASK_DECIDED", "WORKFLOW_TASK", workflowTaskId,
+                "Recorded workflow decision " + request.decisionCode() + ".", before, result);
+        return result;
     }
 
     private UUID actorUserId(Authentication authentication) {

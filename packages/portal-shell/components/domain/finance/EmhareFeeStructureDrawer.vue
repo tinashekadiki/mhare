@@ -24,6 +24,7 @@ const props = defineProps<{
   catalogues: FinanceFeeCatalogueSummary[]
   academicOverview: AcademicSetupOverview | null
   applicantCategories: ApplicantCategoryOption[]
+  initialContext?: FinanceFeeContext
 }>()
 const emit = defineEmits<{ created: [] }>()
 const open = defineModel<boolean>('open', { default: false })
@@ -80,9 +81,16 @@ const programmeLevelItems = computed<SelectItem[]>(() => (props.academicOverview
   .map(level => ({ label: `${level.code} · ${level.name}`, value: level.id })))
 const applicantCategoryItems = computed<SelectItem[]>(() =>
   props.applicantCategories.map(category => ({ label: category.label, value: category.code })))
+const isApplicationFee = computed(() => form.feeContext === 'APPLICATION')
 const catalogueItems = computed<SelectItem[]>(() => props.catalogues
-  .filter(catalogue => catalogue.status !== 'RETIRED')
+  .filter(catalogue => catalogue.status !== 'RETIRED'
+    && (!isApplicationFee.value || catalogue.chargeType === 'APPLICATION'))
   .map(catalogue => ({ label: `${catalogue.code} · ${catalogue.name}`, value: catalogue.id })))
+const drawerTitle = computed(() => isApplicationFee.value ? 'Configure application fee' : 'Create fee structure')
+const drawerDescription = computed(() => isApplicationFee.value
+  ? 'Set one application charge for a programme level and, where needed, an applicant category. A different Finance operator must activate it.'
+  : 'Build one reusable governed fee schedule. Configure authorised student reductions separately in the discount register.')
+const submitLabel = computed(() => isApplicationFee.value ? 'Save draft application fee' : 'Create draft structure')
 const selectedContext = computed(() => contextItems.find(item => item.value === form.feeContext)!)
 const scopeReferenceItems = computed(() => {
   if (form.scopeType === 'ACADEMIC_UNIT') return academicUnitItems.value
@@ -124,7 +132,7 @@ watch(() => form.feeContext, (context) => {
   form.applicantCategoryCode = ''
   form.scopeType = context === 'ACADEMIC' ? 'INSTITUTION' : context === 'APPLICATION' ? 'PROGRAMME_LEVEL' : 'GLOBAL'
   const defaultLine = context === 'APPLICATION'
-    ? newLine('APPLICATION', 'Application fee', context)
+    ? defaultApplicationFeeLine()
     : context === 'ACCOMMODATION'
       ? newLine('ACCOMMODATION', 'Accommodation', context)
       : newLine('TUITION', 'Tuition', context)
@@ -138,16 +146,20 @@ watch(() => [form.feeContext, form.scopeType, form.scopeReferenceId], () => {
 })
 
 watch(open, (isOpen) => {
-  if (isOpen) reset()
+  if (isOpen) reset(props.initialContext ?? 'ACADEMIC')
 })
 
-function reset() {
+watch(() => props.initialContext, (context) => {
+  if (open.value && context) reset(context)
+})
+
+function reset(context: FinanceFeeContext = props.initialContext ?? 'ACADEMIC') {
   Object.assign(form, {
     code: '',
     name: '',
     description: '',
-    feeContext: 'ACADEMIC',
-    scopeType: 'INSTITUTION',
+    feeContext: context,
+    scopeType: context === 'ACADEMIC' ? 'INSTITUTION' : context === 'APPLICATION' ? 'PROGRAMME_LEVEL' : 'GLOBAL',
     scopeReferenceId: '',
     programmeLevelId: '',
     applicantCategoryCode: '',
@@ -155,7 +167,23 @@ function reset() {
     effectiveFrom: localDateTimeValue(new Date()),
     effectiveUntil: ''
   })
-  form.lines.splice(0, form.lines.length, newLine('TUITION', 'Tuition', 'ACADEMIC'))
+  const defaultLine = context === 'APPLICATION'
+    ? defaultApplicationFeeLine()
+    : context === 'ACCOMMODATION'
+      ? newLine('ACCOMMODATION', 'Accommodation', context)
+      : newLine('TUITION', 'Tuition', context)
+  form.lines.splice(0, form.lines.length, defaultLine)
+}
+
+function defaultApplicationFeeLine() {
+  const line = newLine('APPLICATION-FEE', 'Application fee', 'APPLICATION')
+  const applicationDefinitions = props.catalogues
+    .filter(catalogue => catalogue.status !== 'RETIRED' && catalogue.chargeType === 'APPLICATION')
+  if (applicationDefinitions.length === 1) {
+    line.feeCatalogueId = applicationDefinitions[0]!.id
+    useExistingDefinition(line)
+  }
+  return line
 }
 
 function newLine(code = '', name = '', context: FinanceFeeContext = form.feeContext): LineDraft {
@@ -271,9 +299,10 @@ function localDateTimeValue(date: Date) {
 <template>
   <EmhareRecordDrawer
     v-model:open="open"
-    title="Create fee structure"
-    description="Build one reusable governed fee schedule. Configure authorised student reductions separately in the discount register."
-    submit-label="Create draft structure"
+    presentation="page"
+    :title="drawerTitle"
+    :description="drawerDescription"
+    :submit-label="submitLabel"
     width="wide"
     :busy="saving"
     :submit-disabled="guidance.length > 0"
@@ -293,7 +322,7 @@ function localDateTimeValue(date: Date) {
             </div>
           </div>
           <div class="grid items-start gap-x-4 gap-y-5 sm:grid-cols-2">
-            <UFormField label="Fee class" required class="sm:col-span-2">
+            <UFormField v-if="!props.initialContext" label="Fee class" required class="sm:col-span-2">
               <USelect v-model="form.feeContext" :items="contextItems" value-key="value" label-key="label" class="w-full" aria-label="Fee class" />
             </UFormField>
             <UFormField label="Structure code" hint="Stable reference" required>
@@ -309,10 +338,10 @@ function localDateTimeValue(date: Date) {
         </section>
 
         <section class="rounded-lg border border-muted bg-default p-4">
-          <div class="mb-4 flex items-start justify-between gap-3">
+          <div class="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row">
             <div>
-              <h3 class="font-semibold text-highlighted">Applicability and precedence</h3>
-              <p class="mt-1 text-sm text-muted">Base structures are not tied to an academic period.</p>
+              <h3 class="font-semibold text-highlighted">{{ isApplicationFee ? 'Who pays this fee' : 'Applicability and precedence' }}</h3>
+              <p class="mt-1 text-sm text-muted">{{ isApplicationFee ? 'The programme level is required. Leave applicant category blank only when every applicant pays the same amount.' : 'Base structures are not tied to an academic period.' }}</p>
             </div>
             <UBadge label="Complete schedule wins" color="primary" variant="subtle" />
           </div>
@@ -343,10 +372,10 @@ function localDateTimeValue(date: Date) {
         <section class="rounded-lg border border-muted bg-default p-4">
           <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 class="font-semibold text-highlighted">Fee line items</h3>
-              <p class="mt-1 text-sm text-muted">Default posting accounts are filled in and remain editable before Finance activation.</p>
+              <h3 class="font-semibold text-highlighted">{{ isApplicationFee ? 'Application fee amount' : 'Fee line items' }}</h3>
+              <p class="mt-1 text-sm text-muted">{{ isApplicationFee ? 'Applicants see this transaction amount and currency before submission.' : 'Default posting accounts are filled in and remain editable before Finance activation.' }}</p>
             </div>
-            <UDropdownMenu :items="[linePresets.map(item => ({ label: item.label, icon: item.icon, onSelect: () => addLine(item.code, item.name) }))]">
+            <UDropdownMenu v-if="!isApplicationFee" :items="[linePresets.map(item => ({ label: item.label, icon: item.icon, onSelect: () => addLine(item.code, item.name) }))]">
               <UButton label="Add line item" icon="i-lucide-plus" color="neutral" variant="outline" />
             </UDropdownMenu>
           </div>
@@ -359,13 +388,13 @@ function localDateTimeValue(date: Date) {
                 </div>
                 <p class="mt-1 text-xs text-muted">{{ line.receivableAccountCode || 'Receivable account' }} → {{ line.revenueAccountCode || 'Revenue account' }}</p>
               </div>
-              <UButton icon="i-lucide-trash-2" color="error" variant="ghost" aria-label="Remove fee line" :disabled="form.lines.length === 1" @click="removeLine(index)" />
+              <UButton v-if="!isApplicationFee" icon="i-lucide-trash-2" color="error" variant="ghost" aria-label="Remove fee line" :disabled="form.lines.length === 1" @click="removeLine(index)" />
             </div>
             <div class="grid items-start gap-x-4 gap-y-5 sm:grid-cols-2">
               <UFormField label="Reuse definition" description="Optional" class="sm:col-span-2">
                 <USelectMenu v-model="line.feeCatalogueId" :items="catalogueItems" value-key="value" searchable clearable class="w-full" placeholder="Create inline definition" @update:model-value="useExistingDefinition(line)" />
               </UFormField>
-              <UFormField label="Amount" required>
+              <UFormField :label="isApplicationFee ? 'Application fee amount' : 'Amount'" required>
                 <UInputNumber v-model="line.amount" :min="0.01" :step="0.01" class="w-full" />
               </UFormField>
               <UFormField label="Invoice description">

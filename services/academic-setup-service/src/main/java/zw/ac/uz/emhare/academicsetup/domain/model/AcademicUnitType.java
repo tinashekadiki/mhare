@@ -45,6 +45,15 @@ public class AcademicUnitType extends AuditableEntity {
         this.status = ReferenceStatus.ACTIVE;
     }
 
+    public void update(String code, String name, boolean leafAllowed, long expectedVersion) {
+        if (getVersion() != expectedVersion) {
+            throw new IllegalStateException("Academic unit type was changed by another user. Refresh before retrying.");
+        }
+        this.code = normalizeCode(code);
+        this.name = name.trim();
+        this.leafAllowed = leafAllowed;
+    }
+
     public String getCode() {
         return code;
     }

@@ -212,7 +212,7 @@ async function approve(scheme: GradingSchemeSummary) {
           title="No grading schemes"
           description="Create and approve the first institutional grading policy."
         /></div></template></UDashboardPanel
-  ><EmhareRecordDrawer
+  ><EmhareRecordDrawer presentation="page"
     v-model:open="modalOpen"
     title="Create grading scheme"
     description="Define complete, non-overlapping bands"

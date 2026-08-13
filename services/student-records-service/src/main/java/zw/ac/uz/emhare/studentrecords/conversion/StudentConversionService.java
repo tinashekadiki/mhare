@@ -15,7 +15,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zw.ac.uz.emhare.common.messaging.AcceptedOfferReadyForConversionEvent;
@@ -30,7 +29,7 @@ public class StudentConversionService {
     private final StudentConversionRequestRepository conversionRepository;
     private final StudentStatusEventRepository statusEventRepository;
     private final StudentRecordsIntegrationOutboxService outboxService;
-    private final JdbcTemplate jdbcTemplate;
+    private final StudentNumberGenerator studentNumberGenerator;
     private final Clock clock;
     private final StudentEntryOptionPreferenceRepository entryOptionPreferenceRepository;
 
@@ -41,7 +40,7 @@ public class StudentConversionService {
             StudentConversionRequestRepository conversionRepository,
             StudentStatusEventRepository statusEventRepository,
             StudentRecordsIntegrationOutboxService outboxService,
-            JdbcTemplate jdbcTemplate,
+            StudentNumberGenerator studentNumberGenerator,
             Clock clock,
             StudentEntryOptionPreferenceRepository entryOptionPreferenceRepository) {
         this.studentRepository = studentRepository;
@@ -49,7 +48,7 @@ public class StudentConversionService {
         this.conversionRepository = conversionRepository;
         this.statusEventRepository = statusEventRepository;
         this.outboxService = outboxService;
-        this.jdbcTemplate = jdbcTemplate;
+        this.studentNumberGenerator = studentNumberGenerator;
         this.clock = clock;
         this.entryOptionPreferenceRepository = entryOptionPreferenceRepository;
     }
@@ -60,10 +59,10 @@ public class StudentConversionService {
             StudentConversionRequestRepository conversionRepository,
             StudentStatusEventRepository statusEventRepository,
             StudentRecordsIntegrationOutboxService outboxService,
-            JdbcTemplate jdbcTemplate,
+            StudentNumberGenerator studentNumberGenerator,
             Clock clock) {
         this(studentRepository, enrolmentRepository, conversionRepository, statusEventRepository,
-                outboxService, jdbcTemplate, clock, null);
+                outboxService, studentNumberGenerator, clock, null);
     }
 
     @Transactional
@@ -74,7 +73,8 @@ public class StudentConversionService {
         validate(event);
         Instant now = clock.instant();
         StudentProfile student = studentRepository.saveAndFlush(
-                new StudentProfile(nextStudentNumber(event.commencementDate().getYear()), event));
+                new StudentProfile(studentNumberGenerator.nextStudentNumber(
+                        event.applicantCategoryCode(), event.commencementDate().getYear()), event));
         StudentProgrammeEnrolment enrolment = enrolmentRepository.saveAndFlush(
                 new StudentProgrammeEnrolment(student, event));
         if (entryOptionPreferenceRepository != null && event.entryOptionPreferences() != null
@@ -131,12 +131,6 @@ public class StudentConversionService {
     private StudentConversionRequest conversion(UUID id) {
         return conversionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Student conversion request not found."));
-    }
-
-    private String nextStudentNumber(int cohortYear) {
-        Long sequence = jdbcTemplate.queryForObject("SELECT nextval('student_number_sequence')", Long.class);
-        if (sequence == null) throw new IllegalStateException("Student number sequence did not return a value.");
-        return "STU-%d-%07d".formatted(cohortYear, sequence);
     }
 
     private void validate(AcceptedOfferReadyForConversionEvent event) {

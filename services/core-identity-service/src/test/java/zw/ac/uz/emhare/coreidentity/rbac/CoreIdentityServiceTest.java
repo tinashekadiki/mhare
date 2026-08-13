@@ -228,6 +228,41 @@ class CoreIdentityServiceTest {
     }
 
     @Test
+    void syncAuthenticatedUser_shouldRecordOneLoginEventPerIdentitySession() {
+        UUID keycloakUserId = UUID.randomUUID();
+        UUID localUserId = UUID.randomUUID();
+        PlatformUser user = new PlatformUser(
+                keycloakUserId,
+                "core.operator",
+                "core.operator@example.test",
+                "Core Operator");
+        ReflectionTestUtils.setField(user, "id", localUserId);
+        user.activate();
+        EmhareCurrentUser currentUser = new EmhareCurrentUser(
+                keycloakUserId,
+                localUserId,
+                "core.operator@example.test",
+                "core.operator",
+                "Core Operator",
+                Set.of());
+        when(platformUserRepository.findByKeycloakUserId(keycloakUserId)).thenReturn(Optional.of(user));
+        when(loginEventRepository.existsByKeycloakUserIdAndIdentitySessionIdAndDeletedAtIsNull(
+                keycloakUserId, "session-123")).thenReturn(false, true);
+        when(platformUserRepository.findById(localUserId)).thenReturn(Optional.of(user));
+        when(userRoleAssignmentRepository.findByUserIdAndDeletedAtIsNull(localUserId)).thenReturn(List.of());
+        when(userRoleAssignmentRepository.findPermissionCodesAcrossScopes(eq(localUserId), any(Instant.class)))
+                .thenReturn(List.of());
+
+        coreIdentityService.syncAuthenticatedUser(currentUser, null, null, "session-123");
+        coreIdentityService.syncAuthenticatedUser(currentUser, null, null, "session-123");
+        coreIdentityService.syncAuthenticatedUser(currentUser, null, null, " ");
+
+        org.mockito.ArgumentCaptor<LoginEvent> loginEventCaptor = org.mockito.ArgumentCaptor.forClass(LoginEvent.class);
+        verify(loginEventRepository, times(2)).save(loginEventCaptor.capture());
+        assertEquals(" ", loginEventCaptor.getAllValues().get(1).getIdentitySessionId());
+    }
+
+    @Test
     void currentUserProfile_shouldExposeActiveOperationalRolePermissions() {
         UUID userId = UUID.randomUUID();
         PlatformUser user = new PlatformUser(

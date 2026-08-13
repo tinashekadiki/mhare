@@ -344,6 +344,13 @@ There is no separately managed admission-cycle business entity. The Academic Set
 - `requires_employment_history`
 - `requires_referees`
 - `is_active`
+- `fee_policy_status` enum: `UNCONFIGURED`, `FEE_STRUCTURE`, `FEE_FREE`
+- `finance_fee_structure_id` nullable migration snapshot
+- `finance_fee_structure_code` nullable migration snapshot
+- `finance_fee_structure_name` nullable migration snapshot
+- `fee_free_reason` nullable
+- `fee_policy_decided_by_user_id` nullable
+- `fee_policy_decided_at` nullable
 - unique `code`
 
 Examples: undergraduate, postgraduate, transfer, mature entry, RPL, HEXCO, foreign equivalence.
@@ -365,7 +372,7 @@ Route-aware governance adds:
 
 Academic Setup owns versioned `programme_entry_options` and each programme version's minimum and maximum entry-option selection counts. Admissions snapshots those values at draft creation. Student Records preserves accepted entry-option preferences without treating them as a curriculum or Module-registration decision.
 
-`application_fees`
+`application_fees` (legacy compatibility only)
 - `id`
 - `application_type_id`
 - `applicant_category_code`
@@ -374,6 +381,8 @@ Academic Setup owns versioned `programme_entry_options` and each programme versi
 - `effective_from`
 - `effective_to`
 - `is_active`
+
+Finance-owned `finance_fee_structures` are the canonical source for new application pricing. Application-fee structures are scoped by programme level, may be specialised by applicant category, carry transaction currency and effective timestamps, and contain the governed fee lines used to calculate the total. Admissions shall resolve the applicable structure through Finance using programme level, applicant category, and effective instant, then snapshot the resolved structure and price on the application. The single `application_types.finance_fee_structure_id` and the Admissions-owned `application_fees` table are migration bridges; neither is sufficient by itself to resolve a category-aware, effective-dated fee and neither may bypass the Finance resolution contract.
 
 `admission_quotas`
 - `id`
@@ -392,7 +401,7 @@ Per ADR-0014, `admission_quotas` is retained only for institutional capacity pla
 `applicants`
 - `id`
 - `user_id`
-- `applicant_number` unique
+- `applicant_number` unique; configurable format, default `A` plus six digits
 - `applicant_category_code` enum-like: `LOCAL`, `SADC`, `INTERNATIONAL`, `CLE`
 - `title_code`
 - `first_name`
@@ -832,10 +841,12 @@ Per ADR-0014, an offer is created directly from an `ADMIT` `programme_choice_dec
 `students`
 - `id`
 - `person_source_applicant_id`
-- `student_number`
+- `student_number`; also the permanent registration number, default local format `RYY####C` and foreign format `FRYY####C`
 - `status` enum: `PROVISIONAL`, `ACTIVE`, `DEFERRED`, `SUSPENDED`, `WITHDRAWN`, `GRADUATED`
 - `created_from_offer_id`
 - unique `student_number`
+
+Student-number allocation is owned by Student Records. Prefixes, year/serial widths, safe check-letter alphabet, and layout are configurable. The default check-letter alphabet excludes letters that are easily mistaken for numbers, and overflow of the four-digit serial space advances to another safe check letter. Registration sessions and Finance reuse this value rather than allocating independent `REG-` or student-account numbers.
 
 `student_programme_enrolments`
 - `id`

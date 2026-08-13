@@ -16,3 +16,14 @@ spring:
     url: ${STUDENT_RECORDS_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_student_records}
     username: ${EMHARE_SERVICE_DB_USER:emhare_service}
     password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}
+
+emhare:
+  reference-numbers:
+    student:
+      local-prefix: ${STUDENT_NUMBER_LOCAL_PREFIX:R}
+      foreign-prefix: ${STUDENT_NUMBER_FOREIGN_PREFIX:FR}
+      local-category-codes: ${STUDENT_NUMBER_LOCAL_CATEGORY_CODES:LOCAL}
+      year-digits: ${STUDENT_NUMBER_YEAR_DIGITS:2}
+      serial-digits: ${STUDENT_NUMBER_SERIAL_DIGITS:4}
+      check-letters: ${STUDENT_NUMBER_CHECK_LETTERS:ACDEFHJKMNPRTUVWXY}
+      format: "{prefix}{year}{serial}{check}"

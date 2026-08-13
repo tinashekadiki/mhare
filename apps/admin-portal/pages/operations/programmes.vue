@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Swal from 'sweetalert2'
 import type { TableColumn } from '@nuxt/ui'
-import type { ProgrammeSummary } from '@emhare/portal-shell/types/academic'
+import type { ProgrammeLevelSummary, ProgrammeSummary, ProgrammeTypeSummary } from '@emhare/portal-shell/types/academic'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -17,7 +17,7 @@ const referenceModalOpen = ref(false)
 const referenceKind = ref<'level' | 'type'>('level')
 const saving = ref(false)
 const activeProgrammeId = ref<string | null>(null)
-const referenceForm = reactive({ code: '', name: '', sortOrder: 1 })
+const referenceForm = reactive({ id: null as string | null, code: '', name: '', sortOrder: 1, expectedVersion: 0 })
 const programmeForm = reactive({
   id: null as string | null, status: 'DRAFT' as ProgrammeSummary['status'],
   owningAcademicUnitId: '', programmeTypeId: '', programmeLevelId: '', code: '', name: '',
@@ -179,25 +179,45 @@ function editProgramme(programme: ProgrammeSummary) {
 
 function openReferenceModal(kind: 'level' | 'type') {
   referenceKind.value = kind
-  Object.assign(referenceForm, { code: '', name: '', sortOrder: programmeLevels.value.length + 1 })
+  Object.assign(referenceForm, { id: null, code: '', name: '', sortOrder: programmeLevels.value.length + 1, expectedVersion: 0 })
   referenceModalOpen.value = true
 }
 
-async function createReference() {
+function editReference(kind: 'level' | 'type', reference: ProgrammeLevelSummary | ProgrammeTypeSummary) {
+  referenceKind.value = kind
+  Object.assign(referenceForm, {
+    id: reference.id,
+    code: reference.code,
+    name: reference.name,
+    sortOrder: kind === 'level' ? (reference as ProgrammeLevelSummary).sortOrder : 1,
+    expectedVersion: reference.version
+  })
+  referenceModalOpen.value = true
+}
+
+async function saveReference() {
   saving.value = true
+  const editing = Boolean(referenceForm.id)
   try {
     const isLevel = referenceKind.value === 'level'
     const createdReferenceCode = referenceForm.code.trim()
-    await api.request(isLevel ? '/api/academic/programme-levels' : '/api/academic/programme-types', {
-      method: 'POST',
-      body: isLevel ? referenceForm : { code: referenceForm.code, name: referenceForm.name }
+    const collectionPath = isLevel ? '/api/academic/programme-levels' : '/api/academic/programme-types'
+    await api.request(editing ? `${collectionPath}/${referenceForm.id}` : collectionPath, {
+      method: editing ? 'PUT' : 'POST',
+      body: editing
+        ? isLevel
+          ? { name: referenceForm.name, sortOrder: referenceForm.sortOrder, expectedVersion: referenceForm.expectedVersion }
+          : { name: referenceForm.name, expectedVersion: referenceForm.expectedVersion }
+        : isLevel
+          ? { code: referenceForm.code, name: referenceForm.name, sortOrder: referenceForm.sortOrder }
+          : { code: referenceForm.code, name: referenceForm.name }
     })
     await academicSetup.loadOverview()
     search.value = createdReferenceCode
     referenceModalOpen.value = false
-    toast.add({ title: `Programme ${referenceKind.value} created`, color: 'success', icon: 'i-lucide-tags' })
+    toast.add({ title: `Programme ${referenceKind.value} ${editing ? 'updated' : 'created'}`, color: 'success', icon: 'i-lucide-tags' })
   } catch (error) {
-    await showError(`Programme ${referenceKind.value} could not be created`, api.errorMessage(error))
+    await showError(`Programme ${referenceKind.value} could not be ${editing ? 'updated' : 'created'}`, api.errorMessage(error))
   } finally {
     saving.value = false
   }
@@ -318,10 +338,10 @@ function statusTone(status: string) {
           <EmharePaginatedCollection v-slot="{ items: paginatedLevels }" :items="filteredProgrammeLevels">
           <div class="overflow-x-auto">
             <table class="w-full min-w-[720px] text-left text-sm">
-              <thead class="bg-muted/40 text-xs uppercase text-muted"><tr><th class="px-4 py-3">Order</th><th class="px-4 py-3">Code</th><th class="px-4 py-3">Name</th><th class="px-4 py-3">Status</th></tr></thead>
+              <thead class="bg-muted/40 text-xs uppercase text-muted"><tr><th class="px-4 py-3">Order</th><th class="px-4 py-3">Code</th><th class="px-4 py-3">Name</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right">Actions</th></tr></thead>
               <tbody>
-                <tr v-for="level in paginatedLevels" :key="level.id" class="border-t border-muted"><td class="px-4 py-3">{{ level.sortOrder }}</td><td class="px-4 py-3 font-mono text-xs text-primary">{{ level.code }}</td><td class="px-4 py-3 font-medium">{{ level.name }}</td><td class="px-4 py-3"><EmhareStatusPill :label="level.status" :tone="statusTone(level.status)" /></td></tr>
-                <tr v-if="!filteredProgrammeLevels.length"><td colspan="4" class="px-4 py-8 text-center text-muted">No programme levels match this view.</td></tr>
+                <tr v-for="level in paginatedLevels" :key="level.id" class="border-t border-muted"><td class="px-4 py-3">{{ level.sortOrder }}</td><td class="px-4 py-3 font-mono text-xs text-primary">{{ level.code }}</td><td class="px-4 py-3 font-medium">{{ level.name }}</td><td class="px-4 py-3"><EmhareStatusPill :label="level.status" :tone="statusTone(level.status)" /></td><td class="px-4 py-3 text-right"><UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="ghost" @click="editReference('level', level)" /></td></tr>
+                <tr v-if="!filteredProgrammeLevels.length"><td colspan="5" class="px-4 py-8 text-center text-muted">No programme levels match this view.</td></tr>
               </tbody>
             </table>
           </div>
@@ -331,10 +351,10 @@ function statusTone(status: string) {
           <EmharePaginatedCollection v-slot="{ items: paginatedProgrammeTypes }" :items="filteredProgrammeTypes">
           <div class="overflow-x-auto">
             <table class="w-full min-w-[640px] text-left text-sm">
-              <thead class="bg-muted/40 text-xs uppercase text-muted"><tr><th class="px-4 py-3">Code</th><th class="px-4 py-3">Name</th><th class="px-4 py-3">Status</th></tr></thead>
+              <thead class="bg-muted/40 text-xs uppercase text-muted"><tr><th class="px-4 py-3">Code</th><th class="px-4 py-3">Name</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right">Actions</th></tr></thead>
               <tbody>
-                <tr v-for="programmeType in paginatedProgrammeTypes" :key="programmeType.id" class="border-t border-muted"><td class="px-4 py-3 font-mono text-xs text-primary">{{ programmeType.code }}</td><td class="px-4 py-3 font-medium">{{ programmeType.name }}</td><td class="px-4 py-3"><EmhareStatusPill :label="programmeType.status" :tone="statusTone(programmeType.status)" /></td></tr>
-                <tr v-if="!filteredProgrammeTypes.length"><td colspan="3" class="px-4 py-8 text-center text-muted">No programme types match this view.</td></tr>
+                <tr v-for="programmeType in paginatedProgrammeTypes" :key="programmeType.id" class="border-t border-muted"><td class="px-4 py-3 font-mono text-xs text-primary">{{ programmeType.code }}</td><td class="px-4 py-3 font-medium">{{ programmeType.name }}</td><td class="px-4 py-3"><EmhareStatusPill :label="programmeType.status" :tone="statusTone(programmeType.status)" /></td><td class="px-4 py-3 text-right"><UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="ghost" @click="editReference('type', programmeType)" /></td></tr>
+                <tr v-if="!filteredProgrammeTypes.length"><td colspan="4" class="px-4 py-8 text-center text-muted">No programme types match this view.</td></tr>
               </tbody>
             </table>
           </div>
@@ -344,12 +364,12 @@ function statusTone(status: string) {
     </template>
   </UDashboardPanel>
 
-  <EmhareRecordDrawer v-model:open="referenceModalOpen" :title="`Create programme ${referenceKind}`" description="Add controlled reference data used by programme records.">
-    <template #body><form id="programme-reference-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="createReference"><UFormField label="Code" required><UInput v-model="referenceForm.code" class="w-full" /></UFormField><UFormField v-if="referenceKind === 'level'" label="Sort order" required><UInput v-model.number="referenceForm.sortOrder" type="number" min="1" class="w-full" /></UFormField><UFormField label="Name" required class="sm:col-span-2"><UInput v-model="referenceForm.name" class="w-full" /></UFormField></form></template>
-    <template #footer><UButton label="Cancel" color="neutral" variant="outline" @click="referenceModalOpen = false" /><UButton type="submit" form="programme-reference-form" :label="`Create ${referenceKind}`" :loading="saving" /></template>
+  <EmhareRecordDrawer v-model:open="referenceModalOpen" :title="`${referenceForm.id ? 'Edit' : 'Create'} programme ${referenceKind}`" description="Maintain controlled reference data used by programme records.">
+    <template #body><form id="programme-reference-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="saveReference"><UFormField label="Code" required><UInput v-model="referenceForm.code" class="w-full" :disabled="Boolean(referenceForm.id)" /></UFormField><UFormField v-if="referenceKind === 'level'" label="Sort order" required><UInput v-model.number="referenceForm.sortOrder" type="number" min="1" class="w-full" /></UFormField><UFormField label="Name" required class="sm:col-span-2"><UInput v-model="referenceForm.name" class="w-full" /></UFormField></form></template>
+    <template #footer><UButton label="Cancel" color="neutral" variant="outline" @click="referenceModalOpen = false" /><UButton type="submit" form="programme-reference-form" :label="referenceForm.id ? 'Save changes' : `Create ${referenceKind}`" :loading="saving" /></template>
   </EmhareRecordDrawer>
 
-  <EmhareRecordDrawer v-model:open="programmeModalOpen" :title="programmeForm.id ? 'Edit programme' : 'Create programme'" description="Create the stable programme identity; curriculum content is versioned separately.">
+  <EmhareRecordDrawer v-model:open="programmeModalOpen" presentation="page" :title="programmeForm.id ? 'Edit programme' : 'Create programme'" description="Create the stable programme identity; curriculum content is versioned separately.">
     <template #body>
       <form id="programme-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="saveProgramme">
         <UAlert v-if="programmeForm.id && programmeForm.status !== 'DRAFT'" color="info" variant="soft" icon="i-lucide-lock-keyhole" title="Operational identity locked" description="Owning academic unit and programme code cannot change after the programme leaves draft." class="sm:col-span-2" />

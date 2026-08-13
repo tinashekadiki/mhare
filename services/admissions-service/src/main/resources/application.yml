@@ -24,5 +24,10 @@ spring:
 emhare:
   messaging:
     integration-enabled: true
+  reference-numbers:
+    applicant:
+      prefix: ${APPLICANT_REFERENCE_PREFIX:A}
+      sequence-digits: ${APPLICANT_REFERENCE_SEQUENCE_DIGITS:6}
+      format: "{prefix}{sequence}"
   applicant-portal:
     public-url: ${APPLICANT_PORTAL_PUBLIC_URL:http://localhost:3001}

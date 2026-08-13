@@ -81,7 +81,7 @@ class FinanceBillingMigrationTest {
 
     private BillingFixture fixture(boolean approveRule) throws SQLException {
         UUID studentId=UUID.randomUUID();String studentNumber="R"+studentId.toString().substring(0,7);UUID accountId=UUID.randomUUID();
-        execute("INSERT INTO student_finance_accounts(id,account_number,student_id,student_number,user_id,source_offer_id,primary_email,base_currency_code,status,opened_at,created_at,updated_at,version) VALUES (?,?,?,?,?,?,?,'USD','ACTIVE',now(),now(),now(),0)",accountId,"SFA-"+studentId.toString().substring(0,8),studentId,studentNumber,UUID.randomUUID(),UUID.randomUUID(),studentNumber+"@example.test");
+        execute("INSERT INTO student_finance_accounts(id,account_number,student_id,student_number,user_id,source_offer_id,primary_email,base_currency_code,status,opened_at,created_at,updated_at,version) VALUES (?,?,?,?,?,?,?,'USD','ACTIVE',now(),now(),now(),0)",accountId,studentNumber,studentId,studentNumber,UUID.randomUUID(),UUID.randomUUID(),studentNumber+"@example.test");
         UUID preparer=UUID.randomUUID();UUID catalogueId=UUID.randomUUID();
         String feeCode="TUITION-"+catalogueId.toString().substring(0,8);execute("INSERT INTO finance_fee_catalogues(id,code,name,charge_type,receivable_account_code,revenue_account_code,base_currency_code,status,prepared_by_user_id,activated_by_user_id,activated_at,activation_reason,created_at,updated_at,version) VALUES (?,?,'Registration tuition','PROGRAMME','1100-AR','4100-TUITION','USD','ACTIVE',?,?,now(),'Accounts verified',now(),now(),0)",catalogueId,feeCode,preparer,UUID.randomUUID());
         UUID ruleId=UUID.randomUUID();

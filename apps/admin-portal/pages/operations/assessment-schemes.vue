@@ -417,6 +417,7 @@ async function approveScheme(offering: AssessmentOfferingSummary) {
   ></EmhareRecordDrawer>
   <EmhareRecordDrawer
     v-model:open="schemeModalOpen"
+    presentation="page"
     title="Create assessment scheme"
     description="Define one complete version whose component weights total exactly 100%"
     width="xl"

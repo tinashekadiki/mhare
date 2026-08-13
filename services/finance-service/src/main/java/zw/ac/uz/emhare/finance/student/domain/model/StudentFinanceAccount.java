@@ -31,16 +31,23 @@ public class StudentFinanceAccount extends AuditableEntity {
     }
 
     public StudentFinanceAccount(
-            String accountNumber, StudentFinanceAccountProvisioningRequestedEvent event, Instant openedAt) {
-        this.accountNumber = accountNumber;
+            StudentFinanceAccountProvisioningRequestedEvent event, Instant openedAt) {
+        this.accountNumber = requireRegistrationNumber(event.studentNumber());
         this.studentId = event.studentId();
-        this.studentNumber = event.studentNumber();
+        this.studentNumber = this.accountNumber;
         this.userId = event.userId();
         this.sourceOfferId = event.sourceOfferId();
         this.primaryEmail = event.primaryEmail();
         this.baseCurrencyCode = "USD";
         this.status = "ACTIVE";
         this.openedAt = openedAt;
+    }
+
+    private static String requireRegistrationNumber(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Student registration number is required for the finance account.");
+        }
+        return value.trim();
     }
 
     public UUID getStudentId() {

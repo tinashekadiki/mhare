@@ -476,6 +476,7 @@ function date(value: string) {
 
   <EmhareRecordDrawer
     v-model:open="modalOpen"
+    presentation="page"
     title="Prepare credit note"
     description="Reference exact immutable invoice lines. A different Finance operator must post the completed draft."
     ><template #body

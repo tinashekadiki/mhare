@@ -17,21 +17,21 @@ import java.util.List;
 
 public interface ApplicationRepository extends JpaRepository<Application, UUID>, JpaSpecificationExecutor<Application> {
     List<Application> findByApplicantUserId(UUID userId);
-    List<Application> findByAdmissionCycleId(UUID admissionCycleId);
+    List<Application> findByIntakeId(UUID intakeId);
 
-    @EntityGraph(attributePaths = {"admissionCycle", "applicationType"})
+    @EntityGraph(attributePaths = {"applicationType"})
     List<Application> findAllByApplicantIdInAndDeletedAtIsNullOrderByCreatedAtDesc(List<UUID> applicantIds);
 
-    @EntityGraph(attributePaths = {"admissionCycle", "applicationType"})
+    @EntityGraph(attributePaths = {"applicationType"})
     List<Application> findAllByApplicantIdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID applicantId);
 
     @Query("""
             SELECT a FROM Application a
-            WHERE a.admissionCycle.id = :admissionCycleId
+            WHERE a.intakeId = :intakeId
               AND a.applicant.nationalIdNumber = :nationalIdNumber
               AND a.deletedAt IS NULL
             """)
-    List<Application> findByAdmissionCycleIdAndApplicantNationalIdNumber(
-            @Param("admissionCycleId") UUID admissionCycleId,
+    List<Application> findByIntakeIdAndApplicantNationalIdNumber(
+            @Param("intakeId") UUID intakeId,
             @Param("nationalIdNumber") String nationalIdNumber);
 }

@@ -84,6 +84,15 @@ public class CoreIdentityService {
 
     @Transactional
     public CurrentUserProfile syncAuthenticatedUser(EmhareCurrentUser currentUser, String ipAddress, String userAgent) {
+        return syncAuthenticatedUser(currentUser, ipAddress, userAgent, null);
+    }
+
+    @Transactional
+    public CurrentUserProfile syncAuthenticatedUser(
+            EmhareCurrentUser currentUser,
+            String ipAddress,
+            String userAgent,
+            String identitySessionId) {
         if (currentUser.keycloakUserId() == null) {
             throw new IllegalArgumentException("Authenticated Keycloak user id is required.");
         }
@@ -101,14 +110,19 @@ public class CoreIdentityService {
                 currentUser.email(),
                 currentUser.displayName());
         platformUserRepository.save(user);
-        loginEventRepository.save(new LoginEvent(
-                user,
-                currentUser.keycloakUserId(),
-                currentUser.username(),
-                currentUser.email(),
-                ipAddress,
-                userAgent,
-                LoginOutcome.SUCCESS));
+        if (identitySessionId == null || identitySessionId.isBlank()
+                || !loginEventRepository.existsByKeycloakUserIdAndIdentitySessionIdAndDeletedAtIsNull(
+                        currentUser.keycloakUserId(), identitySessionId)) {
+            loginEventRepository.save(new LoginEvent(
+                    user,
+                    currentUser.keycloakUserId(),
+                    currentUser.username(),
+                    currentUser.email(),
+                    ipAddress,
+                    userAgent,
+                    identitySessionId,
+                    LoginOutcome.SUCCESS));
+        }
         assignDefaultRoleIfNeeded(user, currentUser);
         activateIfAccessProfileComplete(user, currentUser.realmRoles());
         return currentUserProfile(user.getId(), currentUser.realmRoles());

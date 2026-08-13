@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceService;
+import zw.ac.uz.emhare.admissions.application.AdmissionsRollingWorkflowService;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.ApplicationWorkspace;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.QualificationSittingSummary;
 import zw.ac.uz.emhare.admissions.application.command.CreateQualificationResultCommand;
@@ -54,14 +55,17 @@ public class ApplicantApplicationWorkspaceController {
     private final ApplicantApplicationWorkspaceService workspaceService;
     private final CoreIdentityClient coreIdentityClient;
     private final ApplicantRegistrationIdentityResolver applicantRegistrationIdentityResolver;
+    private final AdmissionsRollingWorkflowService rollingWorkflowService;
 
     public ApplicantApplicationWorkspaceController(
             ApplicantApplicationWorkspaceService workspaceService,
             CoreIdentityClient coreIdentityClient,
-            ApplicantRegistrationIdentityResolver applicantRegistrationIdentityResolver) {
+            ApplicantRegistrationIdentityResolver applicantRegistrationIdentityResolver,
+            AdmissionsRollingWorkflowService rollingWorkflowService) {
         this.workspaceService = workspaceService;
         this.coreIdentityClient = coreIdentityClient;
         this.applicantRegistrationIdentityResolver = applicantRegistrationIdentityResolver;
+        this.rollingWorkflowService = rollingWorkflowService;
     }
 
     @GetMapping("/applications/{applicationId}/workspace")
@@ -292,8 +296,12 @@ public class ApplicantApplicationWorkspaceController {
     public QualificationSittingSummary recordQualificationDecision(
             Authentication authentication, @PathVariable("applicationId") UUID applicationId,
             @PathVariable("sittingId") UUID sittingId, @Valid @RequestBody QualificationDecisionRequest request) {
-        return workspaceService.recordQualificationDecision(applicationId, sittingId, currentUser(authentication).user().id(),
+        UUID actorUserId = currentUser(authentication).user().id();
+        QualificationSittingSummary result = workspaceService.recordQualificationDecision(
+                applicationId, sittingId, actorUserId,
                 request.decision(), request.reason(), request.expectedVersion());
+        rollingWorkflowService.advance(applicationId, actorUserId);
+        return result;
     }
 
     @PutMapping("/applications/{applicationId}/programme-choices/staff-amendment")

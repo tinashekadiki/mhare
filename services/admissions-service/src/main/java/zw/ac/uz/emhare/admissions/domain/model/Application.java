@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.hibernate.envers.Audited;
@@ -22,9 +23,27 @@ import zw.ac.uz.emhare.common.persistence.AuditableEntity;
 @Table(name = "applications", uniqueConstraints = @UniqueConstraint(name = "uk_applications_application_number", columnNames = "application_number"))
 public class Application extends AuditableEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "admission_cycle_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admission_cycle_id")
     private AdmissionCycle admissionCycle;
+
+    @Column(name = "intake_id", nullable = false)
+    private UUID intakeId;
+
+    @Column(name = "intake_code", nullable = false, length = 50)
+    private String intakeCode;
+
+    @Column(name = "intake_name", nullable = false, length = 180)
+    private String intakeName;
+
+    @Column(name = "intake_starts_on", nullable = false)
+    private LocalDate intakeStartsOn;
+
+    @Column(name = "intake_ends_on", nullable = false)
+    private LocalDate intakeEndsOn;
+
+    @Column(name = "maximum_programme_choices", nullable = false)
+    private int maximumProgrammeChoices;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "applicant_id", nullable = false)
@@ -99,6 +118,43 @@ public class Application extends AuditableEntity {
             String applicationNumber,
             boolean paymentRequired) {
         this.admissionCycle = admissionCycle;
+        this.intakeId = admissionCycle.getIntakeId();
+        this.intakeCode = admissionCycle.getCode();
+        this.intakeName = admissionCycle.getName();
+        this.intakeStartsOn = admissionCycle.getOpensAt().atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        this.intakeEndsOn = admissionCycle.getClosesAt().atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        this.maximumProgrammeChoices = admissionCycle.getMaximumProgrammeChoices();
+        this.applicant = applicant;
+        this.applicationType = applicationType;
+        this.applicationNumber = applicationNumber;
+        this.paymentRequired = paymentRequired;
+        this.status = ApplicationStatus.DRAFT;
+        this.sectionsComplete = false;
+    }
+
+    public Application(
+            UUID intakeId,
+            String intakeCode,
+            String intakeName,
+            LocalDate intakeStartsOn,
+            LocalDate intakeEndsOn,
+            int maximumProgrammeChoices,
+            Applicant applicant,
+            ApplicationType applicationType,
+            String applicationNumber,
+            boolean paymentRequired) {
+        if (intakeId == null || intakeCode == null || intakeCode.isBlank()
+                || intakeName == null || intakeName.isBlank()
+                || intakeStartsOn == null || intakeEndsOn == null
+                || intakeEndsOn.isBefore(intakeStartsOn) || maximumProgrammeChoices < 1) {
+            throw new IllegalArgumentException("A valid Academic Setup intake snapshot is required.");
+        }
+        this.intakeId = intakeId;
+        this.intakeCode = intakeCode.trim();
+        this.intakeName = intakeName.trim();
+        this.intakeStartsOn = intakeStartsOn;
+        this.intakeEndsOn = intakeEndsOn;
+        this.maximumProgrammeChoices = maximumProgrammeChoices;
         this.applicant = applicant;
         this.applicationType = applicationType;
         this.applicationNumber = applicationNumber;
@@ -328,6 +384,13 @@ public class Application extends AuditableEntity {
     public AdmissionCycle getAdmissionCycle() {
         return admissionCycle;
     }
+
+    public UUID getIntakeId() { return intakeId; }
+    public String getIntakeCode() { return intakeCode; }
+    public String getIntakeName() { return intakeName; }
+    public LocalDate getIntakeStartsOn() { return intakeStartsOn; }
+    public LocalDate getIntakeEndsOn() { return intakeEndsOn; }
+    public int getMaximumProgrammeChoices() { return maximumProgrammeChoices; }
 
     public Applicant getApplicant() {
         return applicant;

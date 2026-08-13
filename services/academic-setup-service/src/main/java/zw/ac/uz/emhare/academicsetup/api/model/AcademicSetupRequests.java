@@ -34,6 +34,13 @@ public final class AcademicSetupRequests {
             boolean leafAllowed) {
     }
 
+    public record UpdateAcademicUnitType(
+            @NotBlank @Pattern(regexp = "[A-Za-z][A-Za-z0-9_-]*") @Size(max = 40) String code,
+            @NotBlank @Size(max = 120) String name,
+            boolean leafAllowed,
+            @Min(0) long expectedVersion) {
+    }
+
     public record CreateAcademicUnit(
             @NotNull UUID academicUnitTypeId,
             UUID parentId,
@@ -41,6 +48,13 @@ public final class AcademicSetupRequests {
             @NotBlank @Size(max = 180) String name,
             @Size(max = 50) String legacyFacultyCode,
             @Size(max = 50) String legacyDepartmentCode) {
+    }
+
+    public record UpdateAcademicUnit(
+            @NotBlank @Size(max = 180) String name,
+            @Size(max = 50) String legacyFacultyCode,
+            @Size(max = 50) String legacyDepartmentCode,
+            @Min(0) long expectedVersion) {
     }
 
     public record CreateAcademicYear(
@@ -149,9 +163,20 @@ public final class AcademicSetupRequests {
             @Min(1) int sortOrder) {
     }
 
+    public record UpdateProgrammeLevel(
+            @NotBlank @Size(max = 120) String name,
+            @Min(1) int sortOrder,
+            @Min(0) long expectedVersion) {
+    }
+
     public record CreateProgrammeType(
             @NotBlank @Pattern(regexp = "[A-Za-z][A-Za-z0-9_-]*") @Size(max = 40) String code,
             @NotBlank @Size(max = 120) String name) {
+    }
+
+    public record UpdateProgrammeType(
+            @NotBlank @Size(max = 120) String name,
+            @Min(0) long expectedVersion) {
     }
 
     public record CreateProgramme(
@@ -208,6 +233,17 @@ public final class AcademicSetupRequests {
             @NotNull @DecimalMin("0.01") @DecimalMax("9999.99") BigDecimal creditValue,
             @Min(1) @Max(100) int academicLevel,
             @Size(max = 50) String legacyCourseCode) {
+    }
+
+    public record UpdateAcademicModule(
+            @NotNull UUID owningAcademicUnitId,
+            @NotBlank @Pattern(regexp = "[A-Za-z0-9][A-Za-z0-9_-]*") @Size(max = 50) String code,
+            @NotBlank @Size(max = 200) String name,
+            @NotBlank @Size(max = 2000) String description,
+            @NotNull @DecimalMin("0.01") @DecimalMax("9999.99") BigDecimal creditValue,
+            @Min(1) @Max(100) int academicLevel,
+            @Size(max = 50) String legacyCourseCode,
+            @Min(0) long expectedVersion) {
     }
 
     public record AddCurriculumModule(

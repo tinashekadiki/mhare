@@ -73,6 +73,7 @@ public class AdmissionsRollingWorkflowService {
     private final ApplicantQualificationSittingRepository qualificationRepository;
     private final ApplicationClearanceRepository clearanceRepository;
     private final AdmissionsIntegrationOutboxService outboxService;
+    private final ApplicationDuplicateCheckService duplicateCheckService;
 
     public AdmissionsRollingWorkflowService(
             ApplicationRepository applicationRepository,
@@ -94,7 +95,8 @@ public class AdmissionsRollingWorkflowService {
             ApplicationSectionRepository sectionRepository,
             ApplicantQualificationSittingRepository qualificationRepository,
             ApplicationClearanceRepository clearanceRepository,
-            AdmissionsIntegrationOutboxService outboxService) {
+            AdmissionsIntegrationOutboxService outboxService,
+            ApplicationDuplicateCheckService duplicateCheckService) {
         this.applicationRepository = applicationRepository;
         this.choiceRepository = choiceRepository;
         this.requirementSetRepository = requirementSetRepository;
@@ -115,21 +117,26 @@ public class AdmissionsRollingWorkflowService {
         this.qualificationRepository = qualificationRepository;
         this.clearanceRepository = clearanceRepository;
         this.outboxService = outboxService;
+        this.duplicateCheckService = duplicateCheckService;
     }
 
     @Transactional
     public void advance(UUID applicationId, UUID actorUserId) {
         Application application = application(applicationId);
-        if (application.getStatus() == ApplicationStatus.SUBMITTED && readyForRollingProcessing(application)) {
-            ApplicationStatus previous = application.getStatus();
-            application.moveToUnderReview(actorUserId, "Application entered rolling admissions processing.");
-            if (clearanceRepository.findByApplicationIdAndOutcomeAndDeletedAtIsNull(
-                    applicationId, ApplicationClearanceOutcome.CONFIRMED).isEmpty()) {
-                clearanceRepository.save(new ApplicationClearance(application, actorUserId,
-                        "Submission, payment, sections, qualifications and documents cleared.", clock.instant()));
+        if (application.getStatus() == ApplicationStatus.SUBMITTED) {
+            ApplicationDuplicateCheckService.DuplicateCheckResult duplicateCheck = duplicateCheckService.check(application);
+            if (readyForRollingProcessing(application, duplicateCheck)) {
+                ApplicationStatus previous = application.getStatus();
+                application.moveToUnderReview(actorUserId, "Application entered rolling admissions processing.");
+                if (clearanceRepository.findByApplicationIdAndOutcomeAndDeletedAtIsNull(
+                        applicationId, ApplicationClearanceOutcome.CONFIRMED).isEmpty()) {
+                    clearanceRepository.save(new ApplicationClearance(application, actorUserId,
+                            "Submission, payment, sections, qualifications, documents and duplicate checks cleared.",
+                            duplicateCheck.summary(), clock.instant()));
+                }
+                recordStatus(application, previous, actorUserId);
+                outboxService.enqueueVerificationDecisionNotification(application);
             }
-            recordStatus(application, previous, actorUserId);
-            outboxService.enqueueVerificationDecisionNotification(application);
         }
         if (application.getStatus() == ApplicationStatus.UNDER_REVIEW
                 || application.getStatus() == ApplicationStatus.ELIGIBLE
@@ -139,7 +146,10 @@ public class AdmissionsRollingWorkflowService {
         }
     }
 
-    private boolean readyForRollingProcessing(Application application) {
+    private boolean readyForRollingProcessing(
+            Application application,
+            ApplicationDuplicateCheckService.DuplicateCheckResult duplicateCheck) {
+        if (!duplicateCheck.passed()) return false;
         if (!application.canEnterReview()) return false;
         if (!documentService.isReadyForReview(application)) return false;
         List<ApplicationSection> requiredSections = sectionRepository
@@ -205,6 +215,24 @@ public class AdmissionsRollingWorkflowService {
     }
 
     @Transactional
+    public void returnRecommendation(UUID applicationId, UUID choiceId, String reason, UUID actorUserId) {
+        Application application = application(applicationId);
+        choice(application, choiceId);
+        AcademicReview review = reviewRepository
+                .findByApplicationIdAndProgrammeChoiceIdAndDeletedAtIsNull(applicationId, choiceId)
+                .orElseThrow(() -> new IllegalStateException("Academic review was not found."));
+        AcademicRecommendation recommendation = recommendationRepository
+                .findByAcademicReviewIdAndReviewStatusAndDeletedAtIsNull(
+                        review.getId(), AcademicRecommendationReviewStatus.PENDING)
+                .orElseThrow(() -> new IllegalStateException("A pending academic recommendation was not found."));
+        String returnReason = required(reason);
+        recommendation.returnForReconsideration(actorUserId, returnReason, clock.instant());
+        review.returnForReconsideration();
+        recommendationRepository.save(recommendation);
+        reviewRepository.saveAndFlush(review);
+    }
+
+    @Transactional
     public AdmissionOfferSummary decide(UUID applicationId, UUID choiceId, String decisionCode,
             String reason, UUID actorUserId) {
         Application application = application(applicationId);
@@ -240,7 +268,7 @@ public class AdmissionsRollingWorkflowService {
             closeLowerChoices(application, choice);
             AdmissionOffer offer = offerRepository.saveAndFlush(new AdmissionOffer(
                     application, choice, savedDecision,
-                    identifierGenerator.nextOfferNumber(application.getAdmissionCycle())));
+                    identifierGenerator.nextOfferNumber(application.getIntakeCode())));
             offerStatusEventRepository.save(new OfferStatusEvent(
                     offer, null, OfferStatus.DRAFT, "Draft offer created from direct admission decision.",
                     actorUserId, clock.instant()));
@@ -254,6 +282,8 @@ public class AdmissionsRollingWorkflowService {
         } else {
             application.continueAfterChoiceRejection("Continuing with the next eligible programme choice.");
             createAcademicReview(next);
+            next.enterAcademicReview();
+            choiceRepository.saveAndFlush(next);
         }
         recordStatus(application, previousApplicationStatus, actorUserId);
         return null;
@@ -344,10 +374,10 @@ public class AdmissionsRollingWorkflowService {
             Application application, ApplicationProgrammeChoice choice) {
         LocalDate date = LocalDate.now(clock);
         return requirementSetRepository.findApprovedForRouteForUpdate(
-                        choice.getProgrammeId(), application.getApplicationType().getId(), application.getAdmissionCycle().getId())
+                        choice.getProgrammeId(), application.getApplicationType().getId(), application.getIntakeId())
                 .stream()
                 .filter(set -> set.isApprovedAndEffectiveFor(choice.getProgrammeId(),
-                        application.getApplicationType().getId(), application.getAdmissionCycle().getId(), date))
+                        application.getApplicationType().getId(), application.getIntakeId(), date))
                 .max(Comparator.comparing(AdmissionRequirementSet::getEffectiveFrom))
                 .orElse(null);
     }

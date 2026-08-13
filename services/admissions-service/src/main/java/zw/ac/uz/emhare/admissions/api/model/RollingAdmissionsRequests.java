@@ -19,6 +19,9 @@ public final class RollingAdmissionsRequests {
             @NotBlank String recommendation,
             @NotBlank @Size(min = 10, max = 1000) String reason) { }
 
+    public record RecommendationReturnRequest(
+            @NotBlank @Size(min = 10, max = 1000) String reason) { }
+
     public record AdmissionDecisionRequest(
             @NotBlank String decision,
             @NotBlank @Size(min = 10, max = 1000) String reason) { }

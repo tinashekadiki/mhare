@@ -24,13 +24,13 @@ public interface AdmissionRequirementSetRepository extends JpaRepository<Admissi
             from AdmissionRequirementSet requirementSet
             where requirementSet.programmeId = :programmeId
               and requirementSet.applicationType.id = :applicationTypeId
-              and ((:admissionCycleId is null and requirementSet.admissionCycle is null)
-                   or requirementSet.admissionCycle.id = :admissionCycleId)
+              and ((:intakeId is null and requirementSet.intakeId is null)
+                   or requirementSet.intakeId = :intakeId)
               and requirementSet.status = zw.ac.uz.emhare.admissions.domain.model.RequirementSetStatus.APPROVED
               and requirementSet.deletedAt is null
             """)
     List<AdmissionRequirementSet> findApprovedForRouteForUpdate(
             @Param("programmeId") UUID programmeId,
             @Param("applicationTypeId") UUID applicationTypeId,
-            @Param("admissionCycleId") UUID admissionCycleId);
+            @Param("intakeId") UUID intakeId);
 }

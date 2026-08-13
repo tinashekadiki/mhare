@@ -155,6 +155,22 @@ class StudentConversionMigrationTest {
     }
 
     @Test
+    void rejectsARegistrationNumberThatDiffersFromTheStudentNumber() throws SQLException {
+        ConversionFixture fixture = createConversionFixture();
+        UUID registrationId = UUID.randomUUID();
+        insertRegistration(fixture.studentId(), fixture, registrationId);
+
+        SQLException exception = assertThrows(
+                SQLException.class,
+                () -> execute(
+                        "UPDATE registration_sessions SET registration_number = ? WHERE id = ?",
+                        "REG-00000001",
+                        registrationId));
+
+        assertEquals("P0001", exception.getSQLState());
+    }
+
+    @Test
     void requiresApprovalEvidenceBeforeRegistrationCanBeConfirmed() throws SQLException {
         ConversionFixture fixture = createConversionFixture();
         UUID registrationId = UUID.randomUUID();
@@ -171,6 +187,7 @@ class StudentConversionMigrationTest {
 
     private ConversionFixture createConversionFixture() throws SQLException {
         UUID studentId = UUID.randomUUID();
+        String studentNumber = "R27" + studentId.toString().replace("-", "").substring(0, 4).toUpperCase() + "A";
         UUID offerId = UUID.randomUUID();
         UUID enrolmentId = UUID.randomUUID();
         UUID programmeVersionId = UUID.randomUUID();
@@ -184,7 +201,7 @@ class StudentConversionMigrationTest {
                     now(), now(), 0)
                 """,
                 studentId,
-                "STU-2027-" + studentId.toString().substring(0, 8),
+                studentNumber,
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "APL-" + studentId,
@@ -207,7 +224,7 @@ class StudentConversionMigrationTest {
                 UUID.randomUUID(),
                 programmeVersionId,
                 UUID.randomUUID());
-        return new ConversionFixture(studentId, offerId, enrolmentId, programmeVersionId);
+        return new ConversionFixture(studentId, studentNumber, offerId, enrolmentId, programmeVersionId);
     }
 
     private void insertRegistration(
@@ -227,7 +244,7 @@ class StudentConversionMigrationTest {
                     'NORMAL', 'DRAFT', 'Registration initiated', now(), now(), now(), 0)
                 """,
                 registrationId,
-                "REG-" + registrationId.toString().substring(0, 8).toUpperCase(),
+                enrolmentFixture.studentNumber(),
                 studentId,
                 enrolmentFixture.enrolmentId(),
                 UUID.randomUUID(),
@@ -264,6 +281,6 @@ class StudentConversionMigrationTest {
     }
 
     private record ConversionFixture(
-            UUID studentId, UUID offerId, UUID enrolmentId, UUID programmeVersionId) {
+            UUID studentId, String studentNumber, UUID offerId, UUID enrolmentId, UUID programmeVersionId) {
     }
 }

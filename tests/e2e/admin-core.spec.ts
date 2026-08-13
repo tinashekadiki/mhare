@@ -593,15 +593,33 @@ test.describe("Core Identity authentication and RBAC", () => {
     await loginWithKeycloak(page, username);
     await expect(
       page.getByRole("heading", { name: "Application types" }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
 
     const postgraduateRow = page
       .locator("[data-emhare-paginated-table]")
       .getByRole("row", { name: /POSTGRAD Postgraduate/ });
     await postgraduateRow.getByRole("button", { name: "Configure" }).click();
-    const routeConfigurationDrawer = page.getByRole("dialog", {
+    const routeConfigurationDrawer = page.getByRole("region", {
       name: "Configure Postgraduate",
     });
+    await expect(routeConfigurationDrawer).toHaveAttribute(
+      "data-emhare-form-presentation",
+      "page",
+    );
+    await expect(page.locator("#emhare-route-content")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    await expect(page.getByRole("button", { name: "Search" })).toBeVisible();
+    if ((page.viewportSize()?.width ?? 0) >= 1024) {
+      await expect(
+        page.getByRole("link", { name: "Applicant register" }),
+      ).toBeVisible();
+    } else {
+      await expect(
+        page.getByRole("button", { name: "Open sidebar" }),
+      ).toBeVisible();
+    }
     await expect(routeConfigurationDrawer).toContainText(
       "at least one active programme mapping is required",
     );
@@ -854,6 +872,11 @@ test.describe("Core Identity authentication and RBAC", () => {
       countryLookupValues.getByRole("button", { name: "Create country" }),
     ).toBeVisible();
 
+    await page.getByRole("button", { name: "Audit & Reports" }).click();
+    await expect(page.getByText("Audit activity · 24h", { exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Core activity" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Login sessions" })).toBeVisible();
+
     let createdApplicationTypeRequest: Record<string, unknown> | null = null;
     const applicationTypeFixtures: Array<Record<string, unknown>> = [
       {
@@ -1048,62 +1071,43 @@ test.describe("Core Identity authentication and RBAC", () => {
       await page.keyboard.press("Escape");
     }
 
-    const documentRegisterFixture = Array.from({ length: 11 }, (_, index) => ({
+    const verificationCases = Array.from({ length: 11 }, (_, index) => ({
       applicationId: `77777777-7777-4777-8777-${String(index + 1).padStart(12, "0")}`,
       applicationNumber: `APP-2026-${String(index + 1).padStart(5, "0")}`,
+      applicantNumber: `APPLICANT-${String(index + 1).padStart(5, "0")}`,
       applicantName: `Applicant ${String(index + 1).padStart(2, "0")}`,
-      applicationStatus: "UNDER_REVIEW",
-      documents: {
-        applicationId: `77777777-7777-4777-8777-${String(index + 1).padStart(12, "0")}`,
-        applicationNumber: `APP-2026-${String(index + 1).padStart(5, "0")}`,
-        requiredDocumentsUploaded: true,
-        requiredDocumentsVerified: false,
-        missingRequirementCodes: [],
-        pendingRequirementCodes: ["NATIONAL_ID"],
-        rejectedRequirementCodes: [],
-        requirements: [],
-      },
+      intakeId,
+      intakeCode: "AUG-2026",
+      applicationTypeId: "88888888-8888-4888-8888-888888888888",
+      applicationTypeName: "Undergraduate",
+      programmeId: null,
+      programmeCode: null,
+      programmeName: null,
+      points: null,
+      paymentState: "NOT_REQUIRED",
+      stage: "VERIFICATION",
+      outcome: "SUBMITTED",
+      blockers: ["National ID document awaits verification."],
+      lastActivityAt: "2026-08-12T08:00:00Z",
     }));
-    await page.route(
-      `**/api/admissions/academic-units/${academicUnitId}/documents`,
-      (route) =>
-        route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(documentRegisterFixture),
-        }),
-    );
-    await page.route("**/api/admissions/applications", (route) =>
+    await page.route("**/api/admissions/work-items**", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(
-          documentRegisterFixture.map((entry) => ({
-            id: entry.applicationId,
-            applicationNumber: entry.applicationNumber,
-            applicantName: entry.applicantName,
-            intakeId,
-            intakeCode: "AUG-2026",
-            status: entry.applicationStatus,
-            programmeChoices: [],
-          })),
-        ),
+        body: JSON.stringify({
+          content: verificationCases,
+          page: 0,
+          size: 25,
+          totalElements: verificationCases.length,
+          totalPages: 1,
+        }),
       }),
     );
-    await page.goto("/operations/admissions-documents");
-    await expect(
-      page.getByRole("heading", { name: "Academic-unit document register" }),
-    ).toBeVisible();
-    const documentRegister = page.locator("[data-emhare-paginated-collection]");
-    await expect(
-      documentRegister.locator("[data-emhare-pagination]"),
-    ).toContainText("1–10 of 11 records · Page 1 of 2");
-    await expect(documentRegister.getByText("APP-2026-00001")).toBeVisible();
-    await expect(
-      documentRegister.getByText("APP-2026-00011"),
-    ).not.toBeVisible();
-    await documentRegister.getByRole("button", { name: "Page 2" }).click();
-    await expect(documentRegister.getByText("APP-2026-00011")).toBeVisible();
+    await page.goto("/operations/admissions?stage=verification");
+    await expect(page.getByRole("heading", { name: "Admissions" })).toBeVisible();
+    await expect(page.getByText("11 rolling applicant cases", { exact: true })).toBeVisible();
+    await expect(page.getByText("APP-2026-00001", { exact: true })).toBeVisible();
+    await expect(page.getByText("APP-2026-00011", { exact: true })).toBeVisible();
 
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
@@ -2667,6 +2671,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     };
     const requestedDocumentDispositions: string[] = [];
     const requestedOfferDocumentDispositions: string[] = [];
+    let returnedRecommendationReason = "";
 
     await page.route("**/api/admissions/applications", (route) =>
       route.fulfill({
@@ -2891,9 +2896,21 @@ test.describe("Core Identity authentication and RBAC", () => {
           publications: [],
           auditHistory: [],
           blockers: [],
-          availableActions: ["UPDATE_OFFER", "PUBLISH_AND_SEND"],
+          availableActions: [
+            "RETURN_ACADEMIC_RECOMMENDATION",
+            "UPDATE_OFFER",
+            "PUBLISH_AND_SEND",
+          ],
         }),
       }),
+    );
+    await page.route(
+      `**/api/admissions/applications/${applicationId}/choices/*/academic-recommendation/return`,
+      async (route) => {
+        const requestBody = route.request().postDataJSON() as { reason: string };
+        returnedRecommendationReason = requestBody.reason;
+        await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+      },
     );
     await page.route(
       `**/api/documents/uploads/${documentId}/download**`,
@@ -2968,6 +2985,14 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(
       page.getByText("Invitation sent", { exact: true }),
     ).toBeVisible();
+    await page.getByRole("button", { name: "Return to academic reviewer" }).click();
+    await page.locator("textarea.swal2-textarea").fill(
+      "Please reconsider the recommendation against the verified qualification evidence.",
+    );
+    await page.getByRole("button", { name: "Return to reviewer" }).click();
+    await expect.poll(() => returnedRecommendationReason).toContain(
+      "verified qualification evidence",
+    );
     const confidentialReference = page.getByTestId(
       "confidential-reference-response",
     );
@@ -3042,7 +3067,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     expect(pageErrors).toEqual([]);
   });
 
-  test("supports release, academic-unit recommendation, and Admissions approval as separate operations", async ({
+  test.skip("legacy batch workflow is retired by ADR-0014", async ({
     page,
   }, testInfo) => {
     const username = `codex.admissions-recommendation.${testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}@example.test`;
@@ -3219,7 +3244,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       .toContain(`/api/admissions/academic-reviews/${assignmentId}/review`);
   });
 
-  test("shows approved selections inside an offer batch before offer generation", async ({
+  test.skip("legacy offer batches are retired by ADR-0014", async ({
     page,
   }, testInfo) => {
     const username = `codex.admissions-offer-candidate.${testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}@example.test`;

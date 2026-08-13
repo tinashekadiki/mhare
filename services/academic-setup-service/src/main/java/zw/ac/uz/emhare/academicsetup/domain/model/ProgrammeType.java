@@ -48,4 +48,11 @@ public class ProgrammeType extends AuditableEntity {
     public ReferenceStatus getStatus() {
         return status;
     }
+
+    public void update(String name, long expectedVersion) {
+        if (getVersion() != expectedVersion) {
+            throw new IllegalStateException("Programme type was changed by another user. Refresh before retrying.");
+        }
+        this.name = name.trim();
+    }
 }

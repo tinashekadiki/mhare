@@ -659,6 +659,7 @@ function formatTime(value: string) {
   ></EmhareRecordDrawer>
   <EmhareRecordDrawer
     :open="modal === 'venue'"
+    presentation="page"
     title="Create certified exam venue"
     @update:open="
       (value) => {

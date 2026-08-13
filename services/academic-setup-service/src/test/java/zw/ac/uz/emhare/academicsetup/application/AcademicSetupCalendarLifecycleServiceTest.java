@@ -24,6 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +34,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import zw.ac.uz.emhare.academicsetup.domain.model.AcademicPeriod;
+import zw.ac.uz.emhare.academicsetup.domain.model.AcademicModule;
 import zw.ac.uz.emhare.academicsetup.domain.model.AcademicPeriodType;
 import zw.ac.uz.emhare.academicsetup.domain.model.AcademicUnit;
 import zw.ac.uz.emhare.academicsetup.domain.model.AcademicUnitType;
@@ -129,6 +131,210 @@ class AcademicSetupCalendarLifecycleServiceTest {
 
         assertThat(hierarchy.highestAcademicUnit().id()).isEqualTo(owner.getId());
         assertThat(hierarchy.ancestorPath()).hasSize(1);
+    }
+
+    @Test
+    void academicUnitTypeCanBeEditedWithOptimisticLocking() {
+        UUID unitTypeId = UUID.randomUUID();
+        AcademicUnitType unitType = new AcademicUnitType("SCHOOL", "School", 1, false);
+        ReflectionTestUtils.setField(unitType, "id", unitTypeId);
+        when(academicUnitTypeRepository.findById(unitTypeId)).thenReturn(Optional.of(unitType));
+        when(academicUnitTypeRepository.saveAndFlush(unitType)).thenReturn(unitType);
+
+        var result = academicSetupService.updateAcademicUnitType(
+                unitTypeId,
+                new AcademicSetupRequests.UpdateAcademicUnitType(
+                        "COLLEGE", "Academic College", true, 0));
+
+        assertThat(result.code()).isEqualTo("COLLEGE");
+        assertThat(result.name()).isEqualTo("Academic College");
+        assertThat(result.leafAllowed()).isTrue();
+        assertThat(result.levelOrder()).isEqualTo(1);
+    }
+
+    @Test
+    void academicUnitTypeCodeCannotChangeAfterUnitsReferenceIt() {
+        UUID unitTypeId = UUID.randomUUID();
+        AcademicUnitType unitType = new AcademicUnitType("FACULTY", "Faculty", 1, false);
+        ReflectionTestUtils.setField(unitType, "id", unitTypeId);
+        when(academicUnitTypeRepository.findById(unitTypeId)).thenReturn(Optional.of(unitType));
+        when(academicUnitRepository.existsByAcademicUnitTypeId(unitTypeId)).thenReturn(true);
+
+        assertThatThrownBy(() -> academicSetupService.updateAcademicUnitType(
+                unitTypeId,
+                new AcademicSetupRequests.UpdateAcademicUnitType(
+                        "COLLEGE", "College", false, 0)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Academic unit type code cannot change after academic units reference it.");
+
+        verify(academicUnitTypeRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void academicUnitTypeEditRejectsADuplicateCode() {
+        UUID unitTypeId = UUID.randomUUID();
+        AcademicUnitType unitType = new AcademicUnitType("SCHOOL", "School", 1, false);
+        ReflectionTestUtils.setField(unitType, "id", unitTypeId);
+        when(academicUnitTypeRepository.findById(unitTypeId)).thenReturn(Optional.of(unitType));
+        when(academicUnitTypeRepository.existsByCodeIgnoreCaseAndIdNot("COLLEGE", unitTypeId)).thenReturn(true);
+
+        assertThatThrownBy(() -> academicSetupService.updateAcademicUnitType(
+                unitTypeId,
+                new AcademicSetupRequests.UpdateAcademicUnitType(
+                        "COLLEGE", "College", false, 0)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Academic unit type code already exists.");
+
+        verify(academicUnitTypeRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void leafOwnershipCannotBeRemovedWhileProgrammesUseTheLevel() {
+        UUID unitTypeId = UUID.randomUUID();
+        AcademicUnitType unitType = new AcademicUnitType("SCHOOL", "School", 2, true);
+        ReflectionTestUtils.setField(unitType, "id", unitTypeId);
+        when(academicUnitTypeRepository.findById(unitTypeId)).thenReturn(Optional.of(unitType));
+        when(programmeRepository.existsByOwningAcademicUnitAcademicUnitTypeId(unitTypeId)).thenReturn(true);
+
+        assertThatThrownBy(() -> academicSetupService.updateAcademicUnitType(
+                unitTypeId,
+                new AcademicSetupRequests.UpdateAcademicUnitType(
+                        "SCHOOL", "School", false, 0)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Leaf ownership cannot be removed while units at this level own programmes or Modules.");
+
+        verify(academicUnitTypeRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void leafOwnershipCannotBeRemovedWhileModulesUseTheLevel() {
+        UUID unitTypeId = UUID.randomUUID();
+        AcademicUnitType unitType = new AcademicUnitType("SCHOOL", "School", 2, true);
+        ReflectionTestUtils.setField(unitType, "id", unitTypeId);
+        when(academicUnitTypeRepository.findById(unitTypeId)).thenReturn(Optional.of(unitType));
+        when(academicModuleRepository.existsByOwningAcademicUnitAcademicUnitTypeId(unitTypeId)).thenReturn(true);
+
+        assertThatThrownBy(() -> academicSetupService.updateAcademicUnitType(
+                unitTypeId,
+                new AcademicSetupRequests.UpdateAcademicUnitType(
+                        "SCHOOL", "School", false, 0)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Leaf ownership cannot be removed while units at this level own programmes or Modules.");
+
+        verify(academicUnitTypeRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void academicUnitTypeEditRejectsAStaleVersion() {
+        UUID unitTypeId = UUID.randomUUID();
+        AcademicUnitType unitType = new AcademicUnitType("SCHOOL", "School", 2, true);
+        ReflectionTestUtils.setField(unitType, "id", unitTypeId);
+        ReflectionTestUtils.setField(unitType, "version", 2L);
+        when(academicUnitTypeRepository.findById(unitTypeId)).thenReturn(Optional.of(unitType));
+
+        assertThatThrownBy(() -> academicSetupService.updateAcademicUnitType(
+                unitTypeId,
+                new AcademicSetupRequests.UpdateAcademicUnitType(
+                        "SCHOOL", "Updated School", true, 1)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Academic unit type was changed by another user. Refresh before retrying.");
+
+        verify(academicUnitTypeRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void academicUnitDescriptiveDetailsCanBeCorrected() {
+        UUID unitId = UUID.randomUUID();
+        AcademicUnitType unitType = new AcademicUnitType("FACULTY", "Faculty", 1, false);
+        ReflectionTestUtils.setField(unitType, "id", UUID.randomUUID());
+        AcademicUnit unit = new AcademicUnit(unitType, null, "SCI", "Science", "OLD-SCI", null);
+        ReflectionTestUtils.setField(unit, "id", unitId);
+        when(academicUnitRepository.findById(unitId)).thenReturn(Optional.of(unit));
+        when(academicUnitRepository.saveAndFlush(unit)).thenReturn(unit);
+
+        var result = academicSetupService.updateAcademicUnit(
+                unitId,
+                new AcademicSetupRequests.UpdateAcademicUnit(
+                        "Faculty of Science", "SCI", null, 0));
+
+        assertThat(result.name()).isEqualTo("Faculty of Science");
+        assertThat(result.code()).isEqualTo("SCI");
+        assertThat(result.legacyFacultyCode()).isEqualTo("SCI");
+    }
+
+    @Test
+    void draftModuleCanBeEditedBeforeActivation() {
+        UUID moduleId = UUID.randomUUID();
+        AcademicUnitType unitType = new AcademicUnitType("DEPARTMENT", "Department", 1, true);
+        ReflectionTestUtils.setField(unitType, "id", UUID.randomUUID());
+        AcademicUnit owner = new AcademicUnit(unitType, null, "CS", "Computer Science", null, null);
+        ReflectionTestUtils.setField(owner, "id", UUID.randomUUID());
+        AcademicModule module = new AcademicModule(
+                owner, "CSC101", "Communication Skills", "Original description",
+                new BigDecimal("10.00"), 1, null);
+        ReflectionTestUtils.setField(module, "id", moduleId);
+        when(academicModuleRepository.findById(moduleId)).thenReturn(Optional.of(module));
+        when(academicUnitRepository.findById(owner.getId())).thenReturn(Optional.of(owner));
+        when(academicModuleRepository.saveAndFlush(module)).thenReturn(module);
+
+        var result = academicSetupService.updateAcademicModule(
+                moduleId,
+                new AcademicSetupRequests.UpdateAcademicModule(
+                        owner.getId(), "CSC102", "Professional Communication", "Updated description",
+                        new BigDecimal("12.00"), 2, "LEG-CSC102", 0));
+
+        assertThat(result.code()).isEqualTo("CSC102");
+        assertThat(result.name()).isEqualTo("Professional Communication");
+        assertThat(result.creditValue()).isEqualByComparingTo("12.00");
+        assertThat(result.academicLevel()).isEqualTo(2);
+    }
+
+    @Test
+    void activeModuleRejectsIdentityChanges() {
+        UUID moduleId = UUID.randomUUID();
+        AcademicUnitType unitType = new AcademicUnitType("DEPARTMENT", "Department", 1, true);
+        ReflectionTestUtils.setField(unitType, "id", UUID.randomUUID());
+        AcademicUnit owner = new AcademicUnit(unitType, null, "CS", "Computer Science", null, null);
+        ReflectionTestUtils.setField(owner, "id", UUID.randomUUID());
+        AcademicModule module = new AcademicModule(
+                owner, "CSC101", "Communication Skills", "Original description",
+                new BigDecimal("10.00"), 1, null);
+        ReflectionTestUtils.setField(module, "id", moduleId);
+        module.activate(0);
+        when(academicModuleRepository.findById(moduleId)).thenReturn(Optional.of(module));
+        when(academicUnitRepository.findById(owner.getId())).thenReturn(Optional.of(owner));
+
+        assertThatThrownBy(() -> academicSetupService.updateAcademicModule(
+                moduleId,
+                new AcademicSetupRequests.UpdateAcademicModule(
+                        owner.getId(), "CSC102", "Professional Communication", "Updated description",
+                        new BigDecimal("12.00"), 2, null, 0)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("An active Module's code and owning academic unit cannot be changed.");
+    }
+
+    @Test
+    void programmeLevelAndTypeNamesCanBeCorrected() {
+        UUID levelId = UUID.randomUUID();
+        ProgrammeLevel level = new ProgrammeLevel("UNDERGRAD", "Undergraduate", 1);
+        ReflectionTestUtils.setField(level, "id", levelId);
+        when(programmeLevelRepository.findById(levelId)).thenReturn(Optional.of(level));
+        when(programmeLevelRepository.saveAndFlush(level)).thenReturn(level);
+
+        UUID typeId = UUID.randomUUID();
+        ProgrammeType type = new ProgrammeType("DEGREE", "Degree");
+        ReflectionTestUtils.setField(type, "id", typeId);
+        when(programmeTypeRepository.findById(typeId)).thenReturn(Optional.of(type));
+        when(programmeTypeRepository.saveAndFlush(type)).thenReturn(type);
+
+        var updatedLevel = academicSetupService.updateProgrammeLevel(
+                levelId, new AcademicSetupRequests.UpdateProgrammeLevel("Bachelor level", 2, 0));
+        var updatedType = academicSetupService.updateProgrammeType(
+                typeId, new AcademicSetupRequests.UpdateProgrammeType("Academic degree", 0));
+
+        assertThat(updatedLevel.name()).isEqualTo("Bachelor level");
+        assertThat(updatedLevel.sortOrder()).isEqualTo(2);
+        assertThat(updatedType.name()).isEqualTo("Academic degree");
     }
 
     @Test

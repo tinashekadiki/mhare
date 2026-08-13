@@ -56,4 +56,12 @@ public class ProgrammeLevel extends AuditableEntity {
     public ReferenceStatus getStatus() {
         return status;
     }
+
+    public void update(String name, int sortOrder, long expectedVersion) {
+        if (getVersion() != expectedVersion) {
+            throw new IllegalStateException("Programme level was changed by another user. Refresh before retrying.");
+        }
+        this.name = name.trim();
+        this.sortOrder = sortOrder;
+    }
 }

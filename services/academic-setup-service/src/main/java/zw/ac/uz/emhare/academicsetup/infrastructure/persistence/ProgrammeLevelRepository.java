@@ -13,4 +13,5 @@ public interface ProgrammeLevelRepository extends JpaRepository<ProgrammeLevel, 
     List<ProgrammeLevel> findAllByOrderBySortOrderAsc();
     boolean existsByCodeIgnoreCase(String code);
     boolean existsBySortOrder(int sortOrder);
+    boolean existsBySortOrderAndIdNot(int sortOrder, UUID id);
 }

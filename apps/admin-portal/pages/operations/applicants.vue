@@ -363,6 +363,7 @@ function applicationStatusTone(status: string) {
 
         <EmhareRecordDrawer
           v-model:open="drawerOpen"
+          presentation="page"
           :title="drawerTitle"
           :description="drawerDescription"
           submit-label="Save changes"

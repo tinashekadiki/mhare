@@ -4,7 +4,6 @@ import zw.ac.uz.emhare.finance.student.domain.model.StudentFinanceAccount;
 import zw.ac.uz.emhare.finance.student.infrastructure.persistence.StudentFinanceAccountRepository;
 
 import java.time.Clock;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import zw.ac.uz.emhare.common.messaging.StudentFinanceAccountProvisioningRequestedEvent;
@@ -13,13 +12,11 @@ import zw.ac.uz.emhare.common.messaging.StudentFinanceAccountProvisioningRequest
 @Service
 public class StudentFinanceAccountService {
     private final StudentFinanceAccountRepository repository;
-    private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
 
     public StudentFinanceAccountService(
-            StudentFinanceAccountRepository repository, JdbcTemplate jdbcTemplate, Clock clock) {
+            StudentFinanceAccountRepository repository, Clock clock) {
         this.repository = repository;
-        this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
     }
 
@@ -36,15 +33,6 @@ public class StudentFinanceAccountService {
                     return existing;
                 })
                 .orElseGet(() -> repository.saveAndFlush(
-                        new StudentFinanceAccount(nextAccountNumber(), event, clock.instant())));
-    }
-
-    private String nextAccountNumber() {
-        Long sequence = jdbcTemplate.queryForObject(
-                "SELECT nextval('student_finance_account_number_sequence')", Long.class);
-        if (sequence == null) {
-            throw new IllegalStateException("Finance account sequence did not return a value.");
-        }
-        return "SFA-%09d".formatted(sequence);
+                        new StudentFinanceAccount(event, clock.instant())));
     }
 }

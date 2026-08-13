@@ -932,9 +932,9 @@ public class ApplicantApplicationWorkspaceService {
         if (requestedChoices == null || requestedChoices.isEmpty()) {
             throw new IllegalArgumentException("At least one programme choice is required.");
         }
-        if (requestedChoices.size() > application.getAdmissionCycle().getMaximumProgrammeChoices()) {
+        if (requestedChoices.size() > application.getMaximumProgrammeChoices()) {
             throw new IllegalArgumentException("This intake allows a maximum of "
-                    + application.getAdmissionCycle().getMaximumProgrammeChoices() + " programme choices.");
+                    + application.getMaximumProgrammeChoices() + " programme choices.");
         }
         List<UUID> programmeIds = requestedChoices.stream().map(ProgrammeChoiceSelection::programmeId).toList();
         if (new LinkedHashSet<>(programmeIds).size() != programmeIds.size()) {

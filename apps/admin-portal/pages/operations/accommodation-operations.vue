@@ -1004,6 +1004,7 @@ function tone(status: string) {
   </UDashboardPanel>
 
   <EmhareRecordDrawer
+    presentation="page"
     v-model:open="drawerOpen"
     :title="drawerTitle"
     :description="

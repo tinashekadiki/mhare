@@ -279,7 +279,7 @@ public class AdmissionsIntegrationOutboxService {
                         requirementCode,
                         rejectionReason,
                         verifierUserId,
-                        application.getAdmissionCycle().getClosesAt());
+                        application.getIntakeEndsOn().plusDays(1).atStartOfDay(clock.getZone()).minusNanos(1).toInstant());
         outboxEventRepository.save(new AdmissionsOutboxEvent(
                 eventId,
                 EmhareMessagingTopology.MISSING_APPLICATION_DOCUMENT_WORKFLOW_REQUESTED_EVENT,

@@ -132,7 +132,7 @@ public class AdmissionsApplicantService {
                 applications.size(),
                 latestApplication == null ? null : latestApplication.getApplicationNumber(),
                 latestApplication == null ? null : latestApplication.getStatusCode(),
-                latestApplication == null ? null : latestApplication.getAdmissionCycle().getCode(),
+                latestApplication == null ? null : latestApplication.getIntakeCode(),
                 applicant.getUpdatedAt(),
                 applicant.getVersion());
     }

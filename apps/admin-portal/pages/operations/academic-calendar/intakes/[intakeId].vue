@@ -44,7 +44,6 @@ type ApplicationRouteConfiguration = {
 type IntakeRouteSetup = {
   applicationType: AdmissionsApplicationTypeSummary
   configuration: ApplicationRouteConfiguration
-  programmeIds: string[]
   feeMode: 'FEE_STRUCTURE' | 'FEE_FREE'
   feeStructureId: string
 }
@@ -118,7 +117,6 @@ const programmesCoveredByIntake = computed<ProgrammeSummary[]>(() => {
   return programmes.value.filter(programme =>
     programme.status === 'ACTIVE' && intakeForm.programmeLevelIds.includes(programme.programmeLevelId))
 })
-const selectedProgrammeIds = computed(() => new Set(programmesCoveredByIntake.value.map(programme => programme.id)))
 const activeApplicationFeeItems = computed(() => applicationFeeStructures.value
   .filter(structure => structure.feeContext === 'APPLICATION' && structure.status === 'ACTIVE')
   .map(structure => ({
@@ -126,11 +124,6 @@ const activeApplicationFeeItems = computed(() => applicationFeeStructures.value
     value: structure.id,
     description: `${structure.programmeLevelCode}${structure.applicantCategoryCode ? ` · ${structure.applicantCategoryCode}` : ''}`
   })))
-const intakeProgrammeItems = computed(() => programmesCoveredByIntake.value.map(programme => ({
-  label: `${programme.code} · ${programme.name}`,
-  value: programme.id,
-  description: programme.programmeLevelName
-})))
 const feePolicyItems = [
   { label: 'Use application fee', value: 'FEE_STRUCTURE' },
   { label: 'Fee-free applications', value: 'FEE_FREE' }
@@ -158,9 +151,9 @@ const routeConfigurationIssue = computed(() => {
   if (openingConfigurationError.value) return openingConfigurationError.value
   if (!programmesCoveredByIntake.value.length) return 'Select at least one active Programme for this intake.'
   const unassignedProgramme = programmesCoveredByIntake.value.find(programme =>
-    !intakeRouteSetups.value.some(applicationRoute => applicationRoute.programmeIds.includes(programme.id)))
-  if (unassignedProgramme) return `Assign ${unassignedProgramme.code} to at least one application route.`
-  for (const applicationRoute of intakeRouteSetups.value.filter(candidate => candidate.programmeIds.length)) {
+    !intakeRouteSetups.value.some(applicationRoute => routeProgrammes(applicationRoute).some(routeProgramme => routeProgramme.id === programme.id)))
+  if (unassignedProgramme) return `${unassignedProgramme.code} has no application route. Configure its Programme mapping in Application Types before continuing.`
+  for (const applicationRoute of assignedRoutes.value) {
     if (applicationRoute.feeMode === 'FEE_STRUCTURE' && !applicationRoute.feeStructureId) {
       return `Select an application fee or record ${applicationRoute.applicationType.code} as fee-free.`
     }
@@ -194,7 +187,7 @@ const setupSteps = computed(() => [
   { number: 4, label: 'Programme quotas', description: 'Planning capacity', complete: !quotaIssue.value },
   { number: 5, label: 'Review and open', description: 'Audit and publish', complete: !openingIssue.value }
 ])
-const assignedRoutes = computed(() => intakeRouteSetups.value.filter(applicationRoute => applicationRoute.programmeIds.length))
+const assignedRoutes = computed(() => intakeRouteSetups.value.filter(applicationRoute => routeProgrammes(applicationRoute).length))
 const planningCapacity = computed(() => programmeQuotaSetups.value.reduce((total, quota) => total + (quota.capacity || 0), 0))
 const currentStepIssue = computed(() => {
   if (setupStep.value === 1) return detailsIssue.value
@@ -212,10 +205,6 @@ watch(() => intakeForm.programmeLevelIds.slice(), (selectedProgrammeLevelIds) =>
 })
 
 watch(programmesCoveredByIntake, (coveredProgrammes) => {
-  const coveredIds = new Set(coveredProgrammes.map(programme => programme.id))
-  intakeRouteSetups.value.forEach(applicationRoute => {
-    applicationRoute.programmeIds = applicationRoute.programmeIds.filter(programmeId => coveredIds.has(programmeId))
-  })
   const existingQuotaByProgrammeId = new Map(programmeQuotaSetups.value.map(quota => [quota.programmeId, quota]))
   programmeQuotaSetups.value = coveredProgrammes.map(programme => existingQuotaByProgrammeId.get(programme.id) ?? {
     id: null,
@@ -229,6 +218,11 @@ watch(programmesCoveredByIntake, (coveredProgrammes) => {
 })
 
 onMounted(loadWorkspace)
+
+function routeProgrammes(applicationRoute: IntakeRouteSetup) {
+  const mappedProgrammeIds = new Set(applicationRoute.configuration.programmes.map(programme => programme.programmeId))
+  return programmesCoveredByIntake.value.filter(programme => mappedProgrammeIds.has(programme.id))
+}
 
 async function loadWorkspace() {
   loadingWorkspace.value = true
@@ -295,9 +289,6 @@ async function loadAdmissionsOpeningConfiguration(intakeId: string | null) {
       return {
         applicationType,
         configuration,
-        programmeIds: configuration.programmes
-          .map(programme => programme.programmeId)
-          .filter(programmeId => selectedProgrammeIds.value.has(programmeId)),
         feeMode: applicationType.financeFeeStructureId
           ? 'FEE_STRUCTURE'
           : configuration.feePolicyStatus === 'FEE_FREE' ? 'FEE_FREE' : 'FEE_STRUCTURE',
@@ -336,7 +327,6 @@ function continueSetup() {
 }
 
 async function configureApplicationRoutes(activateRoutes: boolean) {
-  const programmesById = new Map(programmes.value.map(programme => [programme.id, programme]))
   for (const applicationRoute of assignedRoutes.value) {
     let expectedVersion = applicationRoute.configuration.version
     if (applicationRoute.feeMode === 'FEE_STRUCTURE') {
@@ -364,23 +354,12 @@ async function configureApplicationRoutes(activateRoutes: boolean) {
       }
     }
 
-    const mappingsByProgrammeId = new Map(
-      applicationRoute.configuration.programmes.map(programme => [programme.programmeId, programme]))
-    applicationRoute.programmeIds.forEach(programmeId => {
-      const programme = programmesById.get(programmeId)
-      if (!programme) throw new Error('A selected Programme is no longer available in Academic Setup.')
-      mappingsByProgrammeId.set(programmeId, {
-        programmeId,
-        programmeCode: programme.code,
-        programmeName: programme.name
-      })
-    })
     applicationRoute.configuration = await api.request<ApplicationRouteConfiguration>(
       `/api/admissions/application-types/${applicationRoute.applicationType.id}/route-configuration`,
       {
         method: 'PUT',
         body: {
-          programmes: [...mappingsByProgrammeId.values()],
+          programmes: applicationRoute.configuration.programmes,
           sections: applicationRoute.configuration.sections,
           documents: applicationRoute.configuration.documents,
           feeFree: applicationRoute.feeMode === 'FEE_FREE',
@@ -502,7 +481,7 @@ function formatDate(value: string) {
         <UButton label="Return to academic calendar" icon="i-lucide-arrow-left" class="mt-4" to="/operations/academic-calendar" />
       </div>
 
-      <div v-else class="min-h-full bg-[radial-gradient(circle_at_top_right,rgba(32,116,58,0.08),transparent_34%)] p-4 sm:p-6 lg:p-8">
+      <div v-else class="min-h-full bg-[radial-gradient(circle_at_top_right,rgba(32,116,58,0.08),transparent_34%)] p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8 lg:pb-28">
         <div class="mx-auto max-w-[96rem] space-y-6">
           <header class="relative overflow-hidden rounded-2xl bg-[#0b3d24] px-6 py-7 text-white shadow-sm sm:px-8 lg:px-10">
             <div class="absolute inset-y-0 right-0 hidden w-[34rem] opacity-20 lg:block" aria-hidden="true">
@@ -588,7 +567,7 @@ function formatDate(value: string) {
                         : setupStep === 2
                           ? 'Choose Programme eligibility'
                           : setupStep === 3
-                            ? 'Assign routes and application fees'
+                            ? 'Confirm routes and application fees'
                             : setupStep === 4
                               ? 'Set Programme planning quotas'
                               : 'Review and open applications' }}
@@ -647,9 +626,9 @@ function formatDate(value: string) {
                   <UAlert v-if="openingConfigurationLoading" color="info" variant="soft" icon="i-lucide-loader-circle" title="Loading admissions configuration" description="Checking application routes and active Finance fee structures." />
                   <UAlert v-else-if="openingConfigurationError" color="error" variant="soft" icon="i-lucide-circle-alert" title="Admissions configuration unavailable" :description="openingConfigurationError" />
                   <template v-else>
-                    <UAlert color="primary" variant="soft" icon="i-lucide-route" title="Assign every Programme to an application route" description="A Programme may appear in more than one route. Application fees apply to the route across intakes." />
+                    <UAlert color="primary" variant="soft" icon="i-lucide-route" title="Confirm route coverage and application fees" description="Programme eligibility was selected in the previous step. Route coverage is managed centrally in Application Types and is shown here for confirmation only." />
                     <div class="grid gap-5 2xl:grid-cols-2">
-                      <section v-for="applicationRoute in intakeRouteSetups" :key="applicationRoute.applicationType.id" class="rounded-xl border border-muted bg-default p-5 sm:p-6">
+                      <section v-for="applicationRoute in assignedRoutes" :key="applicationRoute.applicationType.id" class="rounded-xl border border-muted bg-default p-5 sm:p-6">
                         <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <div class="flex items-center gap-2">
@@ -658,12 +637,21 @@ function formatDate(value: string) {
                             </div>
                             <h3 class="mt-2 text-lg font-semibold text-highlighted">{{ applicationRoute.applicationType.name }}</h3>
                           </div>
-                          <UBadge :label="`${applicationRoute.programmeIds.length} Programme${applicationRoute.programmeIds.length === 1 ? '' : 's'}`" color="primary" variant="soft" />
+                          <UBadge :label="`${routeProgrammes(applicationRoute).length} Programme${routeProgrammes(applicationRoute).length === 1 ? '' : 's'}`" color="primary" variant="soft" />
                         </div>
                         <div class="space-y-4">
-                          <UFormField label="Programmes in this route" description="Select from the Programmes included in this intake.">
-                            <USelectMenu v-model="applicationRoute.programmeIds" :items="intakeProgrammeItems" value-key="value" label-key="label" multiple :aria-label="`${applicationRoute.applicationType.code} Programmes`" placeholder="Assign Programmes" class="w-full" />
-                          </UFormField>
+                          <div class="rounded-lg border border-muted bg-elevated/60 p-4" data-testid="route-programme-coverage">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <p class="text-sm font-semibold text-highlighted">Programmes covered in this intake</p>
+                                <p class="mt-1 text-xs text-muted">Managed in Application Types</p>
+                              </div>
+                              <UButton label="Open Application Types" icon="i-lucide-external-link" color="neutral" variant="ghost" size="xs" to="/operations/application-types" />
+                            </div>
+                            <div v-if="routeProgrammes(applicationRoute).length" class="mt-3 flex flex-wrap gap-2">
+                              <UBadge v-for="programme in routeProgrammes(applicationRoute)" :key="programme.id" :label="`${programme.code} · ${programme.name}`" color="neutral" variant="soft" />
+                            </div>
+                          </div>
                           <div class="grid gap-4 sm:grid-cols-2">
                             <UFormField label="Application fee policy">
                               <USelect v-model="applicationRoute.feeMode" :items="feePolicyItems" value-key="value" :aria-label="`${applicationRoute.applicationType.code} fee policy`" class="w-full" />
@@ -675,7 +663,7 @@ function formatDate(value: string) {
                           </div>
                         </div>
                         <UAlert
-                          v-if="applicationRoute.programmeIds.length && applicationRoute.configuration.readinessBlockers.some(blocker => !blocker.includes('programme mapping') && !blocker.includes('fee structure') && !blocker.includes('fee-free'))"
+                          v-if="routeProgrammes(applicationRoute).length && applicationRoute.configuration.readinessBlockers.some(blocker => !blocker.includes('programme mapping') && !blocker.includes('fee structure') && !blocker.includes('fee-free'))"
                           class="mt-4"
                           color="warning"
                           variant="soft"
@@ -753,17 +741,26 @@ function formatDate(value: string) {
                       variant="soft"
                       :icon="openingIssue ? 'i-lucide-circle-alert' : 'i-lucide-badge-check'"
                       :title="openingIssue ? 'Opening requirement outstanding' : 'Ready to open applications'"
-                      :description="openingIssue || 'The intake, route mappings, application fees, and planning quotas will be saved before applications open.'"
+                      :description="openingIssue || 'The intake, application route coverage, fees, and planning quotas will be confirmed before applications open.'"
                     />
                   </section>
                 </div>
               </form>
 
-              <footer class="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-muted bg-default/95 px-5 py-4 backdrop-blur sm:px-7 lg:px-9">
+              <footer data-testid="intake-wizard-actions" class="fixed bottom-4 left-1/2 z-40 flex w-[min(calc(100vw-2rem),56rem)] -translate-x-1/2 flex-wrap items-center justify-between gap-3 rounded-xl border border-muted bg-default/95 px-4 py-3 shadow-xl backdrop-blur sm:px-5">
                 <UButton label="Cancel" color="neutral" variant="ghost" to="/operations/academic-calendar" />
                 <div class="ml-auto flex flex-wrap items-center gap-2">
                   <UButton v-if="setupStep > 1" label="Back" icon="i-lucide-arrow-left" color="neutral" variant="outline" @click="setupStep = (setupStep - 1) as 1 | 2 | 3 | 4" />
-                  <UButton v-if="setupStep < 5" :label="setupStep === 1 ? 'Continue to eligibility' : setupStep === 2 ? 'Continue to routes and fees' : setupStep === 3 ? 'Continue to Programme quotas' : 'Review admissions opening'" trailing-icon="i-lucide-arrow-right" :disabled="Boolean(currentStepIssue)" @click="continueSetup" />
+                  <EmhareGuidedActionButton
+                    v-if="setupStep < 5"
+                    :label="setupStep === 1 ? 'Continue to eligibility' : setupStep === 2 ? 'Continue to routes and fees' : setupStep === 3 ? 'Continue to Programme quotas' : 'Review admissions opening'"
+                    trailing-icon="i-lucide-arrow-right"
+                    guidance-title="Complete this stage before continuing"
+                    :guidance-instructions="currentStepIssue ? [currentStepIssue] : []"
+                    :guidance-action-label="setupStep === 3 && routeConfigurationIssue.includes('Application Types') ? 'Open Application Types' : undefined"
+                    @guidance-action="navigateTo('/operations/application-types')"
+                    @click="continueSetup"
+                  />
                   <template v-else>
                     <UButton label="Save draft" icon="i-lucide-save" color="neutral" variant="outline" :loading="saving" @click="saveIntake(false)" />
                     <UButton :label="intakeForm.id ? 'Save and open intake' : 'Create and open intake'" icon="i-lucide-door-open" :loading="saving" :disabled="Boolean(openingIssue)" @click="saveIntake(true)" />

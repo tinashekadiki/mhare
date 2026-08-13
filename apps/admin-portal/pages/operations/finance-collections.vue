@@ -955,6 +955,7 @@ function statusColour(value: string) {
   ></EmhareRecordDrawer>
   <EmhareRecordDrawer
     v-model:open="paymentModalOpen"
+    presentation="page"
     title="Capture payment evidence"
     description="Capture the provider transaction once. Leave the student account empty when the payment cannot yet be identified."
     ><template #body

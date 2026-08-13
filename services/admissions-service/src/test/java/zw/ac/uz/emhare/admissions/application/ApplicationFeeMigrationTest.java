@@ -129,7 +129,7 @@ class ApplicationFeeMigrationTest {
     }
 
     @Test
-    void rejectsProgrammeChoiceRankAboveCycleMaximum() throws SQLException {
+    void rejectsProgrammeChoiceRankAboveIntakeMaximum() throws SQLException {
         ProgrammeChoiceFixture fixture = createDraftApplication(2);
 
         SQLException exception = assertThrows(SQLException.class, () -> insertValidatedProgrammeChoice(fixture.applicationId(), 3, true));
@@ -185,17 +185,10 @@ class ApplicationFeeMigrationTest {
     }
 
     private ProgrammeChoiceFixture createDraftApplication(int maximumProgrammeChoices) throws SQLException {
-        UUID cycleId = UUID.randomUUID();
+        UUID intakeId = UUID.randomUUID();
         UUID applicantId = UUID.randomUUID();
         UUID applicationId = UUID.randomUUID();
-        try (PreparedStatement cycle = connection.prepareStatement("""
-                INSERT INTO admission_cycles (
-                    id, academic_year_id, intake_id, code, name, opens_at, closes_at, status,
-                    maximum_programme_choices, created_at, updated_at, version
-                ) VALUES (?, ?, ?, ?, 'Migration test cycle', now() - interval '1 day',
-                    now() + interval '1 day', 'OPEN', ?, now(), now(), 0)
-                """);
-             PreparedStatement applicant = connection.prepareStatement("""
+        try (PreparedStatement applicant = connection.prepareStatement("""
                 INSERT INTO applicants (
                     id, user_id, applicant_number, applicant_category_code, first_name, last_name,
                     primary_email, created_at, updated_at, version
@@ -203,17 +196,12 @@ class ApplicationFeeMigrationTest {
                 """);
              PreparedStatement application = connection.prepareStatement("""
                 INSERT INTO applications (
-                    id, admission_cycle_id, applicant_id, application_type_id, application_number,
+                    id, intake_id, intake_code, intake_name, intake_starts_on, intake_ends_on,
+                    maximum_programme_choices, applicant_id, application_type_id, application_number,
                     payment_required, status, created_at, updated_at, version
-                ) VALUES (?, ?, ?, ?, ?, false, 'DRAFT', now(), now(), 0)
+                ) VALUES (?, ?, ?, 'Migration test intake', current_date - 1, current_date + 1,
+                    ?, ?, ?, ?, false, 'DRAFT', now(), now(), 0)
                 """)) {
-            cycle.setObject(1, cycleId);
-            cycle.setObject(2, UUID.randomUUID());
-            cycle.setObject(3, UUID.randomUUID());
-            cycle.setString(4, "CYCLE-" + cycleId);
-            cycle.setInt(5, maximumProgrammeChoices);
-            cycle.executeUpdate();
-
             applicant.setObject(1, applicantId);
             applicant.setObject(2, UUID.randomUUID());
             applicant.setString(3, "APP-" + applicantId);
@@ -221,10 +209,12 @@ class ApplicationFeeMigrationTest {
             applicant.executeUpdate();
 
             application.setObject(1, applicationId);
-            application.setObject(2, cycleId);
-            application.setObject(3, applicantId);
-            application.setObject(4, APPLICATION_TYPE_ID);
-            application.setString(5, "EMH-" + applicationId);
+            application.setObject(2, intakeId);
+            application.setString(3, "INTAKE-" + intakeId);
+            application.setInt(4, maximumProgrammeChoices);
+            application.setObject(5, applicantId);
+            application.setObject(6, APPLICATION_TYPE_ID);
+            application.setString(7, "EMH-" + applicationId);
             application.executeUpdate();
         }
         return new ProgrammeChoiceFixture(applicationId);

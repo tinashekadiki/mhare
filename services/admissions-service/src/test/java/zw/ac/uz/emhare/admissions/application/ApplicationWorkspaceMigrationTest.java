@@ -78,13 +78,13 @@ class ApplicationWorkspaceMigrationTest {
                 SELECT count(*)
                 FROM application_type_sections
                 WHERE section_code = 'PERSONAL_DETAILS'
-                  AND section_name = 'Personal details'
+                  AND section_name = 'Applicant details'
                   AND deleted_at IS NULL
-                """, 0);
+                """, 4);
         assertCount("""
                 SELECT count(*)
                 FROM flyway_schema_history
-                WHERE version = '29'
+                WHERE version = '1'
                   AND success
                 """, 1);
     }
@@ -129,6 +129,63 @@ class ApplicationWorkspaceMigrationTest {
                     'admission_qualification_requirement_groups', 'admission_qualification_requirement_groups_aud',
                     'admission_qualification_requirement_items', 'admission_qualification_requirement_items_aud')
                 """, 16);
+    }
+
+    @Test
+    void everyApplicationTypeStartsWithGovernedSectionDefinitions() throws SQLException {
+        assertCount("""
+                SELECT count(*)
+                FROM application_types application_type
+                WHERE application_type.deleted_at IS NULL
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM application_type_sections section_definition
+                      WHERE section_definition.application_type_id = application_type.id
+                        AND section_definition.deleted_at IS NULL
+                        AND section_definition.is_active
+                  )
+                """, 0);
+    }
+
+    @Test
+    void makesAcademicSetupIntakesAuthoritativeForApplicationsAndRequirementSets() throws SQLException {
+        assertCount("""
+                SELECT count(*)
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name IN ('applications', 'applications_aud')
+                  AND column_name IN (
+                      'intake_id', 'intake_code', 'intake_name', 'intake_starts_on',
+                      'intake_ends_on', 'maximum_programme_choices')
+                """, 12);
+        assertCount("""
+                SELECT count(*)
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name IN ('admission_requirement_sets', 'admission_requirement_sets_aud')
+                  AND column_name = 'intake_id'
+                """, 2);
+        assertCount("""
+                SELECT count(*)
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name IN ('applications', 'admission_requirement_sets')
+                  AND column_name = 'admission_cycle_id'
+                  AND is_nullable = 'YES'
+                """, 2);
+    }
+
+    @Test
+    void enforcesLegacyRoundBatchAndReleaseTablesAsReadOnlyHistory() throws SQLException {
+        assertCount("""
+                SELECT count(*)
+                FROM pg_trigger
+                WHERE NOT tgisinternal
+                  AND tgname = 'trg_protect_legacy_admissions_history'
+                  AND tgrelid::regclass::text IN (
+                      'selection_rounds', 'selection_decisions', 'offer_batches',
+                      'academic_review_assignments', 'academic_unit_recommendations')
+                """, 5);
     }
 
     private void assertCount(String sql, int expected) throws SQLException {

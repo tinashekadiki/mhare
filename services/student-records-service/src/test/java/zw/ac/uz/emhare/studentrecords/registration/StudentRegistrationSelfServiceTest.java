@@ -45,7 +45,6 @@ class StudentRegistrationSelfServiceTest {
     private RegistrationStatusEventRepository statusEventRepository;
     private AcademicRegistrationCatalogueClient academicCatalogueClient;
     private StudentRecordsIntegrationOutboxService outboxService;
-    private RegistrationIdentifierGenerator identifierGenerator;
     private StudentRegistrationService registrationService;
 
     @BeforeEach
@@ -57,8 +56,6 @@ class StudentRegistrationSelfServiceTest {
         statusEventRepository = mock(RegistrationStatusEventRepository.class);
         academicCatalogueClient = mock(AcademicRegistrationCatalogueClient.class);
         outboxService = mock(StudentRecordsIntegrationOutboxService.class);
-        identifierGenerator = mock(RegistrationIdentifierGenerator.class);
-        when(identifierGenerator.nextRegistrationNumber()).thenReturn("REG-00000001");
         registrationService = new StudentRegistrationService(
                 studentRepository,
                 programmeEnrolmentRepository,
@@ -67,7 +64,6 @@ class StudentRegistrationSelfServiceTest {
                 statusEventRepository,
                 academicCatalogueClient,
                 outboxService,
-                identifierGenerator,
                 Clock.fixed(Instant.parse("2027-01-05T09:00:00Z"), ZoneOffset.UTC));
     }
 
@@ -131,6 +127,10 @@ class StudentRegistrationSelfServiceTest {
                         4,
                         Set.of(electiveCurriculumModuleId)),
                 actorUserId);
+
+        ArgumentCaptor<RegistrationSession> registrationCaptor = ArgumentCaptor.forClass(RegistrationSession.class);
+        verify(registrationSessionRepository).saveAndFlush(registrationCaptor.capture());
+        assertEquals(student.getStudentNumber(), registrationCaptor.getValue().getRegistrationNumber());
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Iterable<RegistrationModule>> modulesCaptor = ArgumentCaptor.forClass(Iterable.class);

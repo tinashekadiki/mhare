@@ -18,7 +18,6 @@ public interface RegistrationSessionRepository extends JpaRepository<Registratio
     Optional<RegistrationSession> findByIdAndDeletedAtIsNull(UUID id);
     boolean existsByStudentIdAndAcademicPeriodIdAndStatusNotAndDeletedAtIsNull(
             UUID studentId, UUID academicPeriodId, RegistrationStatus status);
-    boolean existsByRegistrationNumberAndProgrammeVersionId(String registrationNumber, UUID programmeVersionId);
     List<RegistrationSession> findAllByDeletedAtIsNullOrderByInitiatedAtDesc();
     List<RegistrationSession> findAllByStudentIdAndDeletedAtIsNullOrderByInitiatedAtDesc(UUID studentId);
 }

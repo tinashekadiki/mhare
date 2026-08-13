@@ -12,5 +12,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface AcademicUnitRepository extends JpaRepository<AcademicUnit, UUID> {
     List<AcademicUnit> findAllByOrderByNameAsc();
     boolean existsByCodeIgnoreCase(String code);
+    boolean existsByAcademicUnitTypeId(UUID academicUnitTypeId);
     boolean existsByParentId(UUID parentId);
 }

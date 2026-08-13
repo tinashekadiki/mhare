@@ -475,6 +475,7 @@ function formatBytes(value?: number | null) {
 
         <EmhareRecordDrawer
           v-model:open="drawerOpen"
+          presentation="page"
           :title="drawerTitle"
           :description="drawerDescription"
           :submit-label="drawerKind === 'upload' ? 'Upload document' : verificationForm.decision === 'VERIFIED' ? 'Verify document' : 'Reject document'"

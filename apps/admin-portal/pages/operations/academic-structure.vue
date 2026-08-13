@@ -12,10 +12,18 @@ const unitTypeModalOpen = ref(false)
 const academicUnitModalOpen = ref(false)
 const saving = ref(false)
 const activeDataset = ref('units')
-const unitTypeForm = reactive({ code: '', name: '', levelOrder: 1, leafAllowed: false })
+const unitTypeForm = reactive({
+  id: null as string | null,
+  code: '',
+  name: '',
+  levelOrder: 1,
+  leafAllowed: false,
+  expectedVersion: 0
+})
 const academicUnitForm = reactive({
+  id: null as string | null,
   academicUnitTypeId: '', parentId: '', code: '', name: '',
-  legacyFacultyCode: '', legacyDepartmentCode: ''
+  legacyFacultyCode: '', legacyDepartmentCode: '', expectedVersion: 0
 })
 
 const unitTypeColumns: TableColumn<AcademicUnitTypeSummary>[] = [
@@ -23,7 +31,8 @@ const unitTypeColumns: TableColumn<AcademicUnitTypeSummary>[] = [
   { accessorKey: 'code', header: 'Code' },
   { accessorKey: 'name', header: 'Unit type' },
   { accessorKey: 'leafAllowed', header: 'Can own academic records' },
-  { accessorKey: 'status', header: 'Status' }
+  { accessorKey: 'status', header: 'Status' },
+  { id: 'actions', header: 'Actions' }
 ]
 
 const unitColumns: TableColumn<AcademicUnitSummary & { depth: number, parentName: string }>[] = [
@@ -31,7 +40,8 @@ const unitColumns: TableColumn<AcademicUnitSummary & { depth: number, parentName
   { accessorKey: 'name', header: 'Academic unit' },
   { accessorKey: 'academicUnitTypeCode', header: 'Type' },
   { accessorKey: 'parentName', header: 'Parent' },
-  { accessorKey: 'status', header: 'Status' }
+  { accessorKey: 'status', header: 'Status' },
+  { id: 'actions', header: 'Actions' }
 ]
 
 const unitTypes = computed(() => academicSetup.overview.value?.academicUnitTypes ?? [])
@@ -65,56 +75,122 @@ onMounted(async () => {
   }
 })
 
-watch(unitTypeModalOpen, (open) => {
-  if (open) {
-    Object.assign(unitTypeForm, { code: '', name: '', levelOrder: nextLevelOrder.value, leafAllowed: false })
-  }
-})
-
-watch(academicUnitModalOpen, (open) => {
-  if (open) {
-    Object.assign(academicUnitForm, {
+function openAcademicUnitCreation() {
+  Object.assign(academicUnitForm, {
+      id: null,
       academicUnitTypeId: unitTypes.value[0]?.id ?? '', parentId: '', code: '', name: '',
-      legacyFacultyCode: '', legacyDepartmentCode: ''
-    })
-  }
-})
+      legacyFacultyCode: '', legacyDepartmentCode: '', expectedVersion: 0
+  })
+  academicUnitModalOpen.value = true
+}
 
 watch(() => academicUnitForm.academicUnitTypeId, () => {
   academicUnitForm.parentId = ''
 })
 
-async function createUnitType() {
+function createUnitType() {
+  Object.assign(unitTypeForm, {
+    id: null,
+    code: '',
+    name: '',
+    levelOrder: nextLevelOrder.value,
+    leafAllowed: false,
+    expectedVersion: 0
+  })
+  unitTypeModalOpen.value = true
+}
+
+function editUnitType(unitType: AcademicUnitTypeSummary) {
+  Object.assign(unitTypeForm, {
+    id: unitType.id,
+    code: unitType.code,
+    name: unitType.name,
+    levelOrder: unitType.levelOrder,
+    leafAllowed: unitType.leafAllowed,
+    expectedVersion: unitType.version
+  })
+  unitTypeModalOpen.value = true
+}
+
+async function saveUnitType() {
   saving.value = true
   try {
-    await api.request('/api/academic/unit-types', { method: 'POST', body: unitTypeForm })
+    const editing = Boolean(unitTypeForm.id)
+    await api.request(
+      editing ? `/api/academic/unit-types/${unitTypeForm.id}` : '/api/academic/unit-types',
+      {
+        method: editing ? 'PUT' : 'POST',
+        body: editing
+          ? {
+              code: unitTypeForm.code,
+              name: unitTypeForm.name,
+              leafAllowed: unitTypeForm.leafAllowed,
+              expectedVersion: unitTypeForm.expectedVersion
+            }
+          : {
+              code: unitTypeForm.code,
+              name: unitTypeForm.name,
+              levelOrder: unitTypeForm.levelOrder,
+              leafAllowed: unitTypeForm.leafAllowed
+            }
+      }
+    )
     await academicSetup.loadOverview()
     unitTypeModalOpen.value = false
-    toast.add({ title: 'Academic unit type created', color: 'success', icon: 'i-lucide-network' })
+    toast.add({
+      title: `Academic unit type ${editing ? 'updated' : 'created'}`,
+      color: 'success',
+      icon: 'i-lucide-network'
+    })
   } catch (error) {
-    await showError('Unit type could not be created', api.errorMessage(error))
+    await showError(
+      `Unit type could not be ${unitTypeForm.id ? 'updated' : 'created'}`,
+      api.errorMessage(error)
+    )
   } finally {
     saving.value = false
   }
 }
 
-async function createAcademicUnit() {
+function editAcademicUnit(academicUnit: AcademicUnitSummary) {
+  Object.assign(academicUnitForm, {
+    id: academicUnit.id,
+    academicUnitTypeId: academicUnit.academicUnitTypeId,
+    parentId: academicUnit.parentId ?? '',
+    code: academicUnit.code,
+    name: academicUnit.name,
+    legacyFacultyCode: academicUnit.legacyFacultyCode ?? '',
+    legacyDepartmentCode: academicUnit.legacyDepartmentCode ?? '',
+    expectedVersion: academicUnit.version
+  })
+  academicUnitModalOpen.value = true
+}
+
+async function saveAcademicUnit() {
   saving.value = true
+  const editing = Boolean(academicUnitForm.id)
   try {
-    await api.request('/api/academic/units', {
-      method: 'POST',
-      body: {
-        ...academicUnitForm,
+    await api.request(editing ? `/api/academic/units/${academicUnitForm.id}` : '/api/academic/units', {
+      method: editing ? 'PUT' : 'POST',
+      body: editing ? {
+        name: academicUnitForm.name,
+        legacyFacultyCode: academicUnitForm.legacyFacultyCode || null,
+        legacyDepartmentCode: academicUnitForm.legacyDepartmentCode || null,
+        expectedVersion: academicUnitForm.expectedVersion
+      } : {
+        academicUnitTypeId: academicUnitForm.academicUnitTypeId,
         parentId: academicUnitForm.parentId || null,
+        code: academicUnitForm.code,
+        name: academicUnitForm.name,
         legacyFacultyCode: academicUnitForm.legacyFacultyCode || null,
         legacyDepartmentCode: academicUnitForm.legacyDepartmentCode || null
       }
     })
     await academicSetup.loadOverview()
     academicUnitModalOpen.value = false
-    toast.add({ title: 'Academic unit created', color: 'success', icon: 'i-lucide-building-2' })
+    toast.add({ title: `Academic unit ${editing ? 'updated' : 'created'}`, color: 'success', icon: 'i-lucide-building-2' })
   } catch (error) {
-    await showError('Academic unit could not be created', api.errorMessage(error))
+    await showError(`Academic unit could not be ${editing ? 'updated' : 'created'}`, api.errorMessage(error))
   } finally {
     saving.value = false
   }
@@ -184,7 +260,7 @@ function buildHierarchyRows(units: AcademicUnitSummary[]) {
           :record-count="academicUnits.length"
         >
           <template #actions>
-            <EmhareGuidedActionButton label="Create academic unit" icon="i-lucide-plus" color="primary" guidance-title="Academic unit setup required" :guidance-instructions="academicUnitGuidance" guidance-action-label="Open Hierarchy levels" @guidance-action="activeDataset = 'unit-types'" @click="academicUnitModalOpen = true" />
+            <EmhareGuidedActionButton label="Create academic unit" icon="i-lucide-plus" color="primary" guidance-title="Academic unit setup required" :guidance-instructions="academicUnitGuidance" guidance-action-label="Open Hierarchy levels" @guidance-action="activeDataset = 'unit-types'" @click="openAcademicUnitCreation" />
           </template>
           <div class="overflow-hidden rounded-md border border-muted">
             <EmharePaginatedTable :data="hierarchyRows" :columns="unitColumns" :loading="academicSetup.loading.value">
@@ -195,6 +271,7 @@ function buildHierarchyRows(units: AcademicUnitSummary[]) {
               </div>
             </template>
             <template #status-cell="{ row }"><EmhareStatusPill :label="row.original.status" :tone="row.original.status === 'ACTIVE' ? 'success' : 'neutral'" /></template>
+            <template #actions-cell="{ row }"><div class="flex justify-end"><UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="ghost" @click="editAcademicUnit(row.original)" /></div></template>
             <template #empty><div class="py-10 text-center text-sm text-muted">Create the first hierarchy level and academic unit.</div></template>
             </EmharePaginatedTable>
           </div>
@@ -207,7 +284,7 @@ function buildHierarchyRows(units: AcademicUnitSummary[]) {
           :record-count="unitTypes.length"
         >
           <template #actions>
-            <UButton label="Create unit type" icon="i-lucide-plus" color="primary" @click="unitTypeModalOpen = true" />
+            <UButton label="Create unit type" icon="i-lucide-plus" color="primary" @click="createUnitType" />
           </template>
           <div class="overflow-hidden rounded-md border border-muted">
             <EmharePaginatedTable :data="unitTypes" :columns="unitTypeColumns" :loading="academicSetup.loading.value">
@@ -215,6 +292,11 @@ function buildHierarchyRows(units: AcademicUnitSummary[]) {
                 <EmhareStatusPill :label="row.original.leafAllowed ? 'Eligible owner' : 'Container only'" :tone="row.original.leafAllowed ? 'success' : 'neutral'" />
               </template>
               <template #status-cell="{ row }"><EmhareStatusPill :label="row.original.status" :tone="row.original.status === 'ACTIVE' ? 'success' : 'neutral'" /></template>
+              <template #actions-cell="{ row }">
+                <div class="flex justify-end">
+                  <UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="ghost" @click="editUnitType(row.original)" />
+                </div>
+              </template>
               <template #empty><div class="py-10 text-center text-sm text-muted">Create the first hierarchy level.</div></template>
             </EmharePaginatedTable>
           </div>
@@ -223,27 +305,31 @@ function buildHierarchyRows(units: AcademicUnitSummary[]) {
     </template>
   </UDashboardPanel>
 
-  <EmhareRecordDrawer v-model:open="unitTypeModalOpen" title="Create academic unit type" description="Add the next controlled level in the institution hierarchy.">
+  <EmhareRecordDrawer
+    v-model:open="unitTypeModalOpen"
+    :title="unitTypeForm.id ? 'Edit academic unit type' : 'Create academic unit type'"
+    :description="unitTypeForm.id ? 'Update this controlled hierarchy level without changing its position.' : 'Add the next controlled level in the institution hierarchy.'"
+  >
     <template #body>
-      <form id="unit-type-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="createUnitType">
+      <form id="unit-type-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="saveUnitType">
         <UFormField label="Code" required><UInput v-model="unitTypeForm.code" class="w-full" placeholder="FACULTY" /></UFormField>
-        <UFormField label="Level order" required><UInput v-model.number="unitTypeForm.levelOrder" type="number" min="1" class="w-full" /></UFormField>
+        <UFormField label="Level order" required description="Hierarchy positions are fixed after creation."><UInput v-model.number="unitTypeForm.levelOrder" type="number" min="1" class="w-full" :disabled="Boolean(unitTypeForm.id)" /></UFormField>
         <UFormField label="Name" required class="sm:col-span-2"><UInput v-model="unitTypeForm.name" class="w-full" placeholder="College" /></UFormField>
         <UCheckbox v-model="unitTypeForm.leafAllowed" label="Units at this level may own programmes and Modules" class="sm:col-span-2" />
       </form>
     </template>
     <template #footer>
       <UButton label="Cancel" color="neutral" variant="outline" @click="unitTypeModalOpen = false" />
-      <UButton type="submit" form="unit-type-form" label="Create unit type" icon="i-lucide-check" :loading="saving" />
+      <UButton type="submit" form="unit-type-form" :label="unitTypeForm.id ? 'Save changes' : 'Create unit type'" icon="i-lucide-check" :loading="saving" />
     </template>
   </EmhareRecordDrawer>
 
-  <EmhareRecordDrawer v-model:open="academicUnitModalOpen" title="Create academic unit" description="Place the unit at a valid point in the governed hierarchy.">
+  <EmhareRecordDrawer v-model:open="academicUnitModalOpen" presentation="page" :title="academicUnitForm.id ? 'Edit academic unit' : 'Create academic unit'" :description="academicUnitForm.id ? 'Correct descriptive details without changing the governed hierarchy identity.' : 'Place the unit at a valid point in the governed hierarchy.'">
     <template #body>
-      <form id="academic-unit-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="createAcademicUnit">
-        <UFormField label="Unit type" required><USelect v-model="academicUnitForm.academicUnitTypeId" :items="unitTypeItems" value-key="value" class="w-full" /></UFormField>
-        <UFormField v-if="(selectedUnitType?.levelOrder ?? 1) > 1" label="Parent unit" required><USelect v-model="academicUnitForm.parentId" :items="parentItems" value-key="value" class="w-full" placeholder="Select parent" /></UFormField>
-        <UFormField label="Code" required><UInput v-model="academicUnitForm.code" class="w-full" placeholder="SCI" /></UFormField>
+      <form id="academic-unit-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="saveAcademicUnit">
+        <UFormField label="Unit type" required><USelect v-model="academicUnitForm.academicUnitTypeId" :items="unitTypeItems" value-key="value" class="w-full" :disabled="Boolean(academicUnitForm.id)" /></UFormField>
+        <UFormField v-if="(selectedUnitType?.levelOrder ?? 1) > 1" label="Parent unit" required><USelect v-model="academicUnitForm.parentId" :items="parentItems" value-key="value" class="w-full" placeholder="Select parent" :disabled="Boolean(academicUnitForm.id)" /></UFormField>
+        <UFormField label="Code" required><UInput v-model="academicUnitForm.code" class="w-full" placeholder="SCI" :disabled="Boolean(academicUnitForm.id)" /></UFormField>
         <UFormField label="Name" required><UInput v-model="academicUnitForm.name" class="w-full" placeholder="College of Science" /></UFormField>
         <UFormField label="Legacy faculty code"><UInput v-model="academicUnitForm.legacyFacultyCode" class="w-full" /></UFormField>
         <UFormField label="Legacy department code"><UInput v-model="academicUnitForm.legacyDepartmentCode" class="w-full" /></UFormField>
@@ -251,7 +337,7 @@ function buildHierarchyRows(units: AcademicUnitSummary[]) {
     </template>
     <template #footer>
       <UButton label="Cancel" color="neutral" variant="outline" @click="academicUnitModalOpen = false" />
-      <UButton type="submit" form="academic-unit-form" label="Create academic unit" icon="i-lucide-check" :loading="saving" />
+      <UButton type="submit" form="academic-unit-form" :label="academicUnitForm.id ? 'Save changes' : 'Create academic unit'" icon="i-lucide-check" :loading="saving" />
     </template>
   </EmhareRecordDrawer>
 </template>

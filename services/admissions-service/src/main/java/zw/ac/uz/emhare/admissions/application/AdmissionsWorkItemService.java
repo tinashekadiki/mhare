@@ -36,6 +36,7 @@ public class AdmissionsWorkItemService {
     private final ApplicationStatusEventRepository statusEventRepository;
     private final ApplicantApplicationWorkspaceService workspaceService;
     private final AdmissionsApplicationWorkflowProgressService progressService;
+    private final ApplicationDuplicateCheckService duplicateCheckService;
 
     public AdmissionsWorkItemService(
             ApplicationRepository applicationRepository,
@@ -50,7 +51,8 @@ public class AdmissionsWorkItemService {
             OfferPublicationRepository publicationRepository,
             ApplicationStatusEventRepository statusEventRepository,
             ApplicantApplicationWorkspaceService workspaceService,
-            AdmissionsApplicationWorkflowProgressService progressService) {
+            AdmissionsApplicationWorkflowProgressService progressService,
+            ApplicationDuplicateCheckService duplicateCheckService) {
         this.applicationRepository = applicationRepository;
         this.choiceRepository = choiceRepository;
         this.reviewRepository = reviewRepository;
@@ -64,6 +66,7 @@ public class AdmissionsWorkItemService {
         this.statusEventRepository = statusEventRepository;
         this.workspaceService = workspaceService;
         this.progressService = progressService;
+        this.duplicateCheckService = duplicateCheckService;
     }
 
     @Transactional
@@ -118,7 +121,7 @@ public class AdmissionsWorkItemService {
                         event.getReason(), event.getChangedByUserId(), event.getChangedAt())).toList();
         return new WorkItemCase(workspaceService.staffWorkspace(applicationId), reviewView(review),
                 recommendationView(recommendation), decisionView(decision), offerSummary, documents, publications, audit,
-                blockers(application, offer), availableActions(application, review, recommendation, offer, profile));
+                caseBlockers(application, offer), availableActions(application, review, recommendation, offer, profile));
     }
 
     private WorkItemRow row(Application application) {
@@ -128,7 +131,7 @@ public class AdmissionsWorkItemService {
         String currentStage = progressService.progress(application.getId()).currentStageCode();
         return new WorkItemRow(application.getId(), application.getApplicationNumber(),
                 application.getApplicant().getApplicantNumber(), application.getApplicant().getDisplayName(),
-                application.getAdmissionCycle().getIntakeId(), application.getAdmissionCycle().getCode(),
+                application.getIntakeId(), application.getIntakeCode(),
                 application.getApplicationType().getId(), application.getApplicationType().getName(),
                 choice == null ? null : choice.getProgrammeId(), choice == null ? null : choice.getProgrammeCode(),
                 choice == null ? null : choice.getProgrammeName(), application.getCalculatedTotalPoints(),
@@ -162,6 +165,17 @@ public class AdmissionsWorkItemService {
         return List.copyOf(blockers);
     }
 
+    private List<String> caseBlockers(Application application, AdmissionOffer offer) {
+        List<String> blockers = new ArrayList<>(blockers(application, offer));
+        if (application.getStatus() == ApplicationStatus.SUBMITTED) {
+            ApplicationDuplicateCheckService.DuplicateCheckResult duplicateCheck = duplicateCheckService.check(application);
+            if (!duplicateCheck.passed()) {
+                blockers.add(duplicateCheck.summary());
+            }
+        }
+        return List.copyOf(blockers);
+    }
+
     private List<String> availableActions(Application application, AcademicReview review,
             AcademicRecommendation recommendation, AdmissionOffer offer, CoreCurrentUserProfile profile) {
         Set<String> permissions = profile.effectivePermissionCodes() == null ? Set.of() : Set.copyOf(profile.effectivePermissionCodes());
@@ -173,10 +187,17 @@ public class AdmissionsWorkItemService {
                 actions.add("RESOLVE_ELIGIBILITY");
             }
         }
-        if (review != null && isAcademicReviewer(profile, review) && recommendation == null) actions.add("RECORD_ACADEMIC_RECOMMENDATION");
-        if (permissions.contains("ADMISSIONS_DECISION_MAKE") && recommendation != null
-                && decisionRepository.findAllByApplicationIdAndDeletedAtIsNullOrderByDecidedAtDesc(application.getId()).isEmpty()) {
+        if (review != null && isAcademicReviewer(profile, review)
+                && (recommendation == null
+                        || recommendation.getReviewStatus() == AcademicRecommendationReviewStatus.RETURNED)) {
+            actions.add("RECORD_ACADEMIC_RECOMMENDATION");
+        }
+        if (permissions.contains("ADMISSIONS_DECISION_MAKE") && review != null && recommendation != null
+                && recommendation.getReviewStatus() == AcademicRecommendationReviewStatus.PENDING
+                && !decisionRepository.existsByProgrammeChoiceIdAndDeletedAtIsNull(
+                        review.getProgrammeChoice().getId())) {
             actions.add("RECORD_ADMISSION_DECISION");
+            actions.add("RETURN_ACADEMIC_RECOMMENDATION");
         }
         if (permissions.contains("ADMISSIONS_OFFER_MANAGE") && offer != null
                 && (offer.getStatus() == OfferStatus.DRAFT || offer.getStatus() == OfferStatus.SENT)) {

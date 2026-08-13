@@ -78,6 +78,18 @@ public class AdmissionsRollingWorkflowController {
         return workItemService.get(applicationId, profile);
     }
 
+    @PostMapping("/applications/{applicationId}/choices/{choiceId}/academic-recommendation/return")
+    @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_DECISION_MAKE')")
+    public WorkItemCase returnRecommendation(
+            Authentication authentication,
+            @PathVariable("applicationId") UUID applicationId,
+            @PathVariable("choiceId") UUID choiceId,
+            @Valid @RequestBody RecommendationReturnRequest request) {
+        var profile = coreIdentityClient.syncCurrentUser(authentication);
+        workflowService.returnRecommendation(applicationId, choiceId, request.reason(), profile.user().id());
+        return workItemService.get(applicationId, profile);
+    }
+
     @PostMapping("/applications/{applicationId}/choices/{choiceId}/decision")
     @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_DECISION_MAKE')")
     public AdmissionOfferSummary decide(Authentication authentication, @PathVariable("applicationId") UUID applicationId,

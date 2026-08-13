@@ -40,6 +40,11 @@ import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.VersionedAc
 import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicYear;
 import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicPeriodType;
 import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicPeriod;
+import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicUnitType;
+import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicUnit;
+import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateAcademicModule;
+import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateProgrammeLevel;
+import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateProgrammeType;
 import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupRequests.UpdateIntake;
 import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AcademicModuleSummary;
 import zw.ac.uz.emhare.academicsetup.api.model.AcademicSetupResponses.AdmissionsCatalogue;
@@ -116,11 +121,27 @@ public class AcademicSetupController {
         return ResponseEntity.created(URI.create("/api/academic/unit-types/" + created.id())).body(created);
     }
 
+    @PutMapping("/unit-types/{academicUnitTypeId}")
+    @PreAuthorize(ACADEMIC_SETUP_ADMIN)
+    public AcademicUnitTypeSummary updateAcademicUnitType(
+            @PathVariable("academicUnitTypeId") UUID academicUnitTypeId,
+            @Valid @RequestBody UpdateAcademicUnitType request) {
+        return academicSetupService.updateAcademicUnitType(academicUnitTypeId, request);
+    }
+
     @PostMapping("/units")
     @PreAuthorize(ACADEMIC_SETUP_ADMIN)
     public ResponseEntity<AcademicUnitSummary> createAcademicUnit(@Valid @RequestBody CreateAcademicUnit request) {
         AcademicUnitSummary created = academicSetupService.createAcademicUnit(request);
         return ResponseEntity.created(URI.create("/api/academic/units/" + created.id())).body(created);
+    }
+
+    @PutMapping("/units/{academicUnitId}")
+    @PreAuthorize(ACADEMIC_SETUP_ADMIN)
+    public AcademicUnitSummary updateAcademicUnit(
+            @PathVariable UUID academicUnitId,
+            @Valid @RequestBody UpdateAcademicUnit request) {
+        return academicSetupService.updateAcademicUnit(academicUnitId, request);
     }
 
     @PostMapping("/years")
@@ -240,12 +261,28 @@ public class AcademicSetupController {
         return ResponseEntity.created(URI.create("/api/academic/programme-levels/" + created.id())).body(created);
     }
 
+    @PutMapping("/programme-levels/{programmeLevelId}")
+    @PreAuthorize(ACADEMIC_SETUP_ADMIN)
+    public ProgrammeLevelSummary updateProgrammeLevel(
+            @PathVariable UUID programmeLevelId,
+            @Valid @RequestBody UpdateProgrammeLevel request) {
+        return academicSetupService.updateProgrammeLevel(programmeLevelId, request);
+    }
+
     @PostMapping("/programme-types")
     @PreAuthorize(ACADEMIC_SETUP_ADMIN)
     public ResponseEntity<ProgrammeTypeSummary> createProgrammeType(
             @Valid @RequestBody CreateProgrammeType request) {
         ProgrammeTypeSummary created = academicSetupService.createProgrammeType(request);
         return ResponseEntity.created(URI.create("/api/academic/programme-types/" + created.id())).body(created);
+    }
+
+    @PutMapping("/programme-types/{programmeTypeId}")
+    @PreAuthorize(ACADEMIC_SETUP_ADMIN)
+    public ProgrammeTypeSummary updateProgrammeType(
+            @PathVariable UUID programmeTypeId,
+            @Valid @RequestBody UpdateProgrammeType request) {
+        return academicSetupService.updateProgrammeType(programmeTypeId, request);
     }
 
     @PostMapping("/programmes")
@@ -305,6 +342,14 @@ public class AcademicSetupController {
             @Valid @RequestBody CreateAcademicModule request) {
         AcademicModuleSummary created = academicSetupService.createAcademicModule(request);
         return ResponseEntity.created(URI.create("/api/academic/modules/" + created.id())).body(created);
+    }
+
+    @PutMapping("/modules/{moduleId}")
+    @PreAuthorize(ACADEMIC_SETUP_ADMIN)
+    public AcademicModuleSummary updateAcademicModule(
+            @PathVariable UUID moduleId,
+            @Valid @RequestBody UpdateAcademicModule request) {
+        return academicSetupService.updateAcademicModule(moduleId, request);
     }
 
     @PostMapping("/modules/{moduleId}/activate")

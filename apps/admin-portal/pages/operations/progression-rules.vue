@@ -260,7 +260,7 @@ function shortId(value: string) {
     </template>
   </UDashboardPanel>
 
-  <EmhareRecordDrawer v-model:open="modalOpen" title="Create progression rule set" description="Define ordered outcomes for one programme version, year of study, and semester" width="xl">
+  <EmhareRecordDrawer v-model:open="modalOpen" presentation="page" title="Create progression rule set" description="Define ordered outcomes for one programme version, year of study, and semester" width="xl">
     <template #body>
       <div class="space-y-4">
         <div class="grid gap-3 md:grid-cols-3">

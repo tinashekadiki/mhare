@@ -437,7 +437,7 @@ function formatDate(value: string) {
     <template #footer><div class="flex w-full justify-end gap-2"><UButton label="Cancel" color="neutral" variant="outline" @click="periodTypeModalOpen = false" /><UButton type="submit" form="period-type-form" :label="periodTypeForm.id ? 'Save changes' : 'Create period type'" icon="i-lucide-save" :loading="saving" /></div></template>
   </EmhareRecordDrawer>
 
-  <EmhareRecordDrawer v-model:open="periodModalOpen" :title="periodForm.id ? 'Edit academic period' : 'Create academic period'" description="Active identity fields are locked; names and dates remain correctable with audit evidence.">
+  <EmhareRecordDrawer v-model:open="periodModalOpen" presentation="page" :title="periodForm.id ? 'Edit academic period' : 'Create academic period'" description="Active identity fields are locked; names and dates remain correctable with audit evidence.">
     <template #body>
       <form id="period-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="saveAcademicPeriod">
         <UAlert v-if="periodForm.id && periodForm.status !== 'DRAFT'" color="info" variant="soft" icon="i-lucide-lock-keyhole" title="Operational identity locked" description="Academic year, period type, and code cannot change after the period leaves draft." class="sm:col-span-2" />
@@ -453,7 +453,7 @@ function formatDate(value: string) {
     <template #footer><div class="flex w-full justify-end gap-2"><UButton label="Cancel" color="neutral" variant="outline" @click="periodModalOpen = false" /><UButton type="submit" form="period-form" :label="periodForm.id ? 'Save changes' : 'Create academic period'" icon="i-lucide-save" :loading="saving" /></div></template>
   </EmhareRecordDrawer>
 
-  <EmhareRecordDrawer v-model:open="intakeModalOpen" title="Edit intake" description="Correct the published intake details with an audited reason.">
+  <EmhareRecordDrawer v-model:open="intakeModalOpen" presentation="page" title="Edit intake" description="Correct the published intake details with an audited reason.">
     <template #body>
       <form id="intake-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="saveIntakeCorrection">
         <UAlert color="info" variant="soft" icon="i-lucide-lock-keyhole" title="Operational identity locked" description="Academic year, intake code, and Programme eligibility cannot change after opening." class="sm:col-span-2" />

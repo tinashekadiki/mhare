@@ -41,7 +41,6 @@ public class StudentRegistrationService {
     private final RegistrationStatusEventRepository statusEventRepository;
     private final AcademicRegistrationCatalogueClient academicCatalogueClient;
     private final StudentRecordsIntegrationOutboxService outboxService;
-    private final RegistrationIdentifierGenerator identifierGenerator;
     private final Clock clock;
 
     public StudentRegistrationService(
@@ -52,7 +51,6 @@ public class StudentRegistrationService {
             RegistrationStatusEventRepository statusEventRepository,
             AcademicRegistrationCatalogueClient academicCatalogueClient,
             StudentRecordsIntegrationOutboxService outboxService,
-            RegistrationIdentifierGenerator identifierGenerator,
             Clock clock) {
         this.studentRepository = studentRepository;
         this.programmeEnrolmentRepository = programmeEnrolmentRepository;
@@ -61,7 +59,6 @@ public class StudentRegistrationService {
         this.statusEventRepository = statusEventRepository;
         this.academicCatalogueClient = academicCatalogueClient;
         this.outboxService = outboxService;
-        this.identifierGenerator = identifierGenerator;
         this.clock = clock;
     }
 
@@ -129,12 +126,7 @@ public class StudentRegistrationService {
             throw new IllegalStateException("Registration must contain at least one approved curriculum Module.");
         }
 
-        String registrationNumber = identifierGenerator.nextRegistrationNumber();
-        if (registrationSessionRepository.existsByRegistrationNumberAndProgrammeVersionId(
-                registrationNumber, programmeEnrolment.getProgrammeVersionId())) {
-            throw new IllegalStateException(
-                    "A registration already exists for this registration number and programme.");
-        }
+        String registrationNumber = student.getStudentNumber();
         Instant now = clock.instant();
         RegistrationSession registration = registrationSessionRepository.saveAndFlush(new RegistrationSession(
                 registrationNumber, student, programmeEnrolment, catalogue, registrationType, now));

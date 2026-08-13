@@ -673,6 +673,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
 
   <EmhareRecordDrawer
     v-model:open="drawerOpen"
+    presentation="page"
     :title="
       editingApplicationType
         ? 'Edit application type'
@@ -848,6 +849,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
 
   <EmhareRecordDrawer
     v-model:open="routeConfigurationDrawerOpen"
+    presentation="page"
     :title="
       loadedRouteConfiguration
         ? `Configure ${loadedRouteConfiguration.name}`

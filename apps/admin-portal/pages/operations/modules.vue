@@ -14,8 +14,10 @@ const moduleModalOpen = ref(false)
 const saving = ref(false)
 const activeModuleId = ref<string | null>(null)
 const moduleForm = reactive({
+  id: null as string | null,
+  status: 'DRAFT' as AcademicModuleSummary['status'],
   owningAcademicUnitId: '', code: '', name: '', description: '',
-  creditValue: 12, academicLevel: 1, legacyCourseCode: ''
+  creditValue: 12, academicLevel: 1, legacyCourseCode: '', expectedVersion: 0
 })
 
 const columns: TableColumn<AcademicModuleSummary>[] = [
@@ -58,28 +60,53 @@ onMounted(async () => {
   try { await academicSetup.ensureOverview() } catch { /* Render shared error. */ }
 })
 
-watch(moduleModalOpen, (open) => {
-  if (open) Object.assign(moduleForm, {
+function openModuleCreation() {
+  Object.assign(moduleForm, {
+    id: null, status: 'DRAFT',
     owningAcademicUnitId: leafUnits.value[0]?.value ?? '', code: '', name: '', description: '',
-    creditValue: 12, academicLevel: 1, legacyCourseCode: ''
+    creditValue: 12, academicLevel: 1, legacyCourseCode: '', expectedVersion: 0
   })
-})
+  moduleModalOpen.value = true
+}
 
-async function createModule() {
+function editModule(module: AcademicModuleSummary) {
+  Object.assign(moduleForm, {
+    id: module.id, status: module.status,
+    owningAcademicUnitId: module.owningAcademicUnitId, code: module.code,
+    name: module.name, description: module.description,
+    creditValue: Number(module.creditValue), academicLevel: module.academicLevel,
+    legacyCourseCode: module.legacyCourseCode ?? '', expectedVersion: module.version
+  })
+  moduleModalOpen.value = true
+}
+
+async function saveModule() {
   saving.value = true
+  const editing = Boolean(moduleForm.id)
   try {
     const createdModuleCode = moduleForm.code.trim()
-    await api.request('/api/academic/modules', {
-      method: 'POST',
-      body: { ...moduleForm, legacyCourseCode: moduleForm.legacyCourseCode || null }
+    await api.request(editing ? `/api/academic/modules/${moduleForm.id}` : '/api/academic/modules', {
+      method: editing ? 'PUT' : 'POST',
+      body: {
+        owningAcademicUnitId: moduleForm.owningAcademicUnitId,
+        code: moduleForm.code,
+        name: moduleForm.name,
+        description: moduleForm.description,
+        creditValue: moduleForm.creditValue,
+        academicLevel: moduleForm.academicLevel,
+        legacyCourseCode: moduleForm.legacyCourseCode || null,
+        ...(editing ? { expectedVersion: moduleForm.expectedVersion } : {})
+      }
     })
     await academicSetup.loadOverview()
     search.value = createdModuleCode
     statusFilter.value = 'ALL'
     moduleModalOpen.value = false
-    toast.add({ title: 'Module created in draft', description: 'Review the definition before activation.', color: 'success', icon: 'i-lucide-book-open' })
+    toast.add(editing
+      ? { title: 'Module updated', color: 'success', icon: 'i-lucide-book-open' }
+      : { title: 'Module created in draft', description: 'Review the definition before activation.', color: 'success', icon: 'i-lucide-book-open' })
   } catch (error) {
-    await showError('Module could not be created', api.errorMessage(error))
+    await showError(`Module could not be ${editing ? 'updated' : 'created'}`, api.errorMessage(error))
   } finally {
     saving.value = false
   }
@@ -118,7 +145,7 @@ function statusTone(status: string) {
     <template #header>
       <UDashboardNavbar title="Module catalogue">
         <template #leading><UDashboardSidebarCollapse /></template>
-        <template #right><EmhareGuidedActionButton aria-label="New Module" label="New Module" icon="i-lucide-plus" color="primary" class="[&_[data-slot=label]]:hidden sm:[&_[data-slot=label]]:inline" guidance-title="Module owner setup required" :guidance-instructions="moduleOwnerGuidance" guidance-action-label="Open Academic structure" @guidance-action="navigateTo('/operations/academic-structure')" @click="moduleModalOpen = true" /></template>
+        <template #right><EmhareGuidedActionButton aria-label="New Module" label="New Module" icon="i-lucide-plus" color="primary" class="[&_[data-slot=label]]:hidden sm:[&_[data-slot=label]]:inline" guidance-title="Module owner setup required" :guidance-instructions="moduleOwnerGuidance" guidance-action-label="Open Academic structure" @guidance-action="navigateTo('/operations/academic-structure')" @click="openModuleCreation" /></template>
       </UDashboardNavbar>
       <UDashboardToolbar>
         <template #left><UInput v-model="search" icon="i-lucide-search" placeholder="Search code, Module, or owner" class="w-full sm:w-96" /></template>
@@ -142,7 +169,7 @@ function statusTone(status: string) {
             <template #name-cell="{ row }"><div><p class="font-medium text-highlighted">{{ row.original.name }}</p><p class="max-w-md truncate text-xs text-muted">{{ row.original.description }}</p></div></template>
             <template #creditValue-cell="{ row }">{{ Number(row.original.creditValue).toFixed(2) }}</template>
             <template #status-cell="{ row }"><EmhareStatusPill :label="row.original.status" :tone="statusTone(row.original.status)" /></template>
-            <template #actions-cell="{ row }"><div class="flex justify-end"><UButton v-if="row.original.status === 'DRAFT'" label="Activate" color="primary" variant="ghost" :loading="activeModuleId === row.original.id" @click="activateModule(row.original)" /></div></template>
+            <template #actions-cell="{ row }"><div class="flex justify-end gap-2"><UButton label="Edit" icon="i-lucide-pencil" color="neutral" variant="ghost" @click="editModule(row.original)" /><UButton v-if="row.original.status === 'DRAFT'" label="Activate" color="primary" variant="ghost" :loading="activeModuleId === row.original.id" @click="activateModule(row.original)" /></div></template>
             <template #empty><div class="py-12 text-center"><UIcon name="i-lucide-book-x" class="mx-auto size-8 text-muted" /><p class="mt-3 font-medium text-highlighted">No Modules match this view</p></div></template>
           </EmharePaginatedTable>
         </UCard>
@@ -150,11 +177,11 @@ function statusTone(status: string) {
     </template>
   </UDashboardPanel>
 
-  <EmhareRecordDrawer v-model:open="moduleModalOpen" title="Create Module" description="Create a reusable Module definition in draft state.">
+  <EmhareRecordDrawer v-model:open="moduleModalOpen" presentation="page" :title="moduleForm.id ? 'Edit Module' : 'Create Module'" :description="moduleForm.id ? 'Correct the reusable Module definition. Active ownership and codes remain locked.' : 'Create a reusable Module definition in draft state.'">
     <template #body>
-      <form id="module-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="createModule">
-        <UFormField label="Owning academic unit" required class="sm:col-span-2"><USelect v-model="moduleForm.owningAcademicUnitId" :items="leafUnits" value-key="value" class="w-full" /></UFormField>
-        <UFormField label="Module code" required><UInput v-model="moduleForm.code" class="w-full" placeholder="CSC101" /></UFormField>
+      <form id="module-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="saveModule">
+        <UFormField label="Owning academic unit" required class="sm:col-span-2"><USelect v-model="moduleForm.owningAcademicUnitId" :items="leafUnits" value-key="value" class="w-full" :disabled="Boolean(moduleForm.id && moduleForm.status !== 'DRAFT')" /></UFormField>
+        <UFormField label="Module code" required><UInput v-model="moduleForm.code" class="w-full" placeholder="CSC101" :disabled="Boolean(moduleForm.id && moduleForm.status !== 'DRAFT')" /></UFormField>
         <UFormField label="Academic level" required><UInput v-model.number="moduleForm.academicLevel" type="number" min="1" max="100" class="w-full" /></UFormField>
         <UFormField label="Module name" required class="sm:col-span-2"><UInput v-model="moduleForm.name" class="w-full" placeholder="Programming Fundamentals" /></UFormField>
         <UFormField label="Description" required class="sm:col-span-2"><UTextarea v-model="moduleForm.description" class="w-full" :rows="3" /></UFormField>
@@ -162,6 +189,6 @@ function statusTone(status: string) {
         <UFormField label="Legacy course code"><UInput v-model="moduleForm.legacyCourseCode" class="w-full" /></UFormField>
       </form>
     </template>
-    <template #footer><UButton label="Cancel" color="neutral" variant="outline" @click="moduleModalOpen = false" /><UButton type="submit" form="module-form" label="Create draft Module" icon="i-lucide-check" :loading="saving" /></template>
+    <template #footer><UButton label="Cancel" color="neutral" variant="outline" @click="moduleModalOpen = false" /><UButton type="submit" form="module-form" :label="moduleForm.id ? 'Save changes' : 'Create draft Module'" icon="i-lucide-check" :loading="saving" /></template>
   </EmhareRecordDrawer>
 </template>

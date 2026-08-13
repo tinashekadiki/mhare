@@ -5,9 +5,7 @@ import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionCycleRepos
 
 import jakarta.transaction.Transactional;
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -49,7 +47,7 @@ public class AdmissionsIntakeProjectionService {
                 || today.isAfter(intake.endsOn())) {
             throw new IllegalStateException("Intake is not open for applications.");
         }
-        return synchronizeOpenProjection(intake);
+        return new ResolvedAdmissionsIntake(intake);
     }
 
     @Transactional
@@ -63,24 +61,7 @@ public class AdmissionsIntakeProjectionService {
         return academicSetupCatalogueClient.getAdmissionsIntake(intakeId);
     }
 
-    private ResolvedAdmissionsIntake synchronizeOpenProjection(AcademicAdmissionsIntake intake) {
-        ZoneId zone = clock.getZone();
-        Instant opensAt = intake.startsOn().atStartOfDay(zone).toInstant();
-        Instant closesAt = intake.endsOn().plusDays(1).atStartOfDay(zone).minusNanos(1).toInstant();
-        AdmissionCycle projection = admissionCycleRepository
-                .findByIntakeIdAndDeletedAtIsNull(intake.intakeId())
-                .orElseGet(() -> new AdmissionCycle(
-                        intake.academicYearId(), intake.intakeId(), intake.code(), intake.name(), opensAt, closesAt));
-        projection.synchronizeIntakeProjection(
-                intake.academicYearId(), intake.code(), intake.name(), opensAt, closesAt,
-                intake.maximumProgrammeChoices());
-        projection.synchronizeOpenApplicationWindow();
-        AdmissionCycle savedProjection = admissionCycleRepository.saveAndFlush(projection);
-        return new ResolvedAdmissionsIntake(savedProjection, intake);
-    }
-
     public record ResolvedAdmissionsIntake(
-            AdmissionCycle projection,
             AcademicAdmissionsIntake intake) {
     }
 }

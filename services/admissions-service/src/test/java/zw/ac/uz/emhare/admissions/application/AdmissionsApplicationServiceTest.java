@@ -110,6 +110,9 @@ class AdmissionsApplicationServiceTest {
     @Mock
     private QualificationEligibilityService qualificationEligibilityService;
 
+    @Mock
+    private ApplicationDuplicateCheckService duplicateCheckService;
+
     private AdmissionsApplicationService admissionsApplicationService;
     private final Instant currentInstant = Instant.parse("2027-01-15T10:00:00Z");
     private final Clock clock = Clock.fixed(currentInstant, ZoneOffset.UTC);
@@ -138,7 +141,8 @@ class AdmissionsApplicationServiceTest {
                 applicantApplicationWorkspaceService,
                 qualificationEligibilityService,
                 clock,
-                new ObjectMapper());
+                new ObjectMapper(),
+                duplicateCheckService);
     }
 
     @Test
@@ -179,7 +183,7 @@ class AdmissionsApplicationServiceTest {
         when(applicationFeeRepository.findEffectiveFees(applicationTypeId, "LOCAL", LocalDate.now(clock)))
                 .thenReturn(List.of(applicationFee));
         when(admissionsIdentifierGenerator.nextApplicantNumber()).thenReturn("APP-0001");
-        when(admissionsIdentifierGenerator.nextApplicationNumber(admissionCycle)).thenReturn("EMH-2027-AUG-00000001");
+        when(admissionsIdentifierGenerator.nextApplicationNumber("AUG")).thenReturn("EMH-2027-AUG-00000001");
         UUID savedApplicationId = UUID.randomUUID();
         when(applicationRepository.saveAndFlush(any(Application.class))).thenAnswer(invocation -> {
             Application savedApplication = invocation.getArgument(0);
@@ -243,7 +247,7 @@ class AdmissionsApplicationServiceTest {
         when(applicationFeeRepository.findEffectiveFees(applicationTypeId, "LOCAL", LocalDate.now(clock)))
                 .thenReturn(List.of());
         when(admissionsIdentifierGenerator.nextApplicantNumber()).thenReturn("APP-0002");
-        when(admissionsIdentifierGenerator.nextApplicationNumber(admissionCycle)).thenReturn("EMH-2027-AUG-00000002");
+        when(admissionsIdentifierGenerator.nextApplicationNumber("AUG")).thenReturn("EMH-2027-AUG-00000002");
         when(applicationRepository.saveAndFlush(any(Application.class))).thenAnswer(invocation -> {
             Application savedApplication = invocation.getArgument(0);
             ReflectionTestUtils.setField(savedApplication, "id", UUID.randomUUID());
@@ -304,7 +308,7 @@ class AdmissionsApplicationServiceTest {
         when(applicationFeeRepository.findEffectiveFees(applicationTypeId, "LOCAL", LocalDate.now(clock)))
                 .thenReturn(List.of());
         when(applicantRepository.findByUserId(userId)).thenReturn(Optional.of(existingApplicant));
-        when(applicationRepository.findByAdmissionCycleIdAndApplicantNationalIdNumber(intakeProjectionId, "63-123456A78"))
+        when(applicationRepository.findByIntakeIdAndApplicantNationalIdNumber(intakeId, "63-123456A78"))
                 .thenReturn(List.of(new Application(admissionCycle, existingApplicant, applicationType, "EMH-1", false)));
 
         IllegalStateException exception = assertThrows(
@@ -387,7 +391,6 @@ class AdmissionsApplicationServiceTest {
                         UUID.randomUUID(), "Department of Computing", 8, 12))
                 .toList();
         return new AdmissionsIntakeProjectionService.ResolvedAdmissionsIntake(
-                projection,
                 new AcademicAdmissionsIntake(
                         projection.getIntakeId(), projection.getAcademicYearId(), "2027",
                         "AUG", "August Intake", LocalDate.parse("2027-01-01"),
@@ -512,6 +515,10 @@ class AdmissionsApplicationServiceTest {
         when(verifiedSitting.getVerificationStatus()).thenReturn(QualificationResultStatus.VERIFIED);
         when(qualificationSittingRepository.findAllByApplicationIdAndDeletedAtIsNullOrderByYearWrittenDesc(applicationId))
                 .thenReturn(List.of(verifiedSitting));
+        when(duplicateCheckService.check(application)).thenReturn(
+                new ApplicationDuplicateCheckService.DuplicateCheckResult(
+                        true,
+                        "Applicant identity, intake application and programme choices are unique."));
 
         ApplicationSummary summary = admissionsApplicationService.moveToReview(applicationId, actorUserId, "Documents verified");
 

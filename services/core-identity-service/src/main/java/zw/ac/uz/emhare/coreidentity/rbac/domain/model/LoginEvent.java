@@ -42,6 +42,9 @@ public class LoginEvent extends AuditableEntity {
     @Column(name = "user_agent", length = 500)
     private String userAgent;
 
+    @Column(name = "identity_session_id", length = 150)
+    private String identitySessionId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private LoginOutcome outcome;
@@ -49,13 +52,22 @@ public class LoginEvent extends AuditableEntity {
     protected LoginEvent() {
     }
 
-    public LoginEvent(PlatformUser user, UUID keycloakUserId, String username, String email, String ipAddress, String userAgent, LoginOutcome outcome) {
+    public LoginEvent(
+            PlatformUser user,
+            UUID keycloakUserId,
+            String username,
+            String email,
+            String ipAddress,
+            String userAgent,
+            String identitySessionId,
+            LoginOutcome outcome) {
         this.user = user;
         this.keycloakUserId = keycloakUserId;
         this.username = username;
         this.email = email;
         this.ipAddress = ipAddress;
         this.userAgent = userAgent;
+        this.identitySessionId = identitySessionId;
         this.outcome = outcome;
         this.occurredAt = Instant.now();
     }
@@ -90,5 +102,9 @@ public class LoginEvent extends AuditableEntity {
 
     public LoginOutcome getOutcome() {
         return outcome;
+    }
+
+    public String getIdentitySessionId() {
+        return identitySessionId;
     }
 }

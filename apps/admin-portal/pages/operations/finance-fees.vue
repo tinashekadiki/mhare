@@ -7,6 +7,7 @@ import type {
   FinanceFeeCatalogueSummary,
   FinanceFeeRuleSummary,
   FinanceFeeScopeDimension,
+  FinanceFeeContext,
   FinanceFeeStructureRegister,
   FinanceFeeStructureSummary,
   FinanceStudentDiscountRegister,
@@ -36,9 +37,10 @@ const selectedCatalogueId = ref<string | null>(null)
 const catalogueModalOpen = ref(false)
 const ruleModalOpen = ref(false)
 const structureDrawerOpen = ref(false)
+const structureDrawerContext = ref<FinanceFeeContext>('APPLICATION')
 const discountDrawerOpen = ref(false)
 const expandedStructureIds = ref<string[]>([])
-const activeRegisterTab = ref<'structures' | 'line-items' | 'discounts'>('structures')
+const activeRegisterTab = ref<'application-fees' | 'structures' | 'line-items' | 'discounts'>('application-fees')
 
 const catalogueForm = reactive({
   code: '', name: '', description: '', chargeType: 'PROGRAMME' as FinanceChargeType,
@@ -67,11 +69,21 @@ const counts = computed(() => ({
   pendingRate: register.value.catalogues.flatMap(item => item.rules).filter(item => item.status === 'PENDING_RATE').length,
   awaitingApproval: register.value.catalogues.flatMap(item => item.rules).filter(item => item.status === 'DRAFT').length
 }))
+const applicationFeeStructures = computed(() => structureRegister.value.structures
+  .filter(structure => structure.feeContext === 'APPLICATION'))
+const studentFeeStructures = computed(() => structureRegister.value.structures
+  .filter(structure => structure.feeContext !== 'APPLICATION'))
+const applicationFeeCounts = computed(() => ({
+  total: applicationFeeStructures.value.length,
+  draft: applicationFeeStructures.value.filter(item => item.status === 'DRAFT').length,
+  active: applicationFeeStructures.value.filter(item => item.status === 'ACTIVE').length,
+  unrated: applicationFeeStructures.value.filter(item => item.lines.some(line => line.ratingStatus === 'UNRATED')).length
+}))
 const structureCounts = computed(() => ({
-  total: structureRegister.value.structures.length,
-  draft: structureRegister.value.structures.filter(item => item.status === 'DRAFT').length,
-  active: structureRegister.value.structures.filter(item => item.status === 'ACTIVE').length,
-  unrated: structureRegister.value.structures.filter(item => item.lines.some(line => line.ratingStatus === 'UNRATED')).length
+  total: studentFeeStructures.value.length,
+  draft: studentFeeStructures.value.filter(item => item.status === 'DRAFT').length,
+  active: studentFeeStructures.value.filter(item => item.status === 'ACTIVE').length,
+  unrated: studentFeeStructures.value.filter(item => item.lines.some(line => line.ratingStatus === 'UNRATED')).length
 }))
 const discountCounts = computed(() => ({
   total: discountRegister.value.discounts.length,
@@ -80,7 +92,8 @@ const discountCounts = computed(() => ({
   programme: discountRegister.value.discounts.filter(item => item.scopeType === 'PROGRAMME').length
 }))
 const registerTabs = computed(() => [
-  { label: 'Fee structures', value: 'structures', icon: 'i-lucide-layers-3', badge: structureCounts.value.total },
+  { label: 'Application fees', value: 'application-fees', icon: 'i-lucide-file-check-2', badge: applicationFeeCounts.value.total },
+  { label: 'Student fee structures', value: 'structures', icon: 'i-lucide-layers-3', badge: structureCounts.value.total },
   { label: 'Line-item catalogue', value: 'line-items', icon: 'i-lucide-list-tree', badge: counts.value.total },
   { label: 'Student discounts', value: 'discounts', icon: 'i-lucide-badge-percent', badge: discountCounts.value.total }
 ])
@@ -162,6 +175,11 @@ function openDiscountDrawer() {
     effectiveFrom: '', effectiveUntil: ''
   })
   discountDrawerOpen.value = true
+}
+
+function openStructureDrawer(context: FinanceFeeContext) {
+  structureDrawerContext.value = context
+  structureDrawerOpen.value = true
 }
 
 function changeDiscountTarget() { if (discountForm.targetType === 'ALL_FEES') discountForm.feeCatalogueId = '' }
@@ -407,6 +425,14 @@ function structureDetailsOpen(structureId: string) {
 function structureHasUnratedLines(structure: FinanceFeeStructureSummary) {
   return structure.lines.some(line => line.ratingStatus === 'UNRATED')
 }
+function applicationFeeCategory(structure: FinanceFeeStructureSummary) {
+  if (!structure.applicantCategoryCode) return 'All applicant categories'
+  return applicantCategories.value.find(category => category.code === structure.applicantCategoryCode)?.label
+    ?? title(structure.applicantCategoryCode)
+}
+function applicationFeeReady(structure: FinanceFeeStructureSummary) {
+  return structure.status === 'ACTIVE' && !structureHasUnratedLines(structure)
+}
 function toggleStructureDetails(structureId: string, open: boolean) {
   expandedStructureIds.value = open
     ? [...new Set([...expandedStructureIds.value, structureId])]
@@ -417,38 +443,46 @@ function toggleStructureDetails(structureId: string, open: boolean) {
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Fee structures and line items">
+      <UDashboardNavbar title="Finance fee configuration">
         <template #leading><UDashboardSidebarCollapse /></template>
         <template #right>
-          <UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="outline" :loading="loading" @click="load" />
-          <UButton v-if="activeRegisterTab === 'line-items'" label="New line definition" icon="i-lucide-list-plus" @click="openCatalogueModal" />
-          <UButton v-else-if="activeRegisterTab === 'discounts'" label="New student discount" icon="i-lucide-badge-percent" @click="openDiscountDrawer" />
-          <UButton v-else label="New fee structure" icon="i-lucide-plus" @click="structureDrawerOpen = true" />
+          <UButton icon="i-lucide-refresh-cw" color="neutral" variant="outline" aria-label="Refresh" :loading="loading" @click="load"><span class="hidden sm:inline">Refresh</span></UButton>
+          <UButton v-if="activeRegisterTab === 'application-fees'" icon="i-lucide-file-plus-2" aria-label="Configure application fee" @click="openStructureDrawer('APPLICATION')"><span class="hidden sm:inline">Configure application fee</span></UButton>
+          <UButton v-else-if="activeRegisterTab === 'line-items'" icon="i-lucide-list-plus" aria-label="New line definition" @click="openCatalogueModal"><span class="hidden sm:inline">New line definition</span></UButton>
+          <UButton v-else-if="activeRegisterTab === 'discounts'" icon="i-lucide-badge-percent" aria-label="New student discount" @click="openDiscountDrawer"><span class="hidden sm:inline">New student discount</span></UButton>
+          <UButton v-else icon="i-lucide-plus" aria-label="New student fee structure" @click="openStructureDrawer('ACADEMIC')"><span class="hidden sm:inline">New student fee structure</span></UButton>
         </template>
       </UDashboardNavbar>
       <UDashboardToolbar>
         <template #left>
-          <span class="text-sm text-muted">Governed fee schedules and reusable posting definitions</span>
+          <span class="text-sm text-muted">Application charges, student fee schedules, posting definitions, and authorised discounts</span>
         </template>
       </UDashboardToolbar>
     </template>
     <template #body>
       <div class="space-y-5 p-4 sm:p-6">
-        <section v-if="activeRegisterTab === 'structures'" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section v-if="activeRegisterTab === 'application-fees'" class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <EmhareKpiCard label="Application fees" :value="applicationFeeCounts.total" icon="i-lucide-file-check-2" tone="primary" />
+          <EmhareKpiCard label="Ready for applications" :value="applicationFeeCounts.active" icon="i-lucide-circle-check" tone="success" />
+          <EmhareKpiCard label="Awaiting approval" :value="applicationFeeCounts.draft" icon="i-lucide-stamp" tone="warning" />
+          <EmhareKpiCard label="Awaiting exchange rate" :value="applicationFeeCounts.unrated" icon="i-lucide-refresh-cw" tone="error" />
+        </section>
+
+        <section v-else-if="activeRegisterTab === 'structures'" class="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <EmhareKpiCard label="Fee structures" :value="structureCounts.total" icon="i-lucide-layers-3" tone="primary" />
           <EmhareKpiCard label="Active" :value="structureCounts.active" icon="i-lucide-circle-check" tone="success" />
           <EmhareKpiCard label="Awaiting approval" :value="structureCounts.draft" icon="i-lucide-stamp" tone="warning" />
           <EmhareKpiCard label="Awaiting exchange rate" :value="structureCounts.unrated" icon="i-lucide-refresh-cw" tone="error" />
         </section>
 
-        <section v-else-if="activeRegisterTab === 'line-items'" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section v-else-if="activeRegisterTab === 'line-items'" class="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <EmhareKpiCard label="Line definitions" :value="counts.total" icon="i-lucide-list-tree" tone="primary" />
           <EmhareKpiCard label="Active" :value="counts.active" icon="i-lucide-circle-check" tone="success" />
           <EmhareKpiCard label="Awaiting approval" :value="counts.awaitingApproval" icon="i-lucide-stamp" tone="warning" />
           <EmhareKpiCard label="Awaiting exchange rate" :value="counts.pendingRate" icon="i-lucide-refresh-cw" tone="error" />
         </section>
 
-        <section v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section v-else class="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <EmhareKpiCard label="Student discounts" :value="discountCounts.total" icon="i-lucide-badge-percent" tone="primary" />
           <EmhareKpiCard label="Active" :value="discountCounts.active" icon="i-lucide-circle-check" tone="success" />
           <EmhareKpiCard label="Awaiting approval" :value="discountCounts.draft" icon="i-lucide-stamp" tone="warning" />
@@ -457,15 +491,55 @@ function toggleStructureDetails(structureId: string, open: boolean) {
 
         <UTabs v-model="activeRegisterTab" :items="registerTabs" color="primary" variant="pill" :content="false" />
 
-        <div v-if="activeRegisterTab === 'structures'" class="space-y-5">
+        <div v-if="activeRegisterTab === 'application-fees'" class="space-y-5">
+          <UAlert color="primary" variant="soft" icon="i-lucide-shield-check" title="Application payment gate" description="Finance owns the amount, currency, effective dates, reconciliation, and receipt. Admissions can proceed only after the configured fee is confirmed or an authorised waiver is recorded." />
+          <EmhareRegisterPanel
+            title="Application fee register"
+            description="One clear charge per programme level and applicant category. Active, rated fees can be linked to Admissions application types."
+            :record-count="applicationFeeStructures.length"
+          >
+            <EmharePaginatedCollection :items="applicationFeeStructures" v-slot="{ items: paginatedApplicationFees }">
+              <div class="grid gap-4 lg:grid-cols-2">
+                <UCard v-for="structure in paginatedApplicationFees" :key="structure.id" :ui="{ body: 'p-4 sm:p-5' }">
+                  <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="font-mono text-xs font-semibold text-primary">{{ structure.code }}</span>
+                        <UBadge :label="structure.status" :color="structureColour(structure.status)" variant="subtle" />
+                        <UBadge v-if="applicationFeeReady(structure)" label="Ready" color="success" variant="outline" />
+                      </div>
+                      <h2 class="mt-2 text-lg font-semibold text-highlighted">{{ structure.name }}</h2>
+                      <p class="mt-1 text-sm text-muted">{{ structure.programmeLevelCode }} · {{ structure.programmeLevelName }} · {{ applicationFeeCategory(structure) }}</p>
+                    </div>
+                    <p class="text-2xl font-semibold tabular-nums text-primary">{{ money(structureTotal(structure), structure.transactionCurrencyCode) }}</p>
+                  </div>
+                  <div class="mt-4 grid gap-3 border-y border-muted py-4 text-sm sm:grid-cols-2">
+                    <div><p class="text-xs uppercase text-muted">Effective from</p><p class="mt-1 font-medium">{{ date(structure.effectiveFrom) }}</p></div>
+                    <div><p class="text-xs uppercase text-muted">Effective until</p><p class="mt-1 font-medium">{{ date(structure.effectiveUntil) }}</p></div>
+                    <div><p class="text-xs uppercase text-muted">USD base status</p><p class="mt-1 font-medium" :class="structureHasUnratedLines(structure) ? 'text-error' : 'text-success'">{{ structureHasUnratedLines(structure) ? 'Exchange rate required' : 'Rated and available' }}</p></div>
+                    <div><p class="text-xs uppercase text-muted">Posting</p><p class="mt-1 font-medium">{{ structure.lines[0]?.receivableAccountCode }} → {{ structure.lines[0]?.revenueAccountCode }}</p></div>
+                  </div>
+                  <div class="mt-4 flex flex-wrap justify-end gap-2">
+                    <UButton v-if="structure.status === 'DRAFT'" label="Verify and activate" icon="i-lucide-stamp" :loading="operatingId === structure.id" :disabled="structureHasUnratedLines(structure)" @click="moveStructure(structure, 'activate')" />
+                    <UButton v-else-if="structure.status === 'ACTIVE'" label="Link to application types" icon="i-lucide-arrow-right" color="neutral" variant="outline" to="/operations/application-types" />
+                    <UButton v-if="structure.status === 'ACTIVE'" label="Retire" color="neutral" variant="ghost" :loading="operatingId === structure.id" @click="moveStructure(structure, 'retire')" />
+                  </div>
+                </UCard>
+                <EmhareFeedbackState v-if="!loading && !applicationFeeStructures.length" state="empty" title="No application fees configured" description="Configure the first fee by programme level. Add category-specific fees only when the amount differs." />
+              </div>
+            </EmharePaginatedCollection>
+          </EmhareRegisterPanel>
+        </div>
+
+        <div v-else-if="activeRegisterTab === 'structures'" class="space-y-5">
           <UAlert color="primary" variant="soft" icon="i-lucide-git-branch" title="One complete schedule wins" description="Schedules first match programme level. Within that level, programme fees replace academic-unit fees; the nearest academic unit replaces its parent; institution fees are the fallback. Charges are never mixed across levels or hierarchy scopes." />
 
           <EmhareRegisterPanel
             title="Fee structure register"
             description="Complete fee schedules, their precedence scope, effective window, line total, and maker-checker state."
-            :record-count="structureRegister.structures.length"
+            :record-count="studentFeeStructures.length"
           >
-            <EmharePaginatedCollection :items="structureRegister.structures" v-slot="{ items: paginatedStructures }">
+            <EmharePaginatedCollection :items="studentFeeStructures" v-slot="{ items: paginatedStructures }">
             <div class="space-y-4">
             <UCard v-for="structure in paginatedStructures" :key="structure.id" :ui="{ body: 'p-0' }">
               <div class="grid gap-4 p-4 sm:p-5 xl:grid-cols-[1fr_auto]">
@@ -536,7 +610,7 @@ function toggleStructureDetails(structureId: string, open: boolean) {
                 </template>
               </UCollapsible>
             </UCard>
-              <EmhareFeedbackState v-if="!loading && !structureRegister.structures.length" state="empty" title="No fee structures configured" description="Create the institution fallback or a programme-specific structure, then add Tuition, Student Levy, Sport Fees, and other invoice lines." />
+              <EmhareFeedbackState v-if="!loading && !studentFeeStructures.length" state="empty" title="No student fee structures configured" description="Create the institution fallback or a programme-specific structure, then add Tuition, Student Levy, Sport Fees, and other invoice lines." />
             </div>
             </EmharePaginatedCollection>
           </EmhareRegisterPanel>
@@ -603,9 +677,9 @@ function toggleStructureDetails(structureId: string, open: boolean) {
     </template>
   </UDashboardPanel>
 
-  <EmhareFeeStructureDrawer v-model:open="structureDrawerOpen" :catalogues="register.catalogues" :academic-overview="academicOverview" :applicant-categories="applicantCategories" @created="load" />
+  <EmhareFeeStructureDrawer v-model:open="structureDrawerOpen" :initial-context="structureDrawerContext" :catalogues="register.catalogues" :academic-overview="academicOverview" :applicant-categories="applicantCategories" @created="load" />
 
-  <EmhareRecordDrawer v-model:open="discountDrawerOpen" width="wide" title="Create student discount" description="Record one governed percentage reduction. Scope specificity determines priority and only one discount is applied to a fee line.">
+  <EmhareRecordDrawer v-model:open="discountDrawerOpen" presentation="page" width="wide" title="Create student discount" description="Record one governed percentage reduction. Scope specificity determines priority and only one discount is applied to a fee line.">
     <template #body>
       <div class="space-y-5">
         <section class="rounded-lg border border-muted p-4">
@@ -617,8 +691,8 @@ function toggleStructureDetails(structureId: string, open: boolean) {
           <h3 class="font-semibold text-highlighted">Student applicability</h3>
           <p class="mt-1 text-xs text-muted">Leave both academic unit and programme blank for a global discount. Programme level and study level are always required.</p>
           <div class="mt-4 grid gap-4 sm:grid-cols-2">
-            <UFormField label="Programme level" description="UG or PG" required><USelectMenu v-model="discountForm.programmeLevelId" :items="programmeLevelItems" value-key="value" searchable class="w-full" placeholder="Select UG or PG" /></UFormField>
-            <UFormField label="Programme study level" description="The student's current year and semester" required><USelect v-model="discountForm.programmeStudyLevel" :items="programmeStudyLevelItems" class="w-full" placeholder="Select, for example 3.1" :disabled="!discountForm.programmeLevelId" /></UFormField>
+            <UFormField label="Programme level" description="UG or PG" required><USelectMenu v-model="discountForm.programmeLevelId" :items="programmeLevelItems" value-key="value" searchable class="w-full" placeholder="Select UG or PG" aria-label="Programme level" /></UFormField>
+            <UFormField label="Programme study level" description="The student's current year and semester" required><USelect v-model="discountForm.programmeStudyLevel" :items="programmeStudyLevelItems" class="w-full" placeholder="Select, for example 3.1" aria-label="Programme study level" :disabled="!discountForm.programmeLevelId" /></UFormField>
             <UFormField label="Academic unit" description="Optional"><USelectMenu v-model="discountForm.academicUnitId" :items="academicUnitItems" value-key="value" searchable clearable class="w-full" placeholder="All academic units" /></UFormField>
             <UFormField label="Programme" description="Optional"><USelectMenu v-model="discountForm.programmeId" :items="programmeItems" value-key="value" searchable clearable class="w-full" placeholder="All programmes" :disabled="!discountForm.programmeLevelId" /></UFormField>
           </div>
@@ -628,19 +702,19 @@ function toggleStructureDetails(structureId: string, open: boolean) {
         <section class="rounded-lg border border-muted p-4">
           <h3 class="font-semibold text-highlighted">Eligibility and effectivity</h3>
           <p class="mt-1 text-xs text-muted">The rate is applied only after the complete student applicability rule matches.</p>
-          <div class="mt-4 grid gap-4 sm:grid-cols-3"><UFormField label="Discount rate" description="Percentage" required><UInput v-model.number="discountForm.discountPercentage" type="number" min="0.0001" max="99.9999" step="0.01" class="w-full" /></UFormField><UFormField label="Effective from" required><UInput v-model="discountForm.effectiveFrom" type="datetime-local" class="w-full" /></UFormField><UFormField label="Effective until"><UInput v-model="discountForm.effectiveUntil" type="datetime-local" class="w-full" /></UFormField></div>
+          <div class="mt-4 grid gap-4 sm:grid-cols-3"><UFormField label="Discount rate" description="Percentage" required><UInput v-model.number="discountForm.discountPercentage" type="number" min="0.0001" max="99.9999" step="0.01" class="w-full" aria-label="Discount rate" /></UFormField><UFormField label="Effective from" required><UInput v-model="discountForm.effectiveFrom" type="datetime-local" class="w-full" aria-label="Effective from" /></UFormField><UFormField label="Effective until"><UInput v-model="discountForm.effectiveUntil" type="datetime-local" class="w-full" aria-label="Effective until" /></UFormField></div>
         </section>
       </div>
     </template>
     <template #footer><div class="flex w-full justify-end gap-2"><UButton label="Cancel" color="neutral" variant="outline" @click="discountDrawerOpen = false" /><EmhareGuidedActionButton label="Create draft discount" icon="i-lucide-save" :loading="saving" guidance-title="Discount details are incomplete" :guidance-instructions="[...(!discountForm.code.trim() ? ['Enter a discount code.'] : []), ...(!discountForm.name.trim() ? ['Enter a discount name.'] : []), ...(!discountForm.authorityReference.trim() ? ['Record the approval authority.'] : []), ...(!discountForm.programmeLevelId ? ['Select UG or PG programme level.'] : []), ...(!discountForm.programmeStudyLevel ? ['Select the programme study level, such as 3.1 or 3.2.'] : []), ...(discountForm.discountPercentage <= 0 || discountForm.discountPercentage >= 100 ? ['Enter a discount rate greater than zero and less than 100.'] : []), ...(!discountForm.effectiveFrom ? ['Enter the effective-from date and time.'] : []), ...(discountForm.targetType === 'FEE_LINE' && !discountForm.feeCatalogueId ? ['Select the fee line.'] : [])]" @click="createDiscount" /></div></template>
   </EmhareRecordDrawer>
 
-  <EmhareRecordDrawer v-model:open="catalogueModalOpen" title="Create fee definition" description="Create the institutional charge and posting-account policy. A different Finance operator must activate it.">
+  <EmhareRecordDrawer v-model:open="catalogueModalOpen" presentation="page" title="Create fee definition" description="Create the institutional charge and posting-account policy. A different Finance operator must activate it.">
     <template #body><div class="space-y-4"><div class="grid gap-4 sm:grid-cols-2"><UFormField label="Fee code" required><UInput v-model="catalogueForm.code" class="w-full" placeholder="TUITION-UG" /></UFormField><UFormField label="Charge type" required><USelect v-model="catalogueForm.chargeType" :items="chargeTypeItems" class="w-full" /></UFormField></div><UFormField label="Fee name" required><UInput v-model="catalogueForm.name" class="w-full" placeholder="Undergraduate tuition" /></UFormField><UFormField label="Policy description"><UTextarea v-model="catalogueForm.description" :rows="3" class="w-full" /></UFormField><div class="grid gap-4 sm:grid-cols-2"><UFormField label="Receivable account code" required><UInput v-model="catalogueForm.receivableAccountCode" class="w-full" placeholder="AR-STUDENT" /></UFormField><UFormField label="Revenue account code" required><UInput v-model="catalogueForm.revenueAccountCode" class="w-full" placeholder="REV-TUITION" /></UFormField></div><div class="grid gap-4 sm:grid-cols-2"><UFormField label="Tax code"><UInput v-model="catalogueForm.taxCode" class="w-full" /></UFormField><UFormField label="Base currency"><UInput model-value="USD" disabled class="w-full" /></UFormField></div></div></template>
     <template #footer><div class="flex w-full justify-end gap-2"><UButton label="Cancel" color="neutral" variant="outline" @click="catalogueModalOpen = false" /><EmhareGuidedActionButton label="Create draft definition" icon="i-lucide-save" :loading="saving" guidance-title="Fee definition details are incomplete" :guidance-instructions="[...(!catalogueForm.code.trim() ? ['Enter a fee code.'] : []), ...(!catalogueForm.name.trim() ? ['Enter a fee name.'] : []), ...(!catalogueForm.receivableAccountCode.trim() ? ['Enter the receivable account code.'] : []), ...(!catalogueForm.revenueAccountCode.trim() ? ['Enter the revenue account code.'] : [])]" @click="createCatalogue" /></div></template>
   </EmhareRecordDrawer>
 
-  <EmhareRecordDrawer v-model:open="ruleModalOpen" :title="`Add effective price · ${selectedCatalogue?.code ?? ''}`" description="A price is selected only when every scope dimension and effective date matches the billing event.">
+  <EmhareRecordDrawer v-model:open="ruleModalOpen" presentation="page" :title="`Add effective price · ${selectedCatalogue?.code ?? ''}`" description="A price is selected only when every scope dimension and effective date matches the billing event.">
     <template #body><div class="space-y-5"><div class="grid gap-4 sm:grid-cols-3"><UFormField label="Transaction currency" required><USelect v-model="ruleForm.transactionCurrencyCode" :items="currencyItems" class="w-full" /></UFormField><UFormField label="Transaction amount" required><UInput v-model.number="ruleForm.transactionAmount" type="number" min="0.01" step="0.01" class="w-full" /></UFormField><UFormField label="Base currency"><UInput model-value="USD" disabled class="w-full" /></UFormField><UFormField label="Effective from" required><UInput v-model="ruleForm.effectiveFrom" type="datetime-local" class="w-full" /></UFormField><UFormField label="Effective until"><UInput v-model="ruleForm.effectiveUntil" type="datetime-local" class="w-full" /></UFormField></div><UAlert v-if="ruleForm.transactionCurrencyCode !== 'USD'" color="warning" variant="soft" title="Foreign-currency price requires effective rate evidence" description="If Finance has not captured a valid rate for the effective date, this price remains unrated and cannot be approved or used for billing." /><section class="rounded-lg border border-muted"><div class="flex items-center justify-between border-b border-muted p-3"><div><h3 class="font-medium">Applicability scope</h3><p class="text-xs text-muted">Use one row per dimension. Global cannot be combined with another scope.</p></div><EmhareGuidedActionButton label="Add dimension" size="xs" icon="i-lucide-plus" color="neutral" variant="outline" guidance-title="Another scope dimension cannot be added" :guidance-instructions="ruleForm.scopes.some(scope => scope.scopeDimension === 'GLOBAL') ? ['Global scope cannot be combined with another dimension. Change or remove the Global scope first.'] : ruleForm.scopes.length >= 9 ? ['A price rule can contain at most nine scope dimensions.'] : []" @click="addScope" /></div><div class="space-y-3 p-3"><div v-for="(scope, index) in ruleForm.scopes" :key="index" class="grid gap-3 rounded-md bg-muted/30 p-3 sm:grid-cols-[190px_1fr_1fr_auto]"><UFormField label="Dimension" required><USelect v-model="scope.scopeDimension" :items="scopeDimensionItems" class="w-full" @update:model-value="changeScopeDimension(scope)" /></UFormField><template v-if="scope.scopeDimension !== 'GLOBAL'"><UFormField label="Reference code or UUID" required><div class="grid grid-cols-2 gap-2"><UInput v-model="scope.referenceCode" placeholder="Code" /><UInput v-model="scope.referenceId" placeholder="UUID" /></div></UFormField><UFormField label="Reference name" required><UInput v-model="scope.referenceName" class="w-full" /></UFormField></template><div v-else class="self-end pb-2 text-sm text-muted sm:col-span-2">Applies to every eligible record for this fee definition.</div><EmhareGuidedActionButton icon="i-lucide-trash-2" color="error" variant="ghost" class="self-end" guidance-title="Scope cannot be removed" :guidance-instructions="ruleForm.scopes.length === 1 ? ['A fee price must retain at least one applicability scope.'] : []" aria-label="Remove scope" @click="removeScope(index)" /></div></div></section></div></template>
     <template #footer><div class="flex w-full justify-end gap-2"><UButton label="Cancel" color="neutral" variant="outline" @click="ruleModalOpen = false" /><EmhareGuidedActionButton label="Create draft price" icon="i-lucide-calendar-plus" :loading="saving" guidance-title="Fee price details are incomplete" :guidance-instructions="[...(ruleForm.transactionAmount <= 0 ? ['Enter a transaction amount greater than zero.'] : []), ...(!ruleForm.effectiveFrom ? ['Enter the effective-from date and time.'] : []), ...(!ruleForm.scopes.length ? ['Add at least one applicability scope.'] : []), ...(!ruleForm.scopes.every(scope => scope.scopeDimension === 'GLOBAL' || Boolean(scope.referenceName.trim() && (scope.referenceId.trim() || scope.referenceCode.trim()))) ? ['Complete the reference name and code or UUID for every non-global scope.'] : [])]" @click="createRule" /></div></template>
   </EmhareRecordDrawer>
