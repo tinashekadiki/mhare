@@ -99,6 +99,26 @@ class OfficialDocumentsMigrationTest {
     }
 
     @Test
+    void storesOfferLetterContentAsAnImmutableJsonSnapshot() throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT data_type FROM information_schema.columns
+                WHERE table_schema='public' AND table_name='offer_letter_projections'
+                  AND column_name='content_snapshot'
+                """); ResultSet results = statement.executeQuery()) {
+            results.next();
+            assertEquals("jsonb", results.getString(1));
+        }
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT is_nullable FROM information_schema.columns
+                WHERE table_schema='public' AND table_name='offer_letter_projections'
+                  AND column_name='content_snapshot'
+                """); ResultSet results = statement.executeQuery()) {
+            results.next();
+            assertEquals("NO", results.getString(1));
+        }
+    }
+
+    @Test
     void enforcesUploadedDocumentVerificationEvidenceAndImmutableContent() throws SQLException {
         String documentId = "10000000-0000-4000-8000-000000000001";
         try (PreparedStatement insert = connection.prepareStatement("""

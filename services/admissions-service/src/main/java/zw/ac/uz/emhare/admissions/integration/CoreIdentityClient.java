@@ -32,6 +32,22 @@ public class CoreIdentityClient {
         }
     }
 
+    public CoreInstitutionProfile institutionProfile(String authorization) {
+        try {
+            CoreInstitutionProfile profile = coreIdentityHttpService.institutionProfile(authorization);
+            if (profile == null) {
+                throw new ServiceDependencyUnavailableException("Core Identity returned an empty institution profile.", null);
+            }
+            return profile;
+        } catch (ServiceDependencyUnavailableException exception) {
+            throw exception;
+        } catch (RestClientResponseException exception) {
+            throw unavailable(exception);
+        } catch (RuntimeException exception) {
+            throw unavailable(exception);
+        }
+    }
+
     private ServiceDependencyUnavailableException unavailable(Throwable cause) {
         return new ServiceDependencyUnavailableException(
                 "Core Identity is unavailable, so the current user cannot be synchronized.", cause);
@@ -60,4 +76,8 @@ public class CoreIdentityClient {
 
     public record CoreRoleAssignmentSummary(UUID id, UUID roleId, String roleCode, String roleName, UUID academicUnitId) {
     }
+
+    public record CoreInstitutionProfile(
+            UUID id, String code, String name, String legalName, String defaultCurrencyCode,
+            String countryCode, String timezone, String contactDetailsJson, String brandingJson, String legacyCode) { }
 }

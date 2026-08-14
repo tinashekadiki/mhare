@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import zw.ac.uz.emhare.admissions.domain.model.*;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.*;
 import zw.ac.uz.emhare.admissions.integration.AdmissionsIntegrationOutboxService;
+import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient;
 
 /** Governed, versioned direct-offer commands for the rolling workflow. @author Tinashe K */
 @Service
@@ -23,13 +24,16 @@ public class DirectAdmissionOfferService {
     private final OfferDispatchRepository dispatchRepository;
     private final OfferStatusEventRepository statusEventRepository;
     private final AdmissionsIntegrationOutboxService outboxService;
+    private final OfferLetterFeeScheduleResolver feeScheduleResolver;
+    private final CoreIdentityClient coreIdentityClient;
     private final Clock clock;
 
     public DirectAdmissionOfferService(AdmissionOfferRepository offerRepository,
             OfferResponseRepository responseRepository, OfferConditionRepository conditionRepository,
             OfferDocumentVersionRepository documentRepository, OfferPublicationRepository publicationRepository,
             OfferDispatchRepository dispatchRepository, OfferStatusEventRepository statusEventRepository,
-            AdmissionsIntegrationOutboxService outboxService, Clock clock) {
+            AdmissionsIntegrationOutboxService outboxService, OfferLetterFeeScheduleResolver feeScheduleResolver,
+            CoreIdentityClient coreIdentityClient, Clock clock) {
         this.offerRepository = offerRepository;
         this.responseRepository = responseRepository;
         this.conditionRepository = conditionRepository;
@@ -38,6 +42,8 @@ public class DirectAdmissionOfferService {
         this.dispatchRepository = dispatchRepository;
         this.statusEventRepository = statusEventRepository;
         this.outboxService = outboxService;
+        this.feeScheduleResolver = feeScheduleResolver;
+        this.coreIdentityClient = coreIdentityClient;
         this.clock = clock;
     }
 
@@ -55,6 +61,11 @@ public class DirectAdmissionOfferService {
 
     @Transactional
     public DocumentGenerationResult generate(UUID offerId, UUID actorUserId) {
+        return generate(offerId, actorUserId, null);
+    }
+
+    @Transactional
+    public DocumentGenerationResult generate(UUID offerId, UUID actorUserId, String authorization) {
         AdmissionOffer offer = offer(offerId);
         requireUnanswered(offer);
         if (offer.getOfferType() == null || offer.getAcceptanceDeadline() == null || offer.getCommencementDate() == null) {
@@ -65,14 +76,20 @@ public class DirectAdmissionOfferService {
                         offerId, OfferDocumentVersionStatus.REQUESTED).orElse(null);
         if (latestRequested != null) {
             outboxService.enqueueOfferLetterRequested(
-                    offer, latestRequested.getDocumentVersion(), actorUserId);
+                    offer, latestRequested.getDocumentVersion(), actorUserId,
+                    feeScheduleResolver.resolve(offer, authorization), institutionProfile(authorization));
             return result(latestRequested);
         }
         int version = documentRepository.countByOfferIdAndDeletedAtIsNull(offerId) + 1;
         OfferDocumentVersion document = documentRepository.saveAndFlush(
                 new OfferDocumentVersion(offer, version, actorUserId, clock.instant()));
-        outboxService.enqueueOfferLetterRequested(offer, version, actorUserId);
+        outboxService.enqueueOfferLetterRequested(offer, version, actorUserId,
+                feeScheduleResolver.resolve(offer, authorization), institutionProfile(authorization));
         return result(document);
+    }
+
+    private CoreIdentityClient.CoreInstitutionProfile institutionProfile(String authorization) {
+        return authorization == null || authorization.isBlank() ? null : coreIdentityClient.institutionProfile(authorization);
     }
 
     @Transactional

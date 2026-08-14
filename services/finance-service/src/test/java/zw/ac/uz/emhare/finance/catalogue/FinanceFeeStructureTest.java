@@ -1,12 +1,15 @@
 package zw.ac.uz.emhare.finance.catalogue;
 
 import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeStructure;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeCatalogue;
+import zw.ac.uz.emhare.finance.catalogue.domain.model.FinanceFeeRule;
 import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeCatalogueRepository;
 import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeRuleRepository;
 import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeRuleScopeRepository;
 import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeStructureAttachmentRepository;
 import zw.ac.uz.emhare.finance.catalogue.infrastructure.persistence.FinanceFeeStructureRepository;
 import zw.ac.uz.emhare.finance.payment.infrastructure.persistence.ExchangeRateRepository;
+import zw.ac.uz.emhare.finance.payment.domain.model.ExchangeRate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -137,6 +140,58 @@ class FinanceFeeStructureTest {
                 null, UUID.randomUUID(), List.of(), postgraduateLevelId, "PG", null, null, 1));
 
         assertEquals("PG-DEFAULT", resolved.code());
+    }
+
+    @Test
+    void resolvedStructureExposesFinanceOwnedCurrencyAndRateEvidence() {
+        UUID structureId = UUID.randomUUID();
+        UUID rateId = UUID.randomUUID();
+        FinanceFeeStructure structure = activeStructure("UG-RATED", FinanceFeeStructure.ScopeType.INSTITUTION,
+                null, null, null);
+        when(structure.getId()).thenReturn(structureId);
+        FinanceFeeRule rule = mock(FinanceFeeRule.class);
+        FinanceFeeCatalogue catalogue = mock(FinanceFeeCatalogue.class);
+        ExchangeRate rate = mock(ExchangeRate.class);
+        when(rule.getFeeCatalogue()).thenReturn(catalogue);
+        when(rule.getStructureLineNumber()).thenReturn(1);
+        when(rule.getTransactionAmount()).thenReturn(new java.math.BigDecimal("2500.00"));
+        when(rule.getTransactionCurrencyCode()).thenReturn("ZWG");
+        when(rule.getBaseCurrencyCode()).thenReturn("USD");
+        when(rule.getExchangeRate()).thenReturn(rate);
+        when(rate.getId()).thenReturn(rateId);
+        when(rate.getRateToBase()).thenReturn(new java.math.BigDecimal("0.04"));
+        when(rule.getBaseAmount()).thenReturn(new java.math.BigDecimal("100.00"));
+        when(rule.getRatingStatus()).thenReturn(FinanceFeeRule.RatingStatus.RATED);
+        when(rule.getStatus()).thenReturn(FinanceFeeRule.Status.APPROVED);
+        when(catalogue.getCode()).thenReturn("TUIT");
+        when(catalogue.getName()).thenReturn("Tuition");
+        FinanceFeeRule unratedRule = mock(FinanceFeeRule.class);
+        when(unratedRule.getFeeCatalogue()).thenReturn(catalogue);
+        when(unratedRule.getStructureLineNumber()).thenReturn(2);
+        when(unratedRule.getTransactionAmount()).thenReturn(new java.math.BigDecimal("500.00"));
+        when(unratedRule.getTransactionCurrencyCode()).thenReturn("ZWG");
+        when(unratedRule.getBaseCurrencyCode()).thenReturn("USD");
+        when(unratedRule.getExchangeRate()).thenReturn(null);
+        when(unratedRule.getRatingStatus()).thenReturn(FinanceFeeRule.RatingStatus.UNRATED);
+        when(unratedRule.getStatus()).thenReturn(FinanceFeeRule.Status.PENDING_RATE);
+        FinanceFeeStructureRepository structures = mock(FinanceFeeStructureRepository.class);
+        FinanceFeeRuleRepository rules = mock(FinanceFeeRuleRepository.class);
+        when(structures.findAllByStatusAndDeletedAtIsNull(FinanceFeeStructure.Status.ACTIVE))
+                .thenReturn(List.of(structure));
+        when(rules.findAllByFeeStructureIdAndDeletedAtIsNullOrderByStructureLineNumberAsc(structureId))
+                .thenReturn(List.of(rule, unratedRule));
+        GovernedFinanceFeeStructureService service = new GovernedFinanceFeeStructureService(structures,
+                mock(FinanceFeeCatalogueRepository.class), rules, mock(FinanceFeeRuleScopeRepository.class),
+                mock(FinanceFeeStructureAttachmentRepository.class), mock(ExchangeRateRepository.class),
+                Clock.fixed(EFFECTIVE_AT, ZoneOffset.UTC));
+
+        var resolved = service.resolve(new ResolveStructure(FinanceFeeStructure.FeeContext.ACADEMIC, EFFECTIVE_AT,
+                null, UUID.randomUUID(), List.of(), UG_LEVEL_ID, UG_LEVEL_CODE, null, null, 1));
+
+        assertEquals("USD", resolved.lines().getFirst().baseCurrencyCode());
+        assertEquals(rateId, resolved.lines().getFirst().exchangeRateId());
+        assertEquals(new java.math.BigDecimal("0.04"), resolved.lines().getFirst().exchangeRateToBase());
+        assertEquals(null, resolved.lines().get(1).exchangeRateId());
     }
 
     private GovernedFinanceFeeStructureService serviceWith(FinanceFeeStructure... structures) {

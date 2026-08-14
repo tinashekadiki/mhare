@@ -686,3 +686,70 @@ export type AdmissionsVerificationQueue = {
     documents: ApplicationDocumentRegister;
   }>;
 };
+
+export type AdmissionsReportDimensionCount = { code: string; count: number };
+export type AdmissionsReportRankedChoiceCount = { rank: number; choices: number; applications: number };
+export type AdmissionsReportFilterOption = { value: string; code: string; label: string };
+
+export type AdmissionsReportDefinition = {
+  code: 'APPLICATION_DEMAND' | 'EXECUTIVE_STATISTICS' | 'APPLICANT_REGISTERS' |
+    'SPECIAL_CATEGORY_REGISTERS' | 'SELECTION_SCHEDULES' | 'INTAKE_MOVEMENTS' |
+    'ADMISSIONS_ANALYSIS' | 'OFFER_LETTERS';
+  family: string;
+  title: string;
+  description: string;
+  formats: string[];
+  variants: string[];
+};
+
+export type AdmissionsOperationalReport = {
+  definition: AdmissionsReportDefinition;
+  generatedAt: string;
+  metrics: Array<{ label: string; value: string }>;
+  columns: Array<{ key: string; label: string }>;
+  rows: string[][];
+  chart: Array<{ label: string; value: number; series: string }>;
+  notes: string[];
+};
+
+export type AdmissionsPipelineReport = {
+  generatedAt: string;
+  totalApplications: number;
+  totalApplicants: number;
+  statusCounts: AdmissionsReportDimensionCount[];
+  paymentCounts: AdmissionsReportDimensionCount[];
+  categoryCounts: AdmissionsReportDimensionCount[];
+  genderCounts: AdmissionsReportDimensionCount[];
+  rankedChoiceCounts: AdmissionsReportRankedChoiceCount[];
+  intakeStatistics: Array<{
+    intakeId: string;
+    intakeCode: string;
+    intakeName: string;
+    applications: number;
+    applicants: number;
+    statusCounts: AdmissionsReportDimensionCount[];
+    categoryCounts: AdmissionsReportDimensionCount[];
+    genderCounts: AdmissionsReportDimensionCount[];
+    rankedChoiceCounts: AdmissionsReportRankedChoiceCount[];
+  }>;
+  programmeStatistics: Array<{
+    programmeId: string;
+    programmeCode: string;
+    programmeName: string;
+    owningAcademicUnitName: string | null;
+    applications: number;
+    applicants: number;
+    choices: number;
+    statusCounts: AdmissionsReportDimensionCount[];
+    categoryCounts: AdmissionsReportDimensionCount[];
+    genderCounts: AdmissionsReportDimensionCount[];
+    rankedChoiceCounts: AdmissionsReportRankedChoiceCount[];
+  }>;
+  filterOptions: {
+    intakes: AdmissionsReportFilterOption[];
+    applicationTypes: AdmissionsReportFilterOption[];
+    programmes: AdmissionsReportFilterOption[];
+    categories: AdmissionsReportFilterOption[];
+    genders: AdmissionsReportFilterOption[];
+  };
+};

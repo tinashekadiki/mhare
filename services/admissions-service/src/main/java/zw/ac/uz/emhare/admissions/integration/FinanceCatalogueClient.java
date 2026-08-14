@@ -1,6 +1,8 @@
 package zw.ac.uz.emhare.admissions.integration;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -42,6 +44,28 @@ public class FinanceCatalogueClient {
         }
     }
 
+    public ResolvedAcademicFeeStructure resolveAcademicFeeStructure(
+            String authorization, ResolveAcademicFeeStructureRequest request) {
+        try {
+            ResolvedAcademicFeeStructure pricing = financeHttpService.resolveAcademicFeeStructure(authorization, request);
+            if (pricing == null || pricing.lines() == null || pricing.lines().isEmpty()) {
+                throw new ServiceDependencyUnavailableException("Finance returned an incomplete academic fee schedule.", null);
+            }
+            return pricing;
+        } catch (ServiceDependencyUnavailableException exception) {
+            throw exception;
+        } catch (RestClientResponseException exception) {
+            String detail = pricingRejectionDetail(exception);
+            if (exception.getStatusCode().value() == HttpStatus.BAD_REQUEST.value()
+                    || exception.getStatusCode().value() == HttpStatus.CONFLICT.value()) {
+                throw new IllegalStateException(detail, exception);
+            }
+            throw unavailable(exception);
+        } catch (RestClientException exception) {
+            throw unavailable(exception);
+        }
+    }
+
     private ServiceDependencyUnavailableException unavailable(Throwable exception) {
         return new ServiceDependencyUnavailableException(
                 "Finance is unavailable, so the application fee cannot be safely resolved.", exception);
@@ -63,4 +87,21 @@ public class FinanceCatalogueClient {
             UUID id, String code, String name, String status,
             String transactionCurrencyCode, BigDecimal totalTransactionAmount) {
     }
+
+    public record ResolveAcademicFeeStructureRequest(
+            String feeContext, Instant effectiveAt, UUID academicPeriodId, UUID programmeId,
+            List<AcademicUnitPathItem> academicUnitPath, UUID programmeLevelId, String programmeLevelCode,
+            UUID programmeTypeId, String applicantCategoryCode, Integer programmePeriodNumber) { }
+
+    public record AcademicUnitPathItem(UUID id, String code, String name) { }
+
+    public record ResolvedAcademicFeeStructure(
+            UUID id, String code, String name, String feeContext, String status, long version,
+            String transactionCurrencyCode, List<ResolvedAcademicFeeLine> lines) { }
+
+    public record ResolvedAcademicFeeLine(
+            UUID feeRuleId, int lineNumber, UUID feeCatalogueId, String feeCode, String feeName,
+            String description, BigDecimal transactionAmount, String transactionCurrencyCode,
+            String baseCurrencyCode, UUID exchangeRateId, BigDecimal exchangeRateToBase,
+            BigDecimal baseAmount, String ratingStatus, String status) { }
 }

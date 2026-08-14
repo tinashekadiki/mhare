@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import zw.ac.uz.emhare.admissions.api.model.RollingAdmissionsRequests.*;
 import zw.ac.uz.emhare.admissions.application.AdmissionOfferSummary;
@@ -111,7 +112,7 @@ public class AdmissionsRollingWorkflowController {
     public DocumentGenerationResult generateDocument(Authentication authentication,
             @PathVariable("offerId") UUID offerId) {
         var profile = coreIdentityClient.syncCurrentUser(authentication);
-        return offerService.generate(offerId, profile.user().id());
+        return offerService.generate(offerId, profile.user().id(), authorization(authentication));
     }
 
     @PostMapping("/offers/{offerId}/publish-and-send")
@@ -120,6 +121,13 @@ public class AdmissionsRollingWorkflowController {
             @PathVariable("offerId") UUID offerId) {
         var profile = coreIdentityClient.syncCurrentUser(authentication);
         return offerService.publishAndSend(offerId, profile.user().id());
+    }
+
+    private String authorization(Authentication authentication) {
+        if (authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
+            return "Bearer " + jwtAuthenticationToken.getToken().getTokenValue();
+        }
+        throw new IllegalStateException("JWT authentication is required for governed offer-letter pricing.");
     }
 
     @PostMapping("/offers/{offerId}/email-retry")

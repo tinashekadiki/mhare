@@ -95,7 +95,7 @@ public class GeneratedDocument extends AuditableEntity {
         this.sourceProgressionDecisionVersion = offerLetter.getDocumentVersion();
         this.offerLetter = offerLetter;
         this.templateCode = "OFFICIAL-OFFER-LETTER";
-        this.templateVersion = 1;
+        this.templateVersion = 2;
         this.status = Status.REQUESTED;
         this.requestedAt = requestedAt;
         this.nextGenerationAttemptAt = requestedAt;

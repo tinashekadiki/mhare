@@ -140,6 +140,11 @@ const navigationGroups = [
         icon: "i-lucide-users",
         to: "/operations/applicants",
       },
+      {
+        label: "Admissions reports",
+        icon: "i-lucide-chart-no-axes-combined",
+        to: "/operations/admissions-reports",
+      },
     ],
   },
   {
@@ -489,6 +494,7 @@ const visibleQuickActions = computed(() =>
 
 const academicPeriodScopedRoutes = new Set([
   "/operations/admissions",
+  "/operations/admissions-reports",
   "/operations/admissions-verification",
   "/operations/admissions-evaluation",
   "/operations/admissions-selection",

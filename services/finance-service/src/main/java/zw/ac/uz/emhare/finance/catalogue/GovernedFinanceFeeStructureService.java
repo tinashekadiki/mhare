@@ -339,6 +339,8 @@ public class GovernedFinanceFeeStructureService {
                         rule.getStructureLineDescription(), rule.getFeeCatalogue().getChargeType(),
                         rule.getFeeCatalogue().getReceivableAccountCode(), rule.getFeeCatalogue().getRevenueAccountCode(),
                         rule.getFeeCatalogue().getTaxCode(), rule.getTransactionAmount(), rule.getTransactionCurrencyCode(),
+                        rule.getBaseCurrencyCode(), rule.getExchangeRate() == null ? null : rule.getExchangeRate().getId(),
+                        rule.getExchangeRate() == null ? null : rule.getExchangeRate().getRateToBase(),
                         rule.getBaseAmount(), rule.getRatingStatus(), rule.getStatus()))
                 .toList();
         BigDecimal structureTotal = lines.stream()

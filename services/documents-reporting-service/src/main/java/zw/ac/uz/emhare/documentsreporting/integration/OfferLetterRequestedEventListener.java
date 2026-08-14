@@ -40,7 +40,8 @@ public class OfferLetterRequestedEventListener {
         try { event=objectMapper.readValue(payload, OfferLetterRequestedEvent.class); }
         catch(JacksonException e){throw new IllegalArgumentException("Offer-letter request is invalid.",e);}
         if(event.schemaVersion()!=OfferLetterRequestedEvent.CURRENT_SCHEMA_VERSION || event.offerId()==null
-                || event.offerNumber()==null || event.requestedByUserId()==null) throw new IllegalArgumentException("Offer-letter request is invalid or unsupported.");
+                || event.offerNumber()==null || event.contentSnapshot()==null || event.requestedByUserId()==null)
+            throw new IllegalArgumentException("Offer-letter request is invalid or unsupported.");
         var existing=inboxRepository.findById(event.eventId());
         if(existing.isPresent() && existing.get().getProcessedAt()!=null)return;
         DocumentsReportingIntegrationInbox inbox=existing.orElseGet(()->inboxRepository.save(

@@ -75,6 +75,7 @@ public final class FinanceFeeStructureApiModels {
             UUID feeRuleId, int lineNumber, UUID feeCatalogueId, String feeCode, String feeName,
             String description, FinanceFeeCatalogue.ChargeType chargeType, String receivableAccountCode,
             String revenueAccountCode, String taxCode, BigDecimal transactionAmount, String transactionCurrencyCode,
+            String baseCurrencyCode, UUID exchangeRateId, BigDecimal exchangeRateToBase,
             BigDecimal baseAmount, FinanceFeeRule.RatingStatus ratingStatus, FinanceFeeRule.Status status) { }
 
     public record StructureAttachmentSummary(

@@ -2600,6 +2600,115 @@ test.describe("Core Identity authentication and RBAC", () => {
     expect(pageErrors).toEqual([]);
   });
 
+  test("opens the admissions report catalogue and a governed demand report", async ({
+    page,
+  }, testInfo) => {
+    const username = `codex.admissions-reports.${testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}@example.test`;
+    await ensureSystemAdminUser(username);
+
+    const reportDefinitions = [
+      ["APPLICATION_DEMAND", "Application demand", ["SCREEN", "CHART", "PDF"]],
+      ["EXECUTIVE_STATISTICS", "Executive statistics", ["SCREEN", "XLSX", "PDF"]],
+      ["APPLICANT_REGISTERS", "Applicant registers", ["SCREEN", "XLSX"]],
+      ["SPECIAL_CATEGORY_REGISTERS", "Special-category registers", ["SCREEN", "XLSX"]],
+      ["SELECTION_SCHEDULES", "Selection schedules", ["SCREEN", "XLSX", "PDF"]],
+      ["INTAKE_MOVEMENTS", "Intake movements", ["SCREEN", "XLSX"]],
+      ["ADMISSIONS_ANALYSIS", "Analysis", ["SCREEN", "GRAPH", "PDF"]],
+      ["OFFER_LETTERS", "Offer letters", ["PDF", "EMAIL"]],
+    ].map(([code, title, formats]) => ({
+      code,
+      family: title,
+      title,
+      description: `${title} reporting`,
+      variants: [`${title} detail`],
+      formats,
+    }));
+
+    await page.route("**/api/admissions/reports/catalogue", (route) =>
+      route.fulfill({ json: reportDefinitions }),
+    );
+    await page.route("**/api/admissions/reports/pipeline-summary**", (route) =>
+      route.fulfill({
+        json: {
+          generatedAt: "2026-08-14T08:00:00Z",
+          totalApplications: 2,
+          totalApplicants: 2,
+          statusCounts: [{ code: "SUBMITTED", label: "Submitted", count: 2 }],
+          paymentCounts: [{ code: "PAID", label: "Paid", count: 2 }],
+          categoryCounts: [{ code: "LOCAL", label: "Local", count: 2 }],
+          genderCounts: [{ code: "FEMALE", label: "Female", count: 2 }],
+          rankedChoiceCounts: [{ rank: 1, choices: 2, applications: 2 }],
+          intakeStatistics: [],
+          programmeStatistics: [],
+          filterOptions: {
+            intakes: [],
+            applicationTypes: [],
+            programmes: [],
+            categories: [],
+            genders: [],
+          },
+        },
+      }),
+    );
+    let exportRequestUrl = "";
+    await page.route("**/api/admissions/reports/APPLICATION_DEMAND**", (route) => {
+      const requestUrl = new URL(route.request().url());
+      if (requestUrl.pathname.endsWith("/export")) {
+        exportRequestUrl = requestUrl.toString();
+        return route.fulfill({
+          status: 200,
+          contentType: "application/pdf",
+          headers: { "Content-Disposition": 'attachment; filename="application-demand.pdf"' },
+          body: "%PDF-1.4\n%%EOF",
+        });
+      }
+      return route.fulfill({
+        json: {
+          definition: reportDefinitions[0],
+          generatedAt: "2026-08-14T08:00:00Z",
+          metrics: [
+            { label: "Applications", value: 2 },
+            { label: "Applicants", value: 2 },
+          ],
+          columns: [
+            { key: "programme", label: "Programme" },
+            { key: "choices", label: "Choices" },
+          ],
+          rows: [["HCS · BSc Computer Science", "2"]],
+          chart: [{ series: "Choices", label: "HCS", value: 2 }],
+          notes: ["Applications and applicants are counted distinctly."],
+        },
+      });
+    });
+
+    await page.goto("/operations/admissions-reports");
+    await expect(page).toHaveURL(
+      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
+      { timeout: 15_000 },
+    );
+    await loginWithKeycloak(page, username);
+
+    await expect(page).toHaveURL(/\/operations\/admissions-reports$/);
+    await expect(page.getByRole("heading", { name: "Report catalogue" })).toBeVisible();
+    await expect(page.locator("article")).toHaveCount(8);
+    await expect(page.getByText("Applications are counted once.")).toBeVisible();
+
+    const demandCard = page.locator("article").filter({
+      has: page.getByRole("heading", { name: "Application demand", exact: true }),
+    });
+    await demandCard.getByRole("link", { name: "Open report" }).click();
+
+    await expect(page).toHaveURL(/\/operations\/admissions-reports\/application-demand$/);
+    await expect(page.getByRole("heading", { name: "Application demand", exact: true }).last()).toBeVisible();
+    await expect(page.getByText("HCS · BSc Computer Science")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Visual summary" })).toBeVisible();
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export PDF" }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/^application-demand-.*\.pdf$/);
+    expect(exportRequestUrl).toContain("format=pdf");
+  });
+
   test("opens an admissions application as a full page with an inline document preview", async ({
     page,
   }, testInfo) => {

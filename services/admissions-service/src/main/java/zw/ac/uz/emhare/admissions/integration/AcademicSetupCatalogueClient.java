@@ -81,8 +81,14 @@ public class AcademicSetupCatalogueClient {
     }
 
     public ProgrammeHierarchyResolution getProgrammeHierarchy(UUID programmeId) {
+        return getProgrammeHierarchy(programmeId, null);
+    }
+
+    public ProgrammeHierarchyResolution getProgrammeHierarchy(UUID programmeId, String authorization) {
         try {
-            ProgrammeHierarchyResolution hierarchy = academicSetupHttpService.getProgrammeHierarchy(programmeId);
+            ProgrammeHierarchyResolution hierarchy = authorization == null
+                    ? academicSetupHttpService.getProgrammeHierarchy(programmeId)
+                    : academicSetupHttpService.getProgrammeHierarchy(authorization, programmeId);
             if (hierarchy == null || hierarchy.highestAcademicUnit() == null || hierarchy.ancestorPath() == null
                     || hierarchy.ancestorPath().isEmpty()) {
                 throw new ServiceDependencyUnavailableException(

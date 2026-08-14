@@ -6,6 +6,8 @@ import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.messaging.D
 import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.OfferLetterProjectionRepository;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.common.messaging.OfferLetterRequestedEvent;
+import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot;
 import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.model.GeneratedDocument;
 import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.model.OfferLetterProjection;
 
@@ -44,11 +47,11 @@ class OfferLetterRequestedEventListenerTest {
         Instant requestedAt = Instant.parse("2028-01-10T08:00:00Z");
         OfferLetterRequestedEvent event = new OfferLetterRequestedEvent(
                 eventId, OfferLetterRequestedEvent.CURRENT_SCHEMA_VERSION, requestedAt,
-                offerId, 1, "OFR-2028-0001", UUID.randomUUID(), "APP-2028-0001",
+                offerId, 1, 1, "OFR-2028-0001", UUID.randomUUID(), "APP-2028-0001",
                 "APL-2028-0001", "Tariro Moyo", "tariro@example.test", UUID.randomUUID(),
-                "BSC-CS", "Computer Science", "FIRM", null,
+                UUID.randomUUID(), "BSC-CS", "Computer Science", UUID.randomUUID(), "FIRM", null,
                 requestedAt.plusSeconds(86_400), LocalDate.parse("2028-08-15"),
-                LocalDate.parse("2028-08-20"), LocalDate.parse("2028-08-25"), UUID.randomUUID());
+                LocalDate.parse("2028-08-20"), LocalDate.parse("2028-08-25"), contentSnapshot(), UUID.randomUUID());
         ObjectMapper objectMapper = new ObjectMapper();
         Message message = new Message(objectMapper.writeValueAsBytes(event));
 
@@ -95,7 +98,7 @@ class OfferLetterRequestedEventListenerTest {
                 "APL-2028-0001", "Tariro Moyo", "tariro@example.test", UUID.randomUUID(),
                 UUID.randomUUID(), "BSC-CS", "Computer Science", UUID.randomUUID(), "FIRM", null,
                 requestedAt.plusSeconds(86_400), LocalDate.parse("2028-08-15"),
-                LocalDate.parse("2028-08-20"), LocalDate.parse("2028-08-25"), UUID.randomUUID());
+                LocalDate.parse("2028-08-20"), LocalDate.parse("2028-08-25"), contentSnapshot(), UUID.randomUUID());
         ObjectMapper objectMapper = new ObjectMapper();
 
         when(inboxRepository.findById(eventId)).thenReturn(Optional.empty());
@@ -114,5 +117,59 @@ class OfferLetterRequestedEventListenerTest {
 
         verify(outboxService).enqueueOfferLetterStored(storedDocument);
         verify(inbox).markProcessed(requestedAt);
+    }
+
+    @Test
+    void rejectsCurrentEventsWithoutGovernedContentAndProjectionRetainsValidContent() throws Exception {
+        Instant requestedAt = Instant.parse("2028-01-10T08:00:00Z");
+        OfferLetterRequestedEvent missingContent = new OfferLetterRequestedEvent(
+                UUID.randomUUID(), OfferLetterRequestedEvent.CURRENT_SCHEMA_VERSION, requestedAt,
+                UUID.randomUUID(), 1, 1, "OFR-1", UUID.randomUUID(), "APP-1", "APL-1", "Applicant",
+                "applicant@example.test", UUID.randomUUID(), UUID.randomUUID(), "BSC", "Programme",
+                UUID.randomUUID(), "FIRM", null, requestedAt.plusSeconds(3600), null, null,
+                LocalDate.parse("2028-03-04"), UUID.randomUUID());
+        ObjectMapper objectMapper = new ObjectMapper();
+        OfferLetterRequestedEventListener listener = new OfferLetterRequestedEventListener(
+                mock(DocumentsReportingIntegrationInboxRepository.class),
+                mock(OfferLetterProjectionRepository.class), mock(GeneratedDocumentRepository.class),
+                mock(DocumentVerificationOutboxService.class), objectMapper,
+                Clock.fixed(requestedAt, ZoneOffset.UTC));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> listener.receive(new Message(objectMapper.writeValueAsBytes(missingContent))));
+        OfferLetterRequestedEvent unsupportedVersion = new OfferLetterRequestedEvent(
+                UUID.randomUUID(), 99, requestedAt, UUID.randomUUID(), 1, 1, "OFR-X", UUID.randomUUID(),
+                "APP-X", "APL-X", "Applicant", "applicant@example.test", UUID.randomUUID(), UUID.randomUUID(),
+                "BSC", "Programme", UUID.randomUUID(), "FIRM", null, requestedAt.plusSeconds(3600), null,
+                null, LocalDate.parse("2028-03-04"), contentSnapshot(), UUID.randomUUID());
+        OfferLetterRequestedEvent missingRequester = new OfferLetterRequestedEvent(
+                UUID.randomUUID(), OfferLetterRequestedEvent.CURRENT_SCHEMA_VERSION, requestedAt, UUID.randomUUID(),
+                1, 1, "OFR-Y", UUID.randomUUID(), "APP-Y", "APL-Y", "Applicant", "applicant@example.test",
+                UUID.randomUUID(), UUID.randomUUID(), "BSC", "Programme", UUID.randomUUID(), "FIRM", null,
+                requestedAt.plusSeconds(3600), null, null, LocalDate.parse("2028-03-04"), contentSnapshot(), null);
+        assertThrows(IllegalArgumentException.class,
+                () -> listener.receive(new Message(objectMapper.writeValueAsBytes(unsupportedVersion))));
+        assertThrows(IllegalArgumentException.class,
+                () -> listener.receive(new Message(objectMapper.writeValueAsBytes(missingRequester))));
+        assertThrows(IllegalArgumentException.class, () -> listener.receive(new Message("not-json".getBytes())));
+
+        OfferLetterContentSnapshot snapshot = contentSnapshot();
+        OfferLetterRequestedEvent valid = new OfferLetterRequestedEvent(
+                UUID.randomUUID(), OfferLetterRequestedEvent.CURRENT_SCHEMA_VERSION, requestedAt,
+                UUID.randomUUID(), 1, 1, "OFR-2", UUID.randomUUID(), "APP-2", "APL-2", "Applicant",
+                "applicant@example.test", UUID.randomUUID(), UUID.randomUUID(), "BSC", "Programme",
+                UUID.randomUUID(), "FIRM", null, requestedAt.plusSeconds(3600), null, null,
+                LocalDate.parse("2028-03-04"), snapshot, UUID.randomUUID());
+        OfferLetterProjection projection = new OfferLetterProjection(valid);
+
+        assertSame(snapshot, projection.getContentSnapshot());
+    }
+
+    private OfferLetterContentSnapshot contentSnapshot() {
+        return new OfferLetterContentSnapshot("University of Zimbabwe", "University of Zimbabwe", null, null,
+                null, null, null, "LOCAL", "UNDERGRAD", "Undergraduate", "August 2028 Intake",
+                "Faculty of Science", "Bachelor of Science Honours", "Undergraduate", "2028.1",
+                java.util.List.of(), java.util.List.of("Identity document"), null,
+                "Registrar", "Registrar", "UZ-OFFER-LETTER-2026-01");
     }
 }

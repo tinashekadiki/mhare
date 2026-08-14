@@ -58,6 +58,7 @@ public class FinanceFeeStructureController {
     }
 
     @PostMapping("/resolve")
+    @PreAuthorize("isAuthenticated()")
     public StructureSummary resolve(@Valid @RequestBody ResolveStructure request) {
         return service.resolve(request);
     }

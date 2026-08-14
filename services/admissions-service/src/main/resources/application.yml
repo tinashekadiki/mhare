@@ -16,6 +16,8 @@ spring:
         base-url: lb://documents-reporting-service
       finance:
         base-url: lb://finance-service
+      student-records:
+        base-url: lb://student-records-service
   datasource:
     url: ${ADMISSIONS_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_admissions}
     username: ${EMHARE_SERVICE_DB_USER:emhare_service}

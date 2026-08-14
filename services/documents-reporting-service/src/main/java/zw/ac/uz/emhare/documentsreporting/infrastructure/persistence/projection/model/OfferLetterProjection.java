@@ -6,7 +6,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.envers.Audited;
+import org.hibernate.type.SqlTypes;
+import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot;
 import zw.ac.uz.emhare.common.messaging.OfferLetterRequestedEvent;
 import zw.ac.uz.emhare.common.persistence.AuditableEntity;
 
@@ -34,6 +37,9 @@ public class OfferLetterProjection extends AuditableEntity {
     @Column(name="registration_date") private LocalDate registrationDate;
     @Column(name="orientation_date") private LocalDate orientationDate;
     @Column(name="commencement_date", nullable=false) private LocalDate commencementDate;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name="content_snapshot", nullable=false, columnDefinition="jsonb")
+    private OfferLetterContentSnapshot contentSnapshot;
     @Column(name="requested_by_user_id", nullable=false) private UUID requestedByUserId;
     @Column(name="requested_at", nullable=false) private Instant requestedAt;
     protected OfferLetterProjection() { }
@@ -44,6 +50,7 @@ public class OfferLetterProjection extends AuditableEntity {
         programmeId=event.programmeId(); programmeCode=event.programmeCode(); programmeName=event.programmeName(); intakeId=event.intakeId();
         offerType=event.offerType(); conditionsText=event.conditionsText(); acceptanceDeadline=event.acceptanceDeadline();
         registrationDate=event.registrationDate(); orientationDate=event.orientationDate(); commencementDate=event.commencementDate();
+        contentSnapshot=java.util.Objects.requireNonNull(event.contentSnapshot(), "Offer-letter content snapshot is required.");
         requestedByUserId=event.requestedByUserId(); requestedAt=event.occurredAt();
     }
     public UUID getOfferId(){return offerId;} public long getOfferVersion(){return offerVersion;}
@@ -56,4 +63,5 @@ public class OfferLetterProjection extends AuditableEntity {
     public String getOfferType(){return offerType;} public String getConditionsText(){return conditionsText;}
     public Instant getAcceptanceDeadline(){return acceptanceDeadline;} public LocalDate getRegistrationDate(){return registrationDate;}
     public LocalDate getOrientationDate(){return orientationDate;} public LocalDate getCommencementDate(){return commencementDate;}
+    public OfferLetterContentSnapshot getContentSnapshot(){return contentSnapshot;}
 }

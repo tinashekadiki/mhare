@@ -3,6 +3,8 @@ package zw.ac.uz.emhare.admissions.integration;
 import zw.ac.uz.emhare.admissions.infrastructure.messaging.model.AdmissionsOutboxEvent;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.messaging.AdmissionsOutboxEventRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeEntryOptionSelectionRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationDocumentRequirementSnapshotRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeOptionSnapshotRepository;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -27,6 +29,8 @@ import zw.ac.uz.emhare.admissions.domain.model.AcademicUnitRecommendation;
 import zw.ac.uz.emhare.common.messaging.AcademicReviewReleasedEvent;
 import zw.ac.uz.emhare.common.messaging.AcademicRecommendationRecordedEvent;
 import zw.ac.uz.emhare.common.messaging.OfferLetterRequestedEvent;
+import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot;
+import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.FeeScheduleSnapshot;
 import zw.ac.uz.emhare.common.messaging.NotificationAttachmentReference;
 import zw.ac.uz.emhare.common.messaging.OfferPublicationEvent;
 import zw.ac.uz.emhare.admissions.domain.model.OfferDispatch;
@@ -40,24 +44,48 @@ public class AdmissionsIntegrationOutboxService {
     private final ObjectMapper objectMapper;
     private final Clock clock;
     private final ApplicationProgrammeEntryOptionSelectionRepository entryOptionSelectionRepository;
+    private final ApplicationDocumentRequirementSnapshotRepository documentRequirementSnapshotRepository;
+    private final ApplicationProgrammeOptionSnapshotRepository programmeOptionSnapshotRepository;
 
     @org.springframework.beans.factory.annotation.Autowired
     public AdmissionsIntegrationOutboxService(
             AdmissionsOutboxEventRepository outboxEventRepository,
             ObjectMapper objectMapper,
             Clock clock,
-            ApplicationProgrammeEntryOptionSelectionRepository entryOptionSelectionRepository) {
+            ApplicationProgrammeEntryOptionSelectionRepository entryOptionSelectionRepository,
+            ApplicationDocumentRequirementSnapshotRepository documentRequirementSnapshotRepository,
+            ApplicationProgrammeOptionSnapshotRepository programmeOptionSnapshotRepository) {
         this.outboxEventRepository = outboxEventRepository;
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.entryOptionSelectionRepository = entryOptionSelectionRepository;
+        this.documentRequirementSnapshotRepository = documentRequirementSnapshotRepository;
+        this.programmeOptionSnapshotRepository = programmeOptionSnapshotRepository;
+    }
+
+    AdmissionsIntegrationOutboxService(
+            AdmissionsOutboxEventRepository outboxEventRepository,
+            ObjectMapper objectMapper,
+            Clock clock,
+            ApplicationProgrammeEntryOptionSelectionRepository entryOptionSelectionRepository,
+            ApplicationDocumentRequirementSnapshotRepository documentRequirementSnapshotRepository) {
+        this(outboxEventRepository, objectMapper, clock, entryOptionSelectionRepository,
+                documentRequirementSnapshotRepository, null);
+    }
+
+    AdmissionsIntegrationOutboxService(
+            AdmissionsOutboxEventRepository outboxEventRepository,
+            ObjectMapper objectMapper,
+            Clock clock,
+            ApplicationProgrammeEntryOptionSelectionRepository entryOptionSelectionRepository) {
+        this(outboxEventRepository, objectMapper, clock, entryOptionSelectionRepository, null, null);
     }
 
     AdmissionsIntegrationOutboxService(
             AdmissionsOutboxEventRepository outboxEventRepository,
             ObjectMapper objectMapper,
             Clock clock) {
-        this(outboxEventRepository, objectMapper, clock, null);
+        this(outboxEventRepository, objectMapper, clock, null, null, null);
     }
 
     public void enqueueApplicationFeeRequired(
@@ -123,6 +151,16 @@ public class AdmissionsIntegrationOutboxService {
     }
 
     public void enqueueOfferLetterRequested(AdmissionOffer offer, int documentVersion, UUID requestedByUserId) {
+        enqueueOfferLetterRequested(offer, documentVersion, requestedByUserId, null);
+    }
+
+    public void enqueueOfferLetterRequested(AdmissionOffer offer, int documentVersion, UUID requestedByUserId,
+            FeeScheduleSnapshot feeSchedule) {
+        enqueueOfferLetterRequested(offer, documentVersion, requestedByUserId, feeSchedule, null);
+    }
+
+    public void enqueueOfferLetterRequested(AdmissionOffer offer, int documentVersion, UUID requestedByUserId,
+            FeeScheduleSnapshot feeSchedule, CoreIdentityClient.CoreInstitutionProfile institutionProfile) {
         UUID eventId = UUID.nameUUIDFromBytes(("offer-letter:v" + OfferLetterRequestedEvent.CURRENT_SCHEMA_VERSION
                 + ":" + offer.getId() + ":" + documentVersion + ":" + offer.getVersion())
                 .getBytes(StandardCharsets.UTF_8));
@@ -130,6 +168,38 @@ public class AdmissionsIntegrationOutboxService {
         Instant occurredAt = clock.instant();
         var application = offer.getApplication();
         var applicant = application.getApplicant();
+        var programmeChoice = offer.getProgrammeChoice();
+        List<String> studyOptions = entryOptionSelectionRepository == null ? List.of()
+                : entryOptionSelectionRepository
+                        .findAllByProgrammeChoice_IdAndDeletedAtIsNullOrderByPreferenceRankAsc(programmeChoice.getId())
+                        .stream().map(selection -> selection.getEntryOptionName()).toList();
+        List<String> requiredDocuments = documentRequirementSnapshotRepository == null ? List.of()
+                : documentRequirementSnapshotRepository
+                        .findAllByApplicationIdAndDeletedAtIsNullOrderBySortOrderAscRequirementCodeAsc(application.getId())
+                        .stream().filter(requirement -> requirement.isRequired())
+                        .map(requirement -> requirement.getRequirementName()).toList();
+        var programmeSnapshot = programmeOptionSnapshotRepository == null ? null
+                : programmeOptionSnapshotRepository
+                        .findByApplicationIdAndProgrammeIdAndDeletedAtIsNull(application.getId(), offer.getProgrammeId())
+                        .orElse(null);
+        Map<String, String> institutionContacts = jsonValues(
+                institutionProfile == null ? null : institutionProfile.contactDetailsJson());
+        Map<String, String> institutionBranding = jsonValues(
+                institutionProfile == null ? null : institutionProfile.brandingJson());
+        OfferLetterContentSnapshot contentSnapshot = new OfferLetterContentSnapshot(
+                institutionProfile == null ? "University of Zimbabwe" : institutionProfile.name(),
+                institutionProfile == null ? "University of Zimbabwe" : institutionProfile.legalName(),
+                first(institutionContacts, "postalAddress", "address"),
+                first(institutionContacts, "phone", "telephone"), institutionContacts.get("email"),
+                institutionContacts.get("website"),
+                applicant.getPostalAddress(), applicant.getApplicantCategoryCode(), application.getApplicationType().getCode(),
+                application.getApplicationType().getName(), application.getIntakeName(),
+                programmeChoice.getOwningAcademicUnitName(), programmeChoice.getAwardName(),
+                programmeSnapshot == null ? null : programmeSnapshot.getProgrammeLevelName(),
+                programmeChoice.getProgrammeVersionCode(), studyOptions, requiredDocuments, feeSchedule,
+                firstOrDefault(institutionBranding.get("offerLetterSignatoryName"), "Registrar"),
+                firstOrDefault(institutionBranding.get("offerLetterSignatoryTitle"), "Registrar"),
+                "UZ-OFFER-LETTER-2026-01");
         OfferLetterRequestedEvent event = new OfferLetterRequestedEvent(
                 eventId, OfferLetterRequestedEvent.CURRENT_SCHEMA_VERSION, occurredAt,
                 offer.getId(), offer.getVersion(), documentVersion, offer.getOfferNumber(), application.getId(),
@@ -137,10 +207,26 @@ public class AdmissionsIntegrationOutboxService {
                 applicant.getPrimaryEmail(), applicant.getUserId(), offer.getProgrammeId(), offer.getProgrammeCode(), offer.getProgrammeName(),
                 offer.getIntakeId(),
                 offer.getOfferTypeCode(), offer.getConditionsText(), offer.getAcceptanceDeadline(),
-                offer.getRegistrationDate(), offer.getOrientationDate(), offer.getCommencementDate(), requestedByUserId);
+                offer.getRegistrationDate(), offer.getOrientationDate(), offer.getCommencementDate(), contentSnapshot,
+                requestedByUserId);
         outboxEventRepository.save(new AdmissionsOutboxEvent(eventId,
                 EmhareMessagingTopology.OFFER_LETTER_REQUESTED_EVENT,
                 EmhareMessagingTopology.OFFER_LETTER_REQUESTED_EVENT, serialize(event), occurredAt));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> jsonValues(String json) {
+        if (json == null || json.isBlank()) return Map.of();
+        try { return objectMapper.readValue(json, Map.class); }
+        catch (JacksonException exception) { throw new IllegalStateException("Institution document profile is invalid.", exception); }
+    }
+
+    private String first(Map<String, String> values, String firstKey, String secondKey) {
+        return firstOrDefault(values.get(firstKey), values.get(secondKey));
+    }
+
+    private String firstOrDefault(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
     }
 
     public void enqueueAcceptedOfferReadyForConversion(UUID eventId, AdmissionOffer offer) {
