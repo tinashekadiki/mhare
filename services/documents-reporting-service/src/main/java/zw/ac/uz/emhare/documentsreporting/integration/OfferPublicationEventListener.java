@@ -46,7 +46,10 @@ public class OfferPublicationEventListener {
                 inbox.markProcessed(clock.instant());
                 return;
             }
-            currentPublication.ifPresent(current->current.supersede(event.publishedAt()));
+            currentPublication.ifPresent(current->{
+                current.supersede(event.publishedAt());
+                projectionRepository.flush();
+            });
             var document=documentRepository.findByIdAndDeletedAtIsNull(event.generatedDocumentId())
                     .orElseThrow(()->new IllegalStateException("Published generated document was not found."));
             projectionRepository.save(new PublishedOfferLetterProjection(event,document));

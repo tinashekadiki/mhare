@@ -25,6 +25,7 @@ public class DirectAdmissionOfferService {
     private final OfferPublicationRepository publicationRepository;
     private final OfferDispatchRepository dispatchRepository;
     private final OfferStatusEventRepository statusEventRepository;
+    private final ApplicationStatusEventRepository applicationStatusEventRepository;
     private final AdmissionsIntegrationOutboxService outboxService;
     private final OfferLetterFeeScheduleResolver feeScheduleResolver;
     private final CoreIdentityClient coreIdentityClient;
@@ -35,6 +36,7 @@ public class DirectAdmissionOfferService {
             OfferResponseRepository responseRepository, OfferConditionRepository conditionRepository,
             OfferDocumentVersionRepository documentRepository, OfferPublicationRepository publicationRepository,
             OfferDispatchRepository dispatchRepository, OfferStatusEventRepository statusEventRepository,
+            ApplicationStatusEventRepository applicationStatusEventRepository,
             AdmissionsIntegrationOutboxService outboxService, OfferLetterFeeScheduleResolver feeScheduleResolver,
             CoreIdentityClient coreIdentityClient, AcademicSetupCatalogueClient academicSetupCatalogueClient, Clock clock) {
         this.offerRepository = offerRepository;
@@ -44,6 +46,7 @@ public class DirectAdmissionOfferService {
         this.publicationRepository = publicationRepository;
         this.dispatchRepository = dispatchRepository;
         this.statusEventRepository = statusEventRepository;
+        this.applicationStatusEventRepository = applicationStatusEventRepository;
         this.outboxService = outboxService;
         this.feeScheduleResolver = feeScheduleResolver;
         this.coreIdentityClient = coreIdentityClient;
@@ -140,6 +143,8 @@ public class DirectAdmissionOfferService {
                 .findByOfferIdAndCurrentPublicationTrueAndDeletedAtIsNull(offerId).orElse(null);
         if (existing != null && existing.getDocumentVersion().getId().equals(document.getId())
                 && !offer.isAmendmentPending()) {
+            synchronizePublishedWorkflowState(offer, actorUserId);
+            offerRepository.saveAndFlush(offer);
             OfferDispatch dispatch = dispatchRepository
                     .findAllByOfferPublicationIdAndDeletedAtIsNullOrderByAttemptNumberDesc(existing.getId())
                     .stream().findFirst().orElse(null);
@@ -153,14 +158,37 @@ public class DirectAdmissionOfferService {
         OfferPublication publication = publicationRepository.saveAndFlush(new OfferPublication(
                 offer, document, sequence, actorUserId, notificationEventId, now));
         OfferStatus previous = offer.getStatus();
+        Application application = offer.getApplication();
         offer.publish(publication, actorUserId, now);
+        synchronizePublishedWorkflowState(offer, actorUserId);
         OfferDispatch dispatch = dispatchRepository.saveAndFlush(new OfferDispatch(offer, publication, 1,
-                notificationEventId, offer.getApplication().getApplicant().getPrimaryEmail(), now));
+                notificationEventId, application.getApplicant().getPrimaryEmail(), now));
         offerRepository.saveAndFlush(offer);
         if (previous != offer.getStatus()) statusEventRepository.save(new OfferStatusEvent(offer, previous,
                 offer.getStatus(), "Offer letter published to the applicant portal.", actorUserId, now));
         outboxService.enqueueOfferPublication(publication, dispatch);
         return result(publication, dispatch);
+    }
+
+    private void synchronizePublishedWorkflowState(AdmissionOffer offer, UUID actorUserId) {
+        Application application = offer.getApplication();
+        ApplicationStatus previousApplicationStatus = application.getStatus();
+        ApplicationProgrammeChoice programmeChoice = offer.getProgrammeChoice();
+        String publicationReason = "Published offer " + offer.getOfferNumber();
+        if (application.getStatus() == ApplicationStatus.ADMITTED) {
+            application.markOffered(publicationReason);
+        } else if (application.getStatus() != ApplicationStatus.OFFERED) {
+            throw new IllegalStateException("A published offer requires an admitted or offered application.");
+        }
+        if (programmeChoice.getChoiceStatus() == ProgrammeChoiceStatus.ADMITTED) {
+            programmeChoice.markOffered(publicationReason);
+        } else if (programmeChoice.getChoiceStatus() != ProgrammeChoiceStatus.OFFERED) {
+            throw new IllegalStateException("A published offer requires an admitted or offered programme choice.");
+        }
+        if (previousApplicationStatus != application.getStatus()) {
+            applicationStatusEventRepository.save(new ApplicationStatusEvent(
+                    application, previousApplicationStatus, application.getStatus(), publicationReason, actorUserId));
+        }
     }
 
     @Transactional

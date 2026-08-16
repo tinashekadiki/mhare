@@ -37,6 +37,7 @@ class RollingAdmissionsMigrationTest {
         Flyway.configure()
                 .dataSource(POSTGRESQL.getJdbcUrl(), POSTGRESQL.getUsername(), POSTGRESQL.getPassword())
                 .locations("classpath:db/migration")
+                .target("2")
                 .load()
                 .migrate();
     }
@@ -109,6 +110,55 @@ class RollingAdmissionsMigrationTest {
                 """, UUID.randomUUID(), offerId);
 
         assertEquals("SENT", queryString("SELECT status FROM offers WHERE id = ?", offerId));
+    }
+
+    @Test
+    void reconcilesPublishedOffersWithAdmittedApplicationAndProgrammeChoiceState() throws SQLException {
+        RollingFixture fixture = createRollingFixture();
+        UUID offerId = insertDirectOffer(fixture);
+        UUID documentVersionId = UUID.randomUUID();
+        UUID publicationId = UUID.randomUUID();
+        UUID generatedDocumentId = UUID.randomUUID();
+        UUID publishedByUserId = UUID.randomUUID();
+        execute("""
+                INSERT INTO offer_document_versions (
+                    id, offer_id, document_version, status, generated_document_id, document_number,
+                    storage_bucket, storage_key, checksum_sha256, requested_by_user_id, requested_at,
+                    stored_at, created_at, updated_at, version)
+                VALUES (?, ?, 1, 'STORED', ?, 'OFR-TEST-V1', 'documents', 'offers/test.pdf',
+                    repeat('a', 64), ?, now(), now(), now(), now(), 0)
+                """, documentVersionId, offerId, generatedDocumentId, publishedByUserId);
+        execute("""
+                INSERT INTO offer_publications (
+                    id, offer_id, offer_document_version_id, publication_sequence, portal_published_at,
+                    published_by_user_id, notification_event_id, email_delivery_status, email_status_at,
+                    current_publication, created_at, updated_at, version)
+                VALUES (?, ?, ?, 1, now(), ?, ?, 'QUEUED', now(), true, now(), now(), 0)
+                """, publicationId, offerId, documentVersionId, publishedByUserId, UUID.randomUUID());
+        execute("""
+                UPDATE offers
+                SET offer_type = 'FIRM', acceptance_deadline = now() + interval '7 days',
+                    commencement_date = current_date + 30, status = 'SENT',
+                    approved_by_user_id = ?, approved_at = now(), sent_at = now(),
+                    generated_document_id = ?, current_document_version_id = ?, current_publication_id = ?
+                WHERE id = ?
+                """, publishedByUserId, generatedDocumentId, documentVersionId, publicationId, offerId);
+        connection.commit();
+
+        Flyway.configure()
+                .dataSource(POSTGRESQL.getJdbcUrl(), POSTGRESQL.getUsername(), POSTGRESQL.getPassword())
+                .locations("classpath:db/migration")
+                .load()
+                .migrate();
+
+        assertEquals("OFFERED", queryString("SELECT status FROM applications WHERE id = ?", fixture.applicationId()));
+        assertEquals("OFFERED", queryString(
+                "SELECT choice_status FROM application_programme_choices WHERE id = ?", fixture.choiceId()));
+        assertEquals("OFFERED", queryString("""
+                SELECT to_status FROM application_status_events
+                WHERE application_id = ? AND changed_by_user_id = ?
+                ORDER BY changed_at DESC LIMIT 1
+                """, fixture.applicationId(), publishedByUserId));
     }
 
     private RollingFixture createRollingFixture() throws SQLException {

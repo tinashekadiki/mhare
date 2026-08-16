@@ -9,6 +9,7 @@ import type {
   ApplicationWorkspaceSection,
   ApplicationDocumentRequirementState,
   ApplicationStartOptions,
+  AdmissionOfferSummary,
   QualificationReferenceData
 } from '@emhare/portal-shell/types/admissions'
 import type { UploadedDocumentDownload, UploadedDocumentSummary } from '@emhare/portal-shell/types/documents'
@@ -44,9 +45,11 @@ const api = useEmhareApi()
 const auth = useEmhareAuth()
 const toast = useToast()
 const { confirmAction, showError, showSuccess } = useEmhareConfirm()
+const { openingOfferId, openOfferLetter } = useApplicantOfferLetter()
 const applicationId = computed(() => String(route.params.applicationId))
 
 const workspace = ref<ApplicantApplicationWorkspace | null>(null)
+const applicationOffer = ref<AdmissionOfferSummary | null>(null)
 const startOptions = ref<ApplicationStartOptions | null>(null)
 const qualificationReferences = ref<QualificationReferenceData | null>(null)
 const countries = ref<CountryOption[]>([])
@@ -210,7 +213,7 @@ onMounted(async () => {
   await auth.loadUser()
   if (!auth.authenticated.value) return
   await auth.syncCoreUser()
-  await loadWorkspace(true)
+  await Promise.all([loadWorkspace(true), loadApplicationOffer()])
 })
 
 onBeforeUnmount(() => {
@@ -265,6 +268,15 @@ async function loadWorkspace(loadReferences = false) {
     loadError.value = api.errorMessage(error, 'The application workspace could not be loaded.')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadApplicationOffer() {
+  try {
+    const offers = await api.request<AdmissionOfferSummary[]>('/api/admissions/offers/mine')
+    applicationOffer.value = offers.find(offer => offer.applicationId === applicationId.value) ?? null
+  } catch (error) {
+    await showError('Offer letter could not be loaded', api.errorMessage(error))
   }
 }
 
@@ -1039,6 +1051,24 @@ function formatStatus(value: string) {
         <EmhareStatusPill v-if="workspace" :label="formatStatus(workspace.application.status)" :tone="workspace.application.status === 'DRAFT' ? 'warning' : 'info'" />
       </template>
       <template #actions>
+        <UButton
+          v-if="applicationOffer?.currentPublicationId"
+          label="Preview offer letter"
+          icon="i-lucide-eye"
+          color="primary"
+          variant="soft"
+          :loading="openingOfferId === applicationOffer.id"
+          @click="openOfferLetter(applicationOffer, 'inline')"
+        />
+        <UButton
+          v-if="applicationOffer?.currentPublicationId"
+          label="Download offer letter"
+          icon="i-lucide-download"
+          color="neutral"
+          variant="outline"
+          :loading="openingOfferId === applicationOffer.id"
+          @click="openOfferLetter(applicationOffer, 'attachment')"
+        />
         <UButton v-if="isDraft" label="Save draft" icon="i-lucide-save" color="neutral" variant="outline" @click="saveDraft" />
         <UButton label="Return to applications" icon="i-lucide-arrow-left" color="neutral" variant="ghost" @click="router.push('/')" />
       </template>

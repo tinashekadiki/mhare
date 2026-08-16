@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,16 +17,23 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import zw.ac.uz.emhare.admissions.domain.model.AdmissionOffer;
 import zw.ac.uz.emhare.admissions.domain.model.Application;
 import zw.ac.uz.emhare.admissions.domain.model.Applicant;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeChoice;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatus;
+import zw.ac.uz.emhare.admissions.domain.model.ApplicationStatusEvent;
 import zw.ac.uz.emhare.admissions.domain.model.OfferDocumentVersion;
 import zw.ac.uz.emhare.admissions.domain.model.OfferDocumentVersionStatus;
+import zw.ac.uz.emhare.admissions.domain.model.OfferEmailDeliveryStatus;
+import zw.ac.uz.emhare.admissions.domain.model.OfferPublication;
 import zw.ac.uz.emhare.admissions.domain.model.OfferStatus;
 import zw.ac.uz.emhare.admissions.domain.model.OfferType;
+import zw.ac.uz.emhare.admissions.domain.model.ProgrammeChoiceStatus;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionOfferRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationStatusEventRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferConditionRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferDispatchRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.OfferDocumentVersionRepository;
@@ -128,6 +136,114 @@ class DirectAdmissionOfferGenerationTest {
         verify(fixture.coreClient(), never()).institutionProfile(any());
     }
 
+    @Test
+    void firstPublicationMovesTheApplicationAndProgrammeChoiceToOffered() {
+        Fixture fixture = fixture();
+        OfferDocumentVersion storedDocument = mock(OfferDocumentVersion.class);
+        when(storedDocument.getStatus()).thenReturn(OfferDocumentVersionStatus.STORED);
+        when(storedDocument.getDocumentVersion()).thenReturn(1);
+        when(fixture.offer().getCurrentDocumentVersion()).thenReturn(storedDocument);
+        when(fixture.offer().getOfferNumber()).thenReturn("OFR-MAR-2028-00000001");
+        when(fixture.offer().getStatus()).thenReturn(
+                OfferStatus.DRAFT, OfferStatus.DRAFT, OfferStatus.DRAFT, OfferStatus.SENT);
+        stubAdmittedWorkflowState(fixture);
+        when(fixture.applicant().getPrimaryEmail()).thenReturn("applicant@example.test");
+        when(fixture.publicationRepository().countByOfferIdAndDeletedAtIsNull(fixture.offerId())).thenReturn(0);
+        when(fixture.publicationRepository().saveAndFlush(any(OfferPublication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(fixture.dispatchRepository().saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        fixture.service().publishAndSend(fixture.offerId(), fixture.actorId());
+
+        verify(fixture.application()).markOffered("Published offer OFR-MAR-2028-00000001");
+        verify(fixture.programmeChoice()).markOffered("Published offer OFR-MAR-2028-00000001");
+        verify(fixture.applicationStatusEventRepository()).save(any(ApplicationStatusEvent.class));
+    }
+
+    @Test
+    void repeatedPublicationRepairsAPreviouslyPublishedOfferWithAdmittedLinkedState() {
+        Fixture fixture = fixture();
+        stubCurrentPublication(fixture);
+        stubAdmittedWorkflowState(fixture);
+
+        fixture.service().publishAndSend(fixture.offerId(), fixture.actorId());
+
+        verify(fixture.application()).markOffered("Published offer OFR-MAR-2028-00000001");
+        verify(fixture.programmeChoice()).markOffered("Published offer OFR-MAR-2028-00000001");
+        verify(fixture.applicationStatusEventRepository()).save(any(ApplicationStatusEvent.class));
+    }
+
+    @Test
+    void repeatedPublicationLeavesAlreadyOfferedLinkedStateUnchanged() {
+        Fixture fixture = fixture();
+        stubCurrentPublication(fixture);
+        when(fixture.application().getStatus()).thenReturn(ApplicationStatus.OFFERED);
+        when(fixture.programmeChoice().getChoiceStatus()).thenReturn(ProgrammeChoiceStatus.OFFERED);
+
+        fixture.service().publishAndSend(fixture.offerId(), fixture.actorId());
+
+        verify(fixture.application(), never()).markOffered(any());
+        verify(fixture.programmeChoice(), never()).markOffered(any());
+        verify(fixture.applicationStatusEventRepository(), never()).save(any());
+    }
+
+    @Test
+    void repeatedPublicationRejectsAnApplicationOutsideAdmittedOrOfferedState() {
+        Fixture fixture = fixture();
+        stubCurrentPublication(fixture);
+        when(fixture.application().getStatus()).thenReturn(ApplicationStatus.ACCEPTED);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> fixture.service().publishAndSend(fixture.offerId(), fixture.actorId()));
+
+        assertEquals("A published offer requires an admitted or offered application.", exception.getMessage());
+    }
+
+    @Test
+    void repeatedPublicationRejectsAProgrammeChoiceOutsideAdmittedOrOfferedState() {
+        Fixture fixture = fixture();
+        stubCurrentPublication(fixture);
+        when(fixture.application().getStatus()).thenReturn(ApplicationStatus.OFFERED);
+        when(fixture.programmeChoice().getChoiceStatus()).thenReturn(ProgrammeChoiceStatus.REJECTED);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> fixture.service().publishAndSend(fixture.offerId(), fixture.actorId()));
+
+        assertEquals("A published offer requires an admitted or offered programme choice.", exception.getMessage());
+    }
+
+    private void stubCurrentPublication(Fixture fixture) {
+        UUID documentId = UUID.randomUUID();
+        OfferDocumentVersion storedDocument = mock(OfferDocumentVersion.class);
+        OfferPublication currentPublication = mock(OfferPublication.class);
+        when(storedDocument.getId()).thenReturn(documentId);
+        when(storedDocument.getStatus()).thenReturn(OfferDocumentVersionStatus.STORED);
+        when(currentPublication.getDocumentVersion()).thenReturn(storedDocument);
+        when(currentPublication.getEmailDeliveryStatus()).thenReturn(OfferEmailDeliveryStatus.QUEUED);
+        when(fixture.offer().getCurrentDocumentVersion()).thenReturn(storedDocument);
+        when(fixture.offer().getOfferNumber()).thenReturn("OFR-MAR-2028-00000001");
+        when(fixture.offer().getStatus()).thenReturn(OfferStatus.SENT);
+        when(fixture.publicationRepository()
+                .findByOfferIdAndCurrentPublicationTrueAndDeletedAtIsNull(fixture.offerId()))
+                .thenReturn(Optional.of(currentPublication));
+    }
+
+    private void stubAdmittedWorkflowState(Fixture fixture) {
+        AtomicReference<ApplicationStatus> applicationStatus = new AtomicReference<>(ApplicationStatus.ADMITTED);
+        AtomicReference<ProgrammeChoiceStatus> choiceStatus = new AtomicReference<>(ProgrammeChoiceStatus.ADMITTED);
+        when(fixture.application().getStatus()).thenAnswer(invocation -> applicationStatus.get());
+        doAnswer(invocation -> {
+            applicationStatus.set(ApplicationStatus.OFFERED);
+            return null;
+        }).when(fixture.application()).markOffered(any());
+        when(fixture.programmeChoice().getChoiceStatus()).thenAnswer(invocation -> choiceStatus.get());
+        doAnswer(invocation -> {
+            choiceStatus.set(ProgrammeChoiceStatus.OFFERED);
+            return null;
+        }).when(fixture.programmeChoice()).markOffered(any());
+    }
+
     private Fixture fixture() {
         AdmissionOfferRepository offerRepository = mock(AdmissionOfferRepository.class);
         OfferResponseRepository responseRepository = mock(OfferResponseRepository.class);
@@ -141,6 +257,9 @@ class DirectAdmissionOfferGenerationTest {
         Applicant applicant = mock(Applicant.class);
         ApplicationProgrammeChoice programmeChoice = mock(ApplicationProgrammeChoice.class);
         OfferConditionRepository conditionRepository = mock(OfferConditionRepository.class);
+        OfferPublicationRepository publicationRepository = mock(OfferPublicationRepository.class);
+        OfferDispatchRepository dispatchRepository = mock(OfferDispatchRepository.class);
+        ApplicationStatusEventRepository applicationStatusEventRepository = mock(ApplicationStatusEventRepository.class);
         UUID offerId = UUID.randomUUID();
         UUID actorId = UUID.randomUUID();
         Instant now = Instant.parse("2028-01-10T08:00:00Z");
@@ -171,15 +290,20 @@ class DirectAdmissionOfferGenerationTest {
         when(feeResolver.resolve(any(AdmissionOffer.class), nullable(String.class), any(Instant.class)))
                 .thenReturn(new ResolvedOfferLetterCatalogue(null, null));
         DirectAdmissionOfferService service = new DirectAdmissionOfferService(offerRepository, responseRepository,
-                conditionRepository, documentRepository, mock(OfferPublicationRepository.class),
-                mock(OfferDispatchRepository.class), mock(OfferStatusEventRepository.class), outbox, feeResolver,
+                conditionRepository, documentRepository, publicationRepository,
+                dispatchRepository, mock(OfferStatusEventRepository.class), applicationStatusEventRepository,
+                outbox, feeResolver,
                 coreClient, academicClient, Clock.fixed(now, ZoneOffset.UTC));
         return new Fixture(service, offerId, actorId, now, offer, documentRepository, outbox, feeResolver,
-                coreClient, academicClient);
+                coreClient, academicClient, application, applicant, programmeChoice, publicationRepository,
+                dispatchRepository, applicationStatusEventRepository);
     }
 
     private record Fixture(DirectAdmissionOfferService service, UUID offerId, UUID actorId, Instant now,
             AdmissionOffer offer, OfferDocumentVersionRepository documentRepository,
             AdmissionsIntegrationOutboxService outbox, OfferLetterFeeScheduleResolver feeResolver,
-            CoreIdentityClient coreClient, AcademicSetupCatalogueClient academicClient) { }
+            CoreIdentityClient coreClient, AcademicSetupCatalogueClient academicClient,
+            Application application, Applicant applicant, ApplicationProgrammeChoice programmeChoice,
+            OfferPublicationRepository publicationRepository, OfferDispatchRepository dispatchRepository,
+            ApplicationStatusEventRepository applicationStatusEventRepository) { }
 }

@@ -1019,12 +1019,13 @@ test.describe("Applicant programme choices", () => {
 
       const publishedOfferId = randomUUID();
       const unpublishedOfferId = randomUUID();
+      const publishedApplicationId = randomUUID();
       const publicationId = randomUUID();
       const documentVersionId = randomUUID();
       const generatedDocumentId = randomUUID();
       const commonOffer = {
         offerBatchId: null,
-        applicationId: randomUUID(),
+        applicationId: publishedApplicationId,
         applicationNumber: "EMH-OFFER-UI-0001",
         applicantNumber: "APP-OFFER-UI-0001",
         applicantName: "Browser Applicant",
@@ -1169,6 +1170,128 @@ test.describe("Applicant programme choices", () => {
       await expect(
         unpublishedOffer.getByRole("button", { name: "Decline", exact: true }),
       ).toHaveCount(0);
+
+      await page.route(
+        `**/api/admissions/applications/${publishedApplicationId}/workspace`,
+        (route) =>
+          route.fulfill({
+            json: {
+              application: {
+                id: publishedApplicationId,
+                applicationNumber: commonOffer.applicationNumber,
+                applicantNumber: commonOffer.applicantNumber,
+                applicantName: commonOffer.applicantName,
+                intakeId: fixture!.intakeId,
+                intakeCode: `BI_${fixture!.codeSuffix}`,
+                applicationTypeId: fixture!.applicationTypeId,
+                applicationTypeName: fixture!.applicationTypeName,
+                status: "OFFERED",
+                paymentRequired: false,
+                paymentClearanceStatus: "NOT_REQUIRED",
+                paymentWaiverReason: null,
+                canSubmit: false,
+                canEnterReview: true,
+                calculatedTotalPoints: null,
+                pointsCalculatedAt: null,
+                programmeChoices: [],
+                payment: null,
+              },
+              profile: {
+                id: randomUUID(),
+                userId: randomUUID(),
+                applicantNumber: commonOffer.applicantNumber,
+                applicantCategoryCode: "LOCAL",
+                titleCode: "MR",
+                firstName: "Browser",
+                middleNames: null,
+                lastName: "Applicant",
+                dateOfBirth: "1999-01-15",
+                genderCode: "MALE",
+                maritalStatusCode: "SINGLE",
+                nationalIdNumber: "99-OFFER-UI",
+                passportNumber: null,
+                countryId: fixture!.countryId,
+                nationalityCountryId: fixture!.countryId,
+                placeOfBirth: "Harare",
+                disabilityStatusCode: "NONE",
+                specialNeeds: null,
+                sponsorTypeCode: "SELF",
+                primaryEmail: fixture!.username,
+                primaryPhone: "+263772000001",
+                postalAddress: null,
+                residentialAddress: "Harare",
+                completenessPercentage: 100,
+                missingRequiredFields: [],
+                createdAt: "2098-10-01T10:00:00Z",
+                updatedAt: "2098-11-03T10:00:00Z",
+                version: 0,
+              },
+              sections: [
+                {
+                  id: randomUUID(),
+                  code: "REVIEW_DECLARATION",
+                  name: "Review and declaration",
+                  required: true,
+                  repeatable: false,
+                  minimumRecords: 0,
+                  sortOrder: 90,
+                  status: "COMPLETE",
+                  completedAt: "2098-10-02T10:00:00Z",
+                  completionSummary: "Application submitted.",
+                  version: 0,
+                },
+              ],
+              nextOfKin: [],
+              employmentHistory: [],
+              referees: [],
+              priorUzDeclaration: null,
+              professionalAchievementsDeclaredNone: true,
+              professionalAchievements: [],
+              programmeEntryPreferences: [],
+              qualifications: [],
+              documents: {
+                requirements: [],
+                requiredDocumentsUploaded: true,
+                allRequiredDocumentsVerified: true,
+              },
+              readyForSubmission: false,
+              missingRequirements: [],
+              declarationAcceptedAt: "2098-10-02T10:00:00Z",
+              declarationVersion: "2026.1",
+              workflowProgress: {
+                currentStageCode: "OFFER",
+                stages: [],
+              },
+            },
+          }),
+      );
+      await page.route("**/api/admissions/applications/start-options**", (route) =>
+        route.fulfill({ json: { applicantCategories: [], applicationTypes: [], intakes: [], routes: [] } }),
+      );
+      await page.route("**/api/admissions/qualification-reference-data", (route) =>
+        route.fulfill({ json: { examBodies: [], oLevelSubjects: [], aLevelSubjects: [], otherSubjects: [] } }),
+      );
+      await page.route("**/api/core/reference/countries", (route) =>
+        route.fulfill({ json: [] }),
+      );
+
+      await page.goto(`${applicantPortalUrl}/applications/${publishedApplicationId}`);
+      const previewFromWorkspace = page.getByRole("button", {
+        name: "Preview offer letter",
+        exact: true,
+      });
+      await expect(previewFromWorkspace).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Download offer letter", exact: true }),
+      ).toBeVisible();
+
+      const workspacePreviewPagePromise = page.context().waitForEvent("page");
+      await previewFromWorkspace.click();
+      const workspacePreviewPage = await workspacePreviewPagePromise;
+      await expect(workspacePreviewPage).toHaveURL(
+        `${applicantPortalUrl}/e2e-offer-letter.pdf`,
+      );
+      await workspacePreviewPage.close();
     } finally {
       await cleanupFixture(fixture);
     }
