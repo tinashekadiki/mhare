@@ -81,6 +81,10 @@ const intakeForm = reactive({
   name: '',
   startsOn: '',
   endsOn: '',
+  offerAcceptanceDeadline: '',
+  registrationDate: '',
+  orientationDate: '',
+  commencementDate: '',
   maximumProgrammeChoices: 3,
   programmeLevelIds: [] as string[],
   programmeIds: [] as string[],
@@ -134,6 +138,15 @@ const detailsIssue = computed(() => {
     return 'Complete the academic year, code, name, and application window before continuing.'
   }
   if (intakeForm.startsOn > intakeForm.endsOn) return 'The application end date must be on or after its start date.'
+  if (!intakeForm.offerAcceptanceDeadline || !intakeForm.commencementDate) {
+    return 'Set the offer acceptance deadline and commencement date once for this intake.'
+  }
+  if (intakeForm.registrationDate && intakeForm.registrationDate > intakeForm.commencementDate) {
+    return 'Registration cannot be after commencement.'
+  }
+  if (intakeForm.orientationDate && intakeForm.orientationDate > intakeForm.commencementDate) {
+    return 'Orientation cannot be after commencement.'
+  }
   const academicYear = selectedAcademicYear.value
   if (academicYear && (intakeForm.startsOn < academicYear.startDate || intakeForm.endsOn > academicYear.endDate)) {
     return `Keep the application window within ${academicYear.name}: ${formatDate(academicYear.startDate)} to ${formatDate(academicYear.endDate)}.`
@@ -238,6 +251,10 @@ async function loadWorkspace() {
         name: '',
         startsOn: '',
         endsOn: '',
+        offerAcceptanceDeadline: '',
+        registrationDate: '',
+        orientationDate: '',
+        commencementDate: '',
         maximumProgrammeChoices: 3,
         programmeLevelIds: [],
         programmeIds: [],
@@ -257,6 +274,10 @@ async function loadWorkspace() {
         name: existingIntake.name,
         startsOn: existingIntake.startsOn,
         endsOn: existingIntake.endsOn,
+        offerAcceptanceDeadline: existingIntake.offerAcceptanceDeadline?.slice(0, 10) ?? '',
+        registrationDate: existingIntake.registrationDate ?? '',
+        orientationDate: existingIntake.orientationDate ?? '',
+        commencementDate: existingIntake.commencementDate ?? '',
         maximumProgrammeChoices: existingIntake.maximumProgrammeChoices,
         programmeLevelIds: existingIntake.programmeLevels.map(level => level.id),
         programmeIds: existingIntake.specificProgrammes.map(programme => programme.id),
@@ -399,6 +420,10 @@ async function saveIntake(openAfterSave: boolean) {
     name: intakeForm.name,
     startsOn: intakeForm.startsOn,
     endsOn: intakeForm.endsOn,
+    offerAcceptanceDeadline: `${intakeForm.offerAcceptanceDeadline}T21:59:59Z`,
+    registrationDate: intakeForm.registrationDate || null,
+    orientationDate: intakeForm.orientationDate || null,
+    commencementDate: intakeForm.commencementDate,
     maximumProgrammeChoices: intakeForm.maximumProgrammeChoices,
     programmeLevelIds: intakeForm.programmeLevelIds,
     programmeIds: intakeForm.programmeIds
@@ -590,6 +615,18 @@ function formatDate(value: string) {
                   </UFormField>
                   <UFormField label="Applications open" required><UInput v-model="intakeForm.startsOn" type="date" class="w-full" /></UFormField>
                   <UFormField label="Applications close" required><UInput v-model="intakeForm.endsOn" type="date" class="w-full" /></UFormField>
+                  <div class="md:col-span-2 mt-2 rounded-xl border border-primary/20 bg-primary/5 p-5">
+                    <div class="mb-4">
+                      <p class="text-sm font-semibold text-highlighted">Offer letter dates</p>
+                      <p class="mt-1 text-sm text-muted">These dates are reused for every offer in this intake and copied into each official document snapshot.</p>
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-2">
+                      <UFormField label="Offer acceptance deadline" required><UInput v-model="intakeForm.offerAcceptanceDeadline" type="date" class="w-full" /></UFormField>
+                      <UFormField label="Commencement date" required><UInput v-model="intakeForm.commencementDate" type="date" class="w-full" /></UFormField>
+                      <UFormField label="Registration date"><UInput v-model="intakeForm.registrationDate" type="date" class="w-full" /></UFormField>
+                      <UFormField label="Orientation date"><UInput v-model="intakeForm.orientationDate" type="date" class="w-full" /></UFormField>
+                    </div>
+                  </div>
                   <UFormField label="Maximum Programme choices" description="The most Programmes an applicant may rank." required class="md:col-span-2">
                     <UInput v-model.number="intakeForm.maximumProgrammeChoices" type="number" min="1" max="20" class="w-full md:max-w-xs" />
                   </UFormField>

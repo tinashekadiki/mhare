@@ -1,6 +1,7 @@
 package zw.ac.uz.emhare.admissions.integration;
 
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -142,9 +143,20 @@ public class AcademicSetupCatalogueClient {
             String name,
             LocalDate startsOn,
             LocalDate endsOn,
+            Instant offerAcceptanceDeadline,
+            LocalDate registrationDate,
+            LocalDate orientationDate,
+            LocalDate commencementDate,
             String status,
             int maximumProgrammeChoices,
             List<AcademicProgrammeOption> programmes) {
+        public AcademicAdmissionsIntake(
+                UUID intakeId, UUID academicYearId, String academicYearName, String code, String name,
+                LocalDate startsOn, LocalDate endsOn, String status, int maximumProgrammeChoices,
+                List<AcademicProgrammeOption> programmes) {
+            this(intakeId, academicYearId, academicYearName, code, name, startsOn, endsOn,
+                    null, null, null, null, status, maximumProgrammeChoices, programmes);
+        }
     }
 
     public record AcademicProgrammeOption(

@@ -95,6 +95,22 @@ class RollingAdmissionsMigrationTest {
         assertEquals("P0001", exception.getSQLState());
     }
 
+    @Test
+    void allowsPublishAndSendToApproveAndDispatchDraftOfferAtomically() throws SQLException {
+        RollingFixture fixture = createRollingFixture();
+        UUID offerId = insertDirectOffer(fixture);
+
+        execute("""
+                UPDATE offers
+                SET offer_type = 'FIRM', acceptance_deadline = now() + interval '7 days',
+                    commencement_date = current_date + 30, status = 'SENT',
+                    approved_by_user_id = ?, approved_at = now(), sent_at = now()
+                WHERE id = ?
+                """, UUID.randomUUID(), offerId);
+
+        assertEquals("SENT", queryString("SELECT status FROM offers WHERE id = ?", offerId));
+    }
+
     private RollingFixture createRollingFixture() throws SQLException {
         UUID applicationTypeId = UUID.randomUUID();
         UUID applicantId = UUID.randomUUID();
@@ -180,6 +196,16 @@ class RollingAdmissionsMigrationTest {
             try (ResultSet resultSet = statement.executeQuery()) {
                 resultSet.next();
                 return resultSet.getObject(1, UUID.class);
+            }
+        }
+    }
+
+    private String queryString(String sql, Object... parameters) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            bind(statement, parameters);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getString(1);
             }
         }
     }

@@ -10,11 +10,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import zw.ac.uz.emhare.admissions.domain.model.AdmissionOffer;
 import zw.ac.uz.emhare.admissions.domain.model.Applicant;
 import zw.ac.uz.emhare.admissions.domain.model.Application;
@@ -69,16 +71,21 @@ class OfferLetterFeeScheduleResolverTest {
         OfferLetterFeeScheduleResolver resolver = new OfferLetterFeeScheduleResolver(
                 programmeRepository, academicClient, financeClient);
 
-        var result = resolver.resolve(offer, "Bearer token");
+        Instant generatedAt = Instant.parse("2028-03-04T15:30:00Z");
+        var result = resolver.resolve(offer, "Bearer token", generatedAt);
 
-        assertEquals(structureId, result.financeFeeStructureId());
-        assertEquals(7, result.financeFeeStructureVersion());
-        assertEquals("ZWG", result.transactionCurrencyCode());
-        assertEquals(new BigDecimal("3000.00"), result.transactionTotal());
-        assertEquals(new BigDecimal("120.00"), result.baseTotal());
-        assertEquals(rateId, result.exchangeRateId());
-        assertEquals(2, result.lines().size());
-        verify(financeClient).resolveAcademicFeeStructure(eq("Bearer token"), any());
+        assertEquals("Faculty of Science", result.highestAcademicUnitName());
+        assertEquals(structureId, result.feeSchedule().financeFeeStructureId());
+        assertEquals(7, result.feeSchedule().financeFeeStructureVersion());
+        assertEquals("ZWG", result.feeSchedule().transactionCurrencyCode());
+        assertEquals(new BigDecimal("3000.00"), result.feeSchedule().transactionTotal());
+        assertEquals(new BigDecimal("120.00"), result.feeSchedule().baseTotal());
+        assertEquals(rateId, result.feeSchedule().exchangeRateId());
+        assertEquals(2, result.feeSchedule().lines().size());
+        ArgumentCaptor<FinanceCatalogueClient.ResolveAcademicFeeStructureRequest> request =
+                ArgumentCaptor.forClass(FinanceCatalogueClient.ResolveAcademicFeeStructureRequest.class);
+        verify(financeClient).resolveAcademicFeeStructure(eq("Bearer token"), request.capture());
+        assertEquals(generatedAt, request.getValue().effectiveAt());
     }
 
     @Test
@@ -87,8 +94,35 @@ class OfferLetterFeeScheduleResolverTest {
                 mock(ApplicationProgrammeOptionSnapshotRepository.class), mock(AcademicSetupCatalogueClient.class),
                 mock(FinanceCatalogueClient.class));
 
-        assertNull(resolver.resolve(mock(AdmissionOffer.class), null));
-        assertNull(resolver.resolve(mock(AdmissionOffer.class), "   "));
+        assertNull(resolver.resolve(mock(AdmissionOffer.class), null, Instant.now()).feeSchedule());
+        assertNull(resolver.resolve(mock(AdmissionOffer.class), "   ", Instant.now()).highestAcademicUnitName());
+    }
+
+    @Test
+    void leavesFeesUnresolvedWhenFinanceHasNoMatchingAcademicSchedule() {
+        Fixture fixture = fixture(active(List.of(line("TUIT", "Tuition", "USD", BigDecimal.ONE,
+                BigDecimal.ONE, null, null))));
+        when(fixture.financeClient().resolveAcademicFeeStructure(eq("Bearer token"), any()))
+                .thenThrow(new IllegalStateException("No active fee structure matches this billing context."));
+
+        var result = fixture.resolver().resolve(fixture.offer(), "Bearer token", Instant.now());
+        assertNull(result.feeSchedule());
+        assertEquals("Science", result.highestAcademicUnitName());
+    }
+
+    @Test
+    void preservesOtherFinancePricingRejections() {
+        Fixture fixture = fixture(active(List.of(line("TUIT", "Tuition", "USD", BigDecimal.ONE,
+                BigDecimal.ONE, null, null))));
+        IllegalStateException ambiguousPricing = new IllegalStateException(
+                "Multiple active fee structures match this billing context.");
+        when(fixture.financeClient().resolveAcademicFeeStructure(eq("Bearer token"), any()))
+                .thenThrow(ambiguousPricing);
+
+        IllegalStateException rejection = assertThrows(IllegalStateException.class,
+                () -> fixture.resolver().resolve(fixture.offer(), "Bearer token", Instant.now()));
+
+        assertEquals(ambiguousPricing, rejection);
     }
 
     @Test
@@ -97,14 +131,15 @@ class OfferLetterFeeScheduleResolverTest {
                 BigDecimal.ONE, null, null))));
         when(missing.programmeRepository().findByApplicationIdAndProgrammeIdAndDeletedAtIsNull(any(), any()))
                 .thenReturn(Optional.empty());
-        assertThrows(IllegalStateException.class, () -> missing.resolver().resolve(missing.offer(), "Bearer token"));
+        assertThrows(IllegalStateException.class,
+                () -> missing.resolver().resolve(missing.offer(), "Bearer token", Instant.now()));
 
         ResolvedAcademicFeeStructure inactive = new ResolvedAcademicFeeStructure(UUID.randomUUID(), "UG", "UG",
                 "ACADEMIC", "DRAFT", 1, "USD", List.of(line("TUIT", "Tuition", "USD", BigDecimal.ONE,
                         BigDecimal.ONE, null, null)));
         Fixture inactiveFixture = fixture(inactive);
         assertThrows(IllegalStateException.class,
-                () -> inactiveFixture.resolver().resolve(inactiveFixture.offer(), "Bearer token"));
+                () -> inactiveFixture.resolver().resolve(inactiveFixture.offer(), "Bearer token", Instant.now()));
     }
 
     @Test
@@ -114,7 +149,7 @@ class OfferLetterFeeScheduleResolverTest {
                 null, "UNRATED", "APPROVED");
         Fixture fixture = fixture(active(List.of(unrated)));
 
-        var result = fixture.resolver().resolve(fixture.offer(), "Bearer token");
+        var result = fixture.resolver().resolve(fixture.offer(), "Bearer token", Instant.now()).feeSchedule();
 
         assertEquals("Tuition fee", result.lines().getFirst().description());
         assertNull(result.baseTotal());
@@ -127,14 +162,14 @@ class OfferLetterFeeScheduleResolverTest {
                 line("A", "A", "USD", BigDecimal.ONE, BigDecimal.ONE, null, null),
                 line("B", "B", "ZWG", BigDecimal.ONE, null, null, null))));
         assertThrows(IllegalStateException.class,
-                () -> multipleCurrencies.resolver().resolve(multipleCurrencies.offer(), "Bearer token"));
+                () -> multipleCurrencies.resolver().resolve(multipleCurrencies.offer(), "Bearer token", Instant.now()));
 
         ResolvedAcademicFeeLine missingBase = new ResolvedAcademicFeeLine(UUID.randomUUID(), 1, UUID.randomUUID(),
                 "A", "A", "A", BigDecimal.ONE, "USD", null, null, null, BigDecimal.ONE,
                 "RATED", "APPROVED");
         Fixture incomplete = fixture(active(List.of(missingBase)));
         assertThrows(IllegalStateException.class,
-                () -> incomplete.resolver().resolve(incomplete.offer(), "Bearer token"));
+                () -> incomplete.resolver().resolve(incomplete.offer(), "Bearer token", Instant.now()));
 
         UUID firstRate = UUID.randomUUID();
         UUID secondRate = UUID.randomUUID();
@@ -142,7 +177,7 @@ class OfferLetterFeeScheduleResolverTest {
                 line("A", "A", "ZWG", BigDecimal.ONE, BigDecimal.ONE, firstRate, BigDecimal.ONE),
                 line("B", "B", "ZWG", BigDecimal.ONE, BigDecimal.ONE, secondRate, BigDecimal.ONE))));
         assertThrows(IllegalStateException.class,
-                () -> multipleRates.resolver().resolve(multipleRates.offer(), "Bearer token"));
+                () -> multipleRates.resolver().resolve(multipleRates.offer(), "Bearer token", Instant.now()));
     }
 
     private Fixture fixture(ResolvedAcademicFeeStructure response) {
@@ -171,7 +206,7 @@ class OfferLetterFeeScheduleResolverTest {
                         List.of(unit)));
         when(financeClient.resolveAcademicFeeStructure(eq("Bearer token"), any())).thenReturn(response);
         return new Fixture(new OfferLetterFeeScheduleResolver(programmeRepository, academicClient, financeClient),
-                offer, programmeRepository);
+                offer, programmeRepository, financeClient);
     }
 
     private ResolvedAcademicFeeStructure active(List<ResolvedAcademicFeeLine> lines) {
@@ -186,5 +221,6 @@ class OfferLetterFeeScheduleResolverTest {
     }
 
     private record Fixture(OfferLetterFeeScheduleResolver resolver, AdmissionOffer offer,
-            ApplicationProgrammeOptionSnapshotRepository programmeRepository) { }
+            ApplicationProgrammeOptionSnapshotRepository programmeRepository,
+            FinanceCatalogueClient financeClient) { }
 }

@@ -716,7 +716,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     ).toHaveCount(1);
 
     await page.getByRole("button", { name: "Edit profile" }).click();
-    const profileDrawer = page.getByRole("dialog", {
+    const profileDrawer = page.getByRole("region", {
       name: "Edit institution profile",
     });
     await expect(
@@ -727,6 +727,14 @@ test.describe("Core Identity authentication and RBAC", () => {
         name: "Brand and official documents",
       }),
     ).toBeVisible();
+    await expect(
+      profileDrawer.getByRole("heading", { name: "Bank details" }),
+    ).toBeVisible();
+    await expect(profileDrawer.getByLabel("Registrar name")).toHaveValue(/\S+/);
+    await expect(profileDrawer.getByLabel("Bank name")).toHaveCount(4);
+    await expect(profileDrawer.getByLabel("Account number")).toHaveCount(4);
+    await expect(profileDrawer.getByText("USD account", { exact: true })).toHaveCount(2);
+    await expect(profileDrawer.getByText("ZWG account", { exact: true })).toHaveCount(2);
     await expect(profileDrawer.getByLabel("Email address")).toHaveValue(/@/);
     await expect(profileDrawer.locator('input[type="file"]')).toHaveAttribute(
       "accept",
@@ -737,7 +745,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       .fill("TEMP");
     await profileDrawer.getByRole("button", { name: "Cancel" }).click();
     await expect(profileDrawer).not.toBeVisible();
-    await expect(profileRegion.locator("dd").first()).toHaveText("UZ");
+    await expect(profileRegion.getByText("UZ", { exact: true }).first()).toBeVisible();
 
     await page.getByRole("button", { name: "Users" }).click();
     const usersTable = page.locator("[data-emhare-paginated-table]").first();
@@ -1136,7 +1144,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
   });
 
-  test("separates eligibility configuration from the officer evaluation queue with tabs", async ({
+  test("provides a dedicated programme-requirements setup workspace", async ({
     page,
   }, testInfo) => {
     const username = `codex.evaluation.${testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}@example.test`;
@@ -1149,45 +1157,41 @@ test.describe("Core Identity authentication and RBAC", () => {
     });
     page.on("pageerror", (error) => pageErrors.push(error.message));
 
-    await page.route("**/api/admissions/applications", (route) =>
+    await page.route("**/api/admissions/application-types", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify([
           {
-            id: "3b76d88b-4df8-4ec9-93fb-ce1d45c1db24",
-            applicationNumber: "APP-2027-00031",
-            applicantNumber: "APL-00031",
-            applicantName: "Tariro Moyo",
-            intakeId: "b535c76e-a477-43bb-880a-1843c0e66e3c",
-            intakeCode: "AUG-2027",
-            applicationTypeId: "359cbb03-cf95-4b2a-853d-fe602f7e7fb8",
-            applicationTypeName: "Undergraduate",
-            status: "UNDER_REVIEW",
-            paymentRequired: true,
-            paymentClearanceStatus: "PAID",
-            paymentWaiverReason: null,
-            canSubmit: false,
-            canEnterReview: true,
-            payment: null,
-            programmeChoices: [
-              {
-                id: "5261d957-a516-4234-b018-f4dbc5a53117",
-                programmeId: "2f5f3b35-524f-4490-a07d-bd1825535027",
-                programmeVersionId: "2292b0e2-4cad-47b4-a7ad-b9ebeb272f65",
-                programmeCode: "BACC",
-                programmeName: "Bachelor of Accountancy",
-                awardName: "Bachelor of Accountancy",
-                owningAcademicUnitName: "Business School",
-                programmeVersionCode: "2027.1",
-                choiceRank: 1,
-                choiceStatus: "PENDING",
-                evaluationSummary: null,
-                decisionReason: null,
-              },
-            ],
+            id: "359cbb03-cf95-4b2a-853d-fe602f7e7fb8",
+            code: "UNDERGRAD",
+            name: "Undergraduate",
+            active: true,
+            version: 1,
           },
         ]),
+      }),
+    );
+    await page.route("**/api/academic/overview", (route) =>
+      route.fulfill({
+        json: {
+          academicUnitTypes: [], academicUnits: [], academicYears: [], academicPeriodTypes: [], academicPeriods: [],
+          intakes: [{
+            id: "b535c76e-a477-43bb-880a-1843c0e66e3c", academicYearId: "year-1", academicYearName: "2027",
+            code: "AUG-2027", name: "August 2027", startsOn: "2027-01-01", endsOn: "2027-07-31", status: "OPEN",
+            maximumProgrammeChoices: 3, changeReason: "Playwright fixture", programmeLevels: [], specificProgrammes: [],
+            allProgrammesInSelectedLevels: true, version: 1,
+          }],
+          programmeLevels: [], programmeTypes: [],
+          programmes: [{
+            id: "2f5f3b35-524f-4490-a07d-bd1825535027", code: "BACC", name: "Bachelor of Accountancy",
+            awardName: "Bachelor of Accountancy", owningAcademicUnitId: "unit-1", owningAcademicUnitName: "Business School",
+            programmeTypeId: "type-1", programmeTypeName: "Degree", programmeLevelId: "level-1",
+            programmeLevelName: "Undergraduate", minimumDurationPeriods: 8, maximumDurationPeriods: 12,
+            status: "ACTIVE", legacyProgrammeCode: null, changeReason: "Playwright fixture", version: 1,
+          }],
+          modules: [],
+        },
       }),
     );
     await page.route("**/api/admissions/requirement-sets", (route) =>
@@ -1206,57 +1210,36 @@ test.describe("Core Identity authentication and RBAC", () => {
             status: "APPROVED",
             minimumTotalPoints: 12,
             requiresEnglish: true,
+            requiresMathematicsOrScience: true,
             advancedRulesVersion: null,
             approvedAt: "2026-12-01T08:00:00Z",
+            qualificationGroups: [],
           },
         ]),
       }),
     );
 
-    await page.goto("/operations/admissions-evaluation");
+    await page.goto("/operations/programme-requirements");
     await expect(page).toHaveURL(
       /\/realms\/emhare\/protocol\/openid-connect\/auth/,
       { timeout: 15_000 },
     );
     await loginWithKeycloak(page, username);
 
-    await expect(page).toHaveURL(/\/operations\/admissions-evaluation$/);
-    const applicationsTab = page.getByRole("tab", {
-      name: /Applications in evaluation/,
-    });
-    const requirementSetsTab = page.getByRole("tab", {
-      name: /Requirement-set versions/,
-    });
-    await expect(applicationsTab).toHaveAttribute("aria-selected", "true");
-    await expect(
-      page.getByRole("heading", { name: "Applications in evaluation" }),
-    ).toBeVisible();
-    await expect(page.getByText("APP-2027-00031")).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Requirement-set versions" }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: "New requirement set" }),
-    ).toHaveCount(0);
-    await expect(page.locator("[data-emhare-pagination]:visible")).toHaveCount(
-      2,
-    );
-
-    await requirementSetsTab.click();
-    await expect(requirementSetsTab).toHaveAttribute("aria-selected", "true");
+    await expect(page).toHaveURL(/\/operations\/programme-requirements$/);
     await expect(
       page.getByRole("heading", { name: "Requirement-set versions" }),
     ).toBeVisible();
     await expect(page.getByText("BACC-2027.1")).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Applications in evaluation" }),
-    ).toHaveCount(0);
+    await expect(page.getByText("BACC · Bachelor of Accountancy")).toBeVisible();
     await expect(
       page.getByRole("button", { name: "New requirement set" }),
     ).toBeVisible();
-    await expect(page.locator("[data-emhare-pagination]:visible")).toHaveCount(
-      1,
-    );
+    await page.getByRole("button", { name: "New requirement set" }).click();
+    await expect(page.getByLabel("Programme", { exact: true })).toBeVisible();
+    await expect(page.getByLabel(/Application type/)).toBeVisible();
+    await expect(page.getByLabel("Minimum total points", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save draft requirements" })).toBeVisible();
 
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
@@ -2607,13 +2590,13 @@ test.describe("Core Identity authentication and RBAC", () => {
     await ensureSystemAdminUser(username);
 
     const reportDefinitions = [
-      ["APPLICATION_DEMAND", "Application demand", ["SCREEN", "CHART", "PDF"]],
+      ["APPLICATION_DEMAND", "Application demand", ["SCREEN", "BAR_CHART", "XLSX", "PDF"]],
       ["EXECUTIVE_STATISTICS", "Executive statistics", ["SCREEN", "XLSX", "PDF"]],
-      ["APPLICANT_REGISTERS", "Applicant registers", ["SCREEN", "XLSX"]],
-      ["SPECIAL_CATEGORY_REGISTERS", "Special-category registers", ["SCREEN", "XLSX"]],
+      ["APPLICANT_REGISTERS", "Applicant registers", ["SCREEN", "XLSX", "PDF"]],
+      ["SPECIAL_CATEGORY_REGISTERS", "Special-category registers", ["SCREEN", "XLSX", "PDF"]],
       ["SELECTION_SCHEDULES", "Selection schedules", ["SCREEN", "XLSX", "PDF"]],
-      ["INTAKE_MOVEMENTS", "Intake movements", ["SCREEN", "XLSX"]],
-      ["ADMISSIONS_ANALYSIS", "Analysis", ["SCREEN", "GRAPH", "PDF"]],
+      ["INTAKE_MOVEMENTS", "Intake movements", ["SCREEN", "XLSX", "PDF"]],
+      ["ADMISSIONS_ANALYSIS", "Analysis", ["SCREEN", "GRAPH", "XLSX", "PDF"]],
       ["OFFER_LETTERS", "Offer letters", ["PDF", "EMAIL"]],
     ].map(([code, title, formats]) => ({
       code,
@@ -2650,16 +2633,19 @@ test.describe("Core Identity authentication and RBAC", () => {
         },
       }),
     );
-    let exportRequestUrl = "";
+    const exportRequestUrls: string[] = [];
     await page.route("**/api/admissions/reports/APPLICATION_DEMAND**", (route) => {
       const requestUrl = new URL(route.request().url());
       if (requestUrl.pathname.endsWith("/export")) {
-        exportRequestUrl = requestUrl.toString();
+        exportRequestUrls.push(requestUrl.toString());
+        const format = requestUrl.searchParams.get("format");
         return route.fulfill({
           status: 200,
-          contentType: "application/pdf",
-          headers: { "Content-Disposition": 'attachment; filename="application-demand.pdf"' },
-          body: "%PDF-1.4\n%%EOF",
+          contentType:
+            format === "xlsx"
+              ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              : "application/pdf",
+          body: format === "xlsx" ? "mock-xlsx-workbook" : "%PDF-1.4\n%%EOF",
         });
       }
       return route.fulfill({
@@ -2689,11 +2675,30 @@ test.describe("Core Identity authentication and RBAC", () => {
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(/\/operations\/admissions-reports$/);
-    await expect(page.getByRole("heading", { name: "Report catalogue" })).toBeVisible();
-    await expect(page.locator("article")).toHaveCount(8);
-    await expect(page.getByText("Applications are counted once.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Admissions reports" })).toBeVisible();
+    await expect(page.getByText("Report catalogue", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2 })).toHaveCount(8);
 
-    const demandCard = page.locator("article").filter({
+    const reportsContentWidth = await page.getByTestId("admissions-reports-content").evaluate((element) => {
+      const parent = element.parentElement;
+      if (!parent) {
+        return { difference: Number.POSITIVE_INFINITY, maximumWidth: "" };
+      }
+
+      const parentStyle = window.getComputedStyle(parent);
+      const availableWidth = parent.getBoundingClientRect().width
+        - Number.parseFloat(parentStyle.paddingLeft)
+        - Number.parseFloat(parentStyle.paddingRight);
+
+      return {
+        difference: Math.abs(availableWidth - element.getBoundingClientRect().width),
+        maximumWidth: window.getComputedStyle(element).maxWidth,
+      };
+    });
+    expect(reportsContentWidth.maximumWidth).toBe("none");
+    expect(reportsContentWidth.difference).toBeLessThanOrEqual(1);
+
+    const demandCard = page.getByLabel("Admissions report families").locator(":scope > *").filter({
       has: page.getByRole("heading", { name: "Application demand", exact: true }),
     });
     await demandCard.getByRole("link", { name: "Open report" }).click();
@@ -2702,11 +2707,19 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(page.getByRole("heading", { name: "Application demand", exact: true }).last()).toBeVisible();
     await expect(page.getByText("HCS · BSc Computer Science")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Visual summary" })).toBeVisible();
-    const downloadPromise = page.waitForEvent("download");
+    const excelDownloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export Excel workbook" }).click();
+    const excelDownload = await excelDownloadPromise;
+    expect(excelDownload.suggestedFilename()).toMatch(/^application-demand-.*\.xlsx$/);
+
+    const pdfDownloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export PDF" }).click();
-    const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/^application-demand-.*\.pdf$/);
-    expect(exportRequestUrl).toContain("format=pdf");
+    const pdfDownload = await pdfDownloadPromise;
+    expect(pdfDownload.suggestedFilename()).toMatch(/^application-demand-.*\.pdf$/);
+    expect(exportRequestUrls).toEqual(expect.arrayContaining([
+      expect.stringContaining("format=xlsx"),
+      expect.stringContaining("format=pdf"),
+    ]));
   });
 
   test("opens an admissions application as a full page with an inline document preview", async ({
@@ -2727,6 +2740,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     const offerId = "76c0b172-499f-4057-a016-d31f03f6046d";
     const offerDocumentVersionId = "ba64a439-79ad-41d2-83ba-091cd5cd30d0";
     const offerGeneratedDocumentId = "9ca73cca-9a60-4d4a-b9d7-5d684991fac2";
+    const qualificationId = "63d7943d-4e4b-49e9-bd8e-7e5d5fcab619";
     const application = {
       id: applicationId,
       applicationNumber: "EMH-AUG2027-00000142",
@@ -2781,6 +2795,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     const requestedDocumentDispositions: string[] = [];
     const requestedOfferDocumentDispositions: string[] = [];
     let returnedRecommendationReason = "";
+    let recordedQualificationDecision: Record<string, unknown> | null = null;
 
     await page.route("**/api/admissions/applications", (route) =>
       route.fulfill({
@@ -2873,7 +2888,28 @@ test.describe("Core Identity authentication and RBAC", () => {
                 version: 0,
               },
             ],
-            qualifications: [],
+            qualifications: [
+              {
+                id: qualificationId,
+                level: "A_LEVEL",
+                examBody: { id: "exam-body-1", code: "ZIMSEC", name: "ZIMSEC", scienceSubject: null },
+                institutionName: "Harare High School",
+                centreNumber: "H001",
+                candidateNumber: "000142",
+                yearWritten: 2026,
+                countryId: null,
+                documentId: documentId,
+                verificationStatus: "CAPTURED",
+                verifiedByUserId: null,
+                verifiedAt: null,
+                rejectionReason: null,
+                version: 3,
+                results: [{
+                  id: "qualification-result-1", subject: null, subjectNameSnapshot: "Mathematics", grade: "B",
+                  mark: null, points: 4, principalSubject: true, resultStatus: "CAPTURED", version: 1,
+                }],
+              },
+            ],
             documents: {
               applicationId,
               applicationNumber: application.applicationNumber,
@@ -3014,6 +3050,13 @@ test.describe("Core Identity authentication and RBAC", () => {
       }),
     );
     await page.route(
+      `**/api/admissions/applications/${applicationId}/qualifications/${qualificationId}/decision`,
+      async (route) => {
+        recordedQualificationDecision = route.request().postDataJSON() as Record<string, unknown>;
+        await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+      },
+    );
+    await page.route(
       `**/api/admissions/applications/${applicationId}/choices/*/academic-recommendation/return`,
       async (route) => {
         const requestBody = route.request().postDataJSON() as { reason: string };
@@ -3088,6 +3131,20 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(
       page.getByRole("heading", { name: "Programme choices" }),
     ).toBeVisible();
+    await expect(page.getByText("Step 5 of 6", { exact: true })).toBeVisible();
+    await expect(page.getByText("Verify 1 qualification sitting", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Verify qualification" }).click();
+    const qualificationDialog = page.getByRole("dialog");
+    await qualificationDialog.locator("textarea.swal2-textarea").fill("Matched the certificate and captured A Level results.");
+    await qualificationDialog.getByRole("button", { name: "Verify qualification" }).click();
+    await expect.poll(() => recordedQualificationDecision).toEqual({
+      decision: "VERIFIED",
+      reason: "Matched the certificate and captured A Level results.",
+      expectedVersion: 3,
+    });
+    await page.getByRole("dialog", { name: "Qualification verified" })
+      .getByRole("button", { name: "OK" })
+      .click();
     await expect(
       page.getByText("Reference received", { exact: true }),
     ).toBeVisible();

@@ -347,7 +347,7 @@ function versionTone(status: string) {
         <template #right><EmhareGuidedActionButton aria-label="New curriculum version" label="New version" icon="i-lucide-git-branch-plus" color="primary" class="[&_[data-slot=label]]:hidden sm:[&_[data-slot=label]]:inline" guidance-title="Curriculum version setup required" :guidance-instructions="newVersionGuidance" :guidance-action-label="!programmes.length ? 'Open Programmes' : undefined" @guidance-action="navigateTo('/operations/programmes')" @click="versionModalOpen = true" /></template>
       </UDashboardNavbar>
       <UDashboardToolbar>
-        <template #left><USelect v-model="selectedProgrammeId" :items="programmeItems" value-key="value" placeholder="Select programme" searchable class="w-full sm:w-[30rem]" /></template>
+        <template #left><USelectMenu v-model="selectedProgrammeId" :items="programmeItems" value-key="value" placeholder="Select programme" aria-label="Programme" :search-input="{ placeholder: 'Search programmes' }" class="w-full sm:w-[30rem]" /></template>
         <template #right><USelect v-model="selectedVersionId" :items="versionStatusItems" value-key="value" placeholder="Select version" class="w-72" :disabled="!programmeVersions.length" /></template>
       </UDashboardToolbar>
     </template>

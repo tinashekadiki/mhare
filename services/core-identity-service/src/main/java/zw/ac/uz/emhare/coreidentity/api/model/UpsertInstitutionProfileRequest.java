@@ -9,10 +9,12 @@ public record UpsertInstitutionProfileRequest(
         @NotBlank String code,
         @NotBlank String name,
         @NotBlank String legalName,
+        @NotBlank String registrarName,
         @Pattern(regexp = "^[A-Z]{3}$") String defaultCurrencyCode,
         @Pattern(regexp = "^[A-Z]{2}$") String countryCode,
         @NotBlank String timezone,
         String contactDetailsJson,
         String brandingJson,
+        String bankDetailsJson,
         String legacyCode) {
 }

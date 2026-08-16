@@ -27,6 +27,10 @@ const intakeForm = reactive({
   name: '',
   startsOn: '',
   endsOn: '',
+  offerAcceptanceDeadline: '',
+  registrationDate: '',
+  orientationDate: '',
+  commencementDate: '',
   maximumProgrammeChoices: 3,
   programmeLevelIds: [] as string[],
   programmeIds: [] as string[],
@@ -160,6 +164,9 @@ function editIntake(intake: IntakeSummary) {
   Object.assign(intakeForm, {
     id: intake.id, status: intake.status, academicYearId: intake.academicYearId, code: intake.code,
     name: intake.name, startsOn: intake.startsOn, endsOn: intake.endsOn,
+    offerAcceptanceDeadline: intake.offerAcceptanceDeadline?.slice(0, 10) ?? '',
+    registrationDate: intake.registrationDate ?? '', orientationDate: intake.orientationDate ?? '',
+    commencementDate: intake.commencementDate ?? '',
     maximumProgrammeChoices: intake.maximumProgrammeChoices,
     programmeLevelIds: intake.programmeLevels.map(programmeLevel => programmeLevel.id),
     programmeIds: intake.specificProgrammes.map(programme => programme.id),
@@ -210,6 +217,10 @@ async function saveIntakeCorrection() {
     name: intakeForm.name,
     startsOn: intakeForm.startsOn,
     endsOn: intakeForm.endsOn,
+    offerAcceptanceDeadline: `${intakeForm.offerAcceptanceDeadline}T21:59:59Z`,
+    registrationDate: intakeForm.registrationDate || null,
+    orientationDate: intakeForm.orientationDate || null,
+    commencementDate: intakeForm.commencementDate,
     maximumProgrammeChoices: intakeForm.maximumProgrammeChoices,
     programmeLevelIds: intakeForm.programmeLevelIds,
     programmeIds: intakeForm.programmeIds
@@ -462,6 +473,10 @@ function formatDate(value: string) {
         <UFormField label="Name" required><UInput v-model="intakeForm.name" class="w-full" /></UFormField>
         <UFormField label="Starts on" required><UInput v-model="intakeForm.startsOn" type="date" class="w-full" /></UFormField>
         <UFormField label="Ends on" required><UInput v-model="intakeForm.endsOn" type="date" class="w-full" /></UFormField>
+        <UFormField label="Offer acceptance deadline" required><UInput v-model="intakeForm.offerAcceptanceDeadline" type="date" class="w-full" /></UFormField>
+        <UFormField label="Commencement date" required><UInput v-model="intakeForm.commencementDate" type="date" class="w-full" /></UFormField>
+        <UFormField label="Registration date"><UInput v-model="intakeForm.registrationDate" type="date" class="w-full" /></UFormField>
+        <UFormField label="Orientation date"><UInput v-model="intakeForm.orientationDate" type="date" class="w-full" /></UFormField>
         <UFormField label="Maximum Programme choices" required class="sm:col-span-2"><UInput v-model.number="intakeForm.maximumProgrammeChoices" type="number" min="1" max="20" class="w-full" /></UFormField>
         <UFormField label="Programme Levels" class="sm:col-span-2"><USelectMenu v-model="intakeForm.programmeLevelIds" :items="programmeLevelItems" value-key="value" label-key="label" multiple aria-label="Programme Levels" disabled class="w-full" /></UFormField>
         <UFormField label="Specific Programmes" class="sm:col-span-2"><USelectMenu v-model="intakeForm.programmeIds" :items="specificProgrammeItems" value-key="value" label-key="label" multiple aria-label="Specific Programmes" disabled class="w-full" /></UFormField>

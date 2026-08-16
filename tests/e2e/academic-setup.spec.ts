@@ -117,8 +117,12 @@ INSERT INTO academic_period_types (id, code, name, sort_order, status, created_a
 VALUES ('${fixture.academicPeriodTypeId}', 'SEM_${codeSuffix}', 'Semester', ${uniqueSortOrder}, 'ACTIVE', now(), now(), '${userId}', 0);
 INSERT INTO academic_periods (id, academic_year_id, academic_period_type_id, code, name, start_date, end_date, status, created_at, updated_at, created_by_user_id, version)
 VALUES ('${fixture.academicPeriodId}', '${fixture.academicYearId}', '${fixture.academicPeriodTypeId}', '${calendarYear}S1_${codeSuffix}', 'Semester 1', DATE '${calendarYear}-01-10', DATE '${calendarYear}-06-20', 'OPEN', now(), now(), '${userId}', 0);
-INSERT INTO intakes (id, academic_year_id, code, name, starts_on, ends_on, status, created_at, updated_at, created_by_user_id, version)
-VALUES ('${fixture.intakeId}', '${fixture.academicYearId}', 'JAN${calendarYear}_${codeSuffix}', 'January ${calendarYear} Intake', DATE '${calendarYear}-01-01', DATE '${calendarYear}-02-28', 'DRAFT', now(), now(), '${userId}', 0);
+INSERT INTO intakes (id, academic_year_id, code, name, starts_on, ends_on, offer_acceptance_deadline,
+    registration_date, orientation_date, commencement_date, status, created_at, updated_at, created_by_user_id, version)
+VALUES ('${fixture.intakeId}', '${fixture.academicYearId}', 'JAN${calendarYear}_${codeSuffix}', 'January ${calendarYear} Intake',
+    DATE '${calendarYear}-01-01', DATE '${calendarYear}-02-28', TIMESTAMPTZ '${calendarYear}-03-15 21:59:59+00',
+    DATE '${calendarYear}-03-20', DATE '${calendarYear}-03-25', DATE '${calendarYear}-04-01',
+    'DRAFT', now(), now(), '${userId}', 0);
 INSERT INTO programme_levels (id, code, name, sort_order, status, created_at, updated_at, created_by_user_id, version)
 VALUES ('${fixture.programmeLevelId}', 'UG_${codeSuffix}', 'Undergraduate', ${uniqueSortOrder}, 'ACTIVE', now(), now(), '${userId}', 0);
 INSERT INTO programme_types (id, code, name, status, created_at, updated_at, created_by_user_id, version)
@@ -387,6 +391,10 @@ test.describe('Academic Setup operational UI', () => {
       await intakeWorkspace.getByLabel('Applicant-facing name').fill(`February ${fixture.calendarYear} Intake`)
       await intakeWorkspace.getByLabel('Applications open').fill(`${fixture.calendarYear}-03-01`)
       await intakeWorkspace.getByLabel('Applications close').fill(`${fixture.calendarYear}-04-30`)
+      await intakeWorkspace.getByLabel('Offer acceptance deadline').fill(`${fixture.calendarYear}-05-15`)
+      await intakeWorkspace.getByLabel('Registration date').fill(`${fixture.calendarYear}-05-20`)
+      await intakeWorkspace.getByLabel('Orientation date').fill(`${fixture.calendarYear}-05-25`)
+      await intakeWorkspace.getByLabel('Commencement date').fill(`${fixture.calendarYear}-06-01`)
       await intakeWorkspace.getByRole('button', { name: 'Continue to eligibility' }).click()
 
       await expect(intakeWorkspace.getByText('Step 2 of 5', { exact: true })).toBeVisible()
@@ -422,6 +430,10 @@ test.describe('Academic Setup operational UI', () => {
         name: `February ${fixture!.calendarYear} Intake`,
         startsOn: `${fixture!.calendarYear}-03-01`,
         endsOn: `${fixture!.calendarYear}-04-30`,
+        offerAcceptanceDeadline: `${fixture!.calendarYear}-05-15T21:59:59Z`,
+        registrationDate: `${fixture!.calendarYear}-05-20`,
+        orientationDate: `${fixture!.calendarYear}-05-25`,
+        commencementDate: `${fixture!.calendarYear}-06-01`,
         status,
         maximumProgrammeChoices: 3,
         changeReason: 'Configured all admission opening controls for browser verification.',
@@ -503,6 +515,10 @@ test.describe('Academic Setup operational UI', () => {
           name: `January ${fixture!.calendarYear} Intake`,
           startsOn: `${fixture!.calendarYear}-01-01`,
           endsOn: `${fixture!.calendarYear}-02-28`,
+          offerAcceptanceDeadline: `${fixture!.calendarYear}-03-15T21:59:59Z`,
+          registrationDate: `${fixture!.calendarYear}-03-20`,
+          orientationDate: `${fixture!.calendarYear}-03-25`,
+          commencementDate: `${fixture!.calendarYear}-04-01`,
           status: 'OPEN',
           maximumProgrammeChoices: 3,
           changeReason: correctionReason,
@@ -702,6 +718,10 @@ test.describe('Academic Setup operational UI', () => {
       await intakeWorkspace.getByLabel('Applicant-facing name').fill(`February ${fixture.calendarYear} Intake`)
       await intakeWorkspace.getByLabel('Applications open').fill(`${fixture.calendarYear}-02-01`)
       await intakeWorkspace.getByLabel('Applications close').fill(`${fixture.calendarYear}-02-28`)
+      await intakeWorkspace.getByLabel('Offer acceptance deadline').fill(`${fixture.calendarYear}-03-15`)
+      await intakeWorkspace.getByLabel('Registration date').fill(`${fixture.calendarYear}-03-20`)
+      await intakeWorkspace.getByLabel('Orientation date').fill(`${fixture.calendarYear}-03-25`)
+      await intakeWorkspace.getByLabel('Commencement date').fill(`${fixture.calendarYear}-04-01`)
       await intakeWorkspace.getByRole('button', { name: 'Continue to eligibility' }).click()
       await expect(intakeWorkspace.getByText('Step 2 of 5', { exact: true })).toBeVisible()
       await intakeWorkspace.getByLabel('Programme Levels').click()
@@ -794,6 +814,11 @@ test.describe('Academic Setup operational UI', () => {
 
       await page.goto(`/operations/curriculum?programmeId=${fixture.programmeId}`)
       await expect(page.getByRole('heading', { name: 'Curriculum versions' })).toBeVisible()
+      await page.getByRole('button', { name: 'Programme' }).click()
+      const programmeSearch = page.getByPlaceholder('Search programmes')
+      await programmeSearch.fill(fixture.codeSuffix)
+      await expect(page.getByRole('option', { name: new RegExp(`B${fixture.codeSuffix.slice(0, 4)}`) })).toBeVisible()
+      await programmeSearch.press('Escape')
       await expect(page.getByText('Approved curriculum remains amendable', { exact: true })).toBeVisible()
       await expect(page.getByText('Year 1 · Semester 1', { exact: true })).toBeVisible()
       await expect(page.getByText('Programming Fundamentals', { exact: true }).first()).toBeVisible()

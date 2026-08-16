@@ -1,6 +1,7 @@
 package zw.ac.uz.emhare.documentsreporting.document;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -17,8 +18,10 @@ import net.sf.jasperreports.engine.JasperReport;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot;
+import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.BankAccountSnapshot;
 import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.FeeLineSnapshot;
 import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.FeeScheduleSnapshot;
 import zw.ac.uz.emhare.documentsreporting.document.infrastructure.persistence.model.GeneratedDocument;
@@ -30,8 +33,15 @@ public class OfficialOfferLetterPdfRenderer {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd MMMM uuuu", Locale.ENGLISH);
     private static final DateTimeFormatter INSTANT_DATE = DATE.withZone(ZoneId.of("Africa/Harare"));
     private final JasperReport report;
+    private final OfferLetterSignatureLoader signatureLoader;
 
     public OfficialOfferLetterPdfRenderer() {
+        this(documentId -> null);
+    }
+
+    @Autowired
+    public OfficialOfferLetterPdfRenderer(OfferLetterSignatureLoader signatureLoader) {
+        this.signatureLoader = signatureLoader;
         report = UzOfferLetterJasperTemplate.compile();
     }
 
@@ -50,31 +60,41 @@ public class OfficialOfferLetterPdfRenderer {
 
     private Map<String, Object> parameters(GeneratedDocument document, OfferLetterProjection offer,
             OfferLetterContentSnapshot snapshot) {
+        if (offer.getOfferType() == null) {
+            throw new IllegalArgumentException("An offer type is required to render an offer letter.");
+        }
+        FeeColumns feeColumns = feeColumns(snapshot.feeSchedule());
         Map<String, Object> values = new LinkedHashMap<>();
-        values.put("INSTITUTION_NAME", first(snapshot.institutionName(), "University of Zimbabwe"));
-        values.put("INSTITUTION_CONTACT", contact(snapshot));
-        values.put("DOCUMENT_TITLE", "OFFICIAL ADMISSION OFFER");
-        values.put("OFFER_REFERENCE", "Offer: " + first(offer.getOfferNumber(), "-")
-                + "    Application: " + first(offer.getApplicationNumber(), "-"));
-        values.put("ISSUE_DATE", document.getRequestedAt() == null ? "" : "Issued: " + INSTANT_DATE.format(document.getRequestedAt()));
-        values.put("APPLICANT_ADDRESS", first(offer.getApplicantName(), "Applicant") + "\n"
-                + first(snapshot.applicantPostalAddress(), offer.getApplicantEmail()));
+        values.put("LOGO", logo());
+        values.put("SIGNATURE_IMAGE", signatureLoader.load(snapshot.signatorySignatureDocumentId()));
+        values.put("INSTITUTION_ADDRESS", institutionAddress(snapshot));
+        values.put("INSTITUTION_TITLE", first(snapshot.institutionName(), "University of Zimbabwe").toUpperCase(Locale.ROOT));
+        values.put("ISSUE_DATE", document.getRequestedAt() == null ? "" : INSTANT_DATE.format(document.getRequestedAt()));
+        values.put("APPLICANT_ADDRESS", applicantAddress(offer, snapshot));
         values.put("SALUTATION", "Dear " + first(offer.getApplicantName(), "Applicant") + ",");
-        values.put("OPENING_PARAGRAPH", openingParagraph(offer, snapshot));
-        values.put("PROGRAMME_DETAILS", programmeDetails(offer, snapshot));
-        values.put("SCHEDULE_DETAILS", scheduleDetails(offer));
-        values.put("CONDITIONS", conditions(offer));
-        values.put("RESPONSE_INSTRUCTION", "Accept or decline this offer by "
-                + INSTANT_DATE.format(offer.getAcceptanceDeadline())
-                + " through your authenticated eMhare applicant workspace. The portal response is the authoritative record.");
+        values.put("ADMISSION_HEADING", admissionHeading(document, offer, snapshot));
+        values.put("OPENING_PARAGRAPH", "I am pleased to inform you that a place has been reserved for you on the above mentioned degree programme.");
+        values.put("REGISTRATION_INSTRUCTION", registrationInstruction(offer, snapshot));
+        values.put("FEE_INTRODUCTION", feeIntroduction(snapshot.feeSchedule()));
+        values.put("FEE_ITEMS_1", feeColumns.items().get(0));
+        values.put("FEE_ITEMS_2", feeColumns.items().get(1));
+        values.put("FEE_ITEMS_3", feeColumns.items().get(2));
+        values.put("FEE_AMOUNTS_1", feeColumns.amounts().get(0));
+        values.put("FEE_AMOUNTS_2", feeColumns.amounts().get(1));
+        values.put("FEE_AMOUNTS_3", feeColumns.amounts().get(2));
+        values.put("FEE_TOTAL", feeTotal(snapshot.feeSchedule()));
+        values.put("PAYMENT_INSTRUCTION", paymentInstruction(snapshot));
+        values.put("COMMENCEMENT_INSTRUCTION", commencementInstruction(offer));
+        values.put("EQUALITY_TERM", "The University is a non-discriminatory and inclusive equal opportunity institution and students are expected to attend all official learning schedules and activities as prescribed. The University academic business runs 24 hours 7 days a week during a defined semester.");
+        values.put("AMENDMENT_TERM", "Kindly note that this offer is made without prejudice to the rights which the University may have to amend, withdraw or cancel in the event of you or the University being unable to meet the conditions of the offer.");
+        values.put("REGISTRATION_TERM", "Admittance to the University is made subject to your accepting the conditions set in this letter and registering in the stipulated period. Failure to do so will lead to the University withdrawing your name from its list of successful applicants for the " + academicYear(document, offer) + " Academic year.");
+        values.put("BLENDED_LEARNING_TERM", "The University of Zimbabwe offers blended learning and each student is required to bring their own Laptop/Tablet to support their eLearning activities.");
+        values.put("CONGRATULATIONS", "Congratulations on being accepted to the University of Zimbabwe. We wish you all the best in your academic journey.");
         values.put("SIGNATORY", first(snapshot.signatoryName(), "Registrar") + "\n"
                 + first(snapshot.signatoryTitle(), "Registrar"));
+        values.put("ACCEPTANCE_INSTRUCTION", acceptanceInstruction(offer, snapshot.feeSchedule()));
+        values.put("ACCEPTANCE_DECLARATION", "B. I accept/do not accept the university offer as outlined in this letter. By accepting this offer I confirm that the programme offered and my personal details are correct.");
         values.put("DOCUMENT_NUMBER", "Verification number: " + document.getDocumentNumber());
-        values.put("REQUIRED_EVIDENCE", evidence(snapshot.requiredVerificationDocuments()));
-        values.put("FEE_SCHEDULE", feeSchedule(snapshot.feeSchedule()));
-        values.put("PAYMENT_INSTRUCTION", paymentInstruction(snapshot.feeSchedule()));
-        values.put("STANDARD_TERMS", standardTerms());
-        values.put("POLICY_VERSION", "Content policy: " + first(snapshot.contentPolicyVersion(), "LEGACY-V2"));
         return values;
     }
 
@@ -85,86 +105,163 @@ public class OfficialOfferLetterPdfRenderer {
                 List.of(), List.of(), null, "Registrar", "Registrar", "LEGACY-V2");
     }
 
-    private String openingParagraph(OfferLetterProjection offer, OfferLetterContentSnapshot snapshot) {
-        String applicantKind = isInternational(snapshot.applicantCategoryCode()) ? " International applicant." : "";
-        return "The University is pleased to offer you " + offer.getOfferType().toLowerCase(Locale.ROOT)
-                + " admission to the programme shown below." + applicantKind
-                + " This letter records the approved offer terms at the time this document version was generated.";
+    private InputStream logo() {
+        InputStream logo = OfficialOfferLetterPdfRenderer.class.getResourceAsStream("/documents/uz-logo.jpg");
+        if (logo == null) throw new IllegalStateException("The University of Zimbabwe offer-letter logo is missing.");
+        return logo;
     }
 
-    private String programmeDetails(OfferLetterProjection offer, OfferLetterContentSnapshot snapshot) {
-        StringBuilder value = new StringBuilder();
-        line(value, "Programme", offer.getProgrammeName() + " (" + offer.getProgrammeCode() + ")");
-        line(value, "Award", snapshot.awardName());
-        line(value, "Academic unit", snapshot.academicUnitName());
-        line(value, "Application route", first(snapshot.applicationRouteName(), snapshot.applicationRouteCode()));
-        line(value, "Programme level", snapshot.programmeLevelName());
-        line(value, "Intake", snapshot.intakeName());
-        line(value, "Study option", joined(snapshot.studyOptions()));
-        line(value, "Programme version", snapshot.programmeVersionCode());
-        return value.toString().strip();
+    private String institutionAddress(OfferLetterContentSnapshot snapshot) {
+        String address = first(snapshot.institutionPostalAddress(), "P.O.Box MP 167, Mount Pleasant, Harare, Zimbabwe");
+        return first(snapshot.institutionName(), "University of Zimbabwe") + "\n" + address.replace(", ", "\n");
     }
 
-    private String scheduleDetails(OfferLetterProjection offer) {
-        StringBuilder value = new StringBuilder();
-        line(value, "Commencement", date(offer.getCommencementDate()));
-        line(value, "Registration", date(offer.getRegistrationDate()));
-        line(value, "Orientation", date(offer.getOrientationDate()));
-        return value.toString().strip();
+    private String applicantAddress(OfferLetterProjection offer, OfferLetterContentSnapshot snapshot) {
+        return first(offer.getApplicantName(), "Applicant") + " (" + first(offer.getApplicationNumber(), "-") + ")\n"
+                + first(snapshot.applicantPostalAddress(), offer.getApplicantEmail());
     }
 
-    private String conditions(OfferLetterProjection offer) {
-        return "CONDITIONS\n" + first(offer.getConditionsText(), "No additional conditions apply to this offer.");
+    private String admissionHeading(GeneratedDocument document, OfferLetterProjection offer,
+            OfferLetterContentSnapshot snapshot) {
+        String academicUnit = snapshot.academicUnitName() == null || snapshot.academicUnitName().isBlank()
+                ? "" : " IN THE " + snapshot.academicUnitName().trim();
+        return "ADMISSION IN THE YEAR " + academicYear(document, offer) + " TO THE "
+                + first(offer.getProgrammeName(), "PROGRAMME") + " (" + first(offer.getProgrammeCode(), "-") + ")"
+                + academicUnit;
     }
 
-    private String evidence(List<String> requirements) {
-        if (requirements == null || requirements.isEmpty()) {
-            return "Bring the original identity and academic evidence listed in your eMhare application workspace."
-                    + " Uploaded copies remain subject to verification.";
-        }
-        return requirements.stream().map(value -> "• " + value).reduce((left, right) -> left + "\n" + right).orElse("");
+    private String registrationInstruction(OfferLetterProjection offer, OfferLetterContentSnapshot snapshot) {
+        String registration = offer.getRegistrationDate() == null
+                ? "Registration arrangements will be communicated through your authenticated eMhare applicant workspace."
+                : "Registration commences on " + date(offer.getRegistrationDate()) + ".";
+        String evidence = snapshot.requiredVerificationDocuments().isEmpty()
+                ? "your original identity and academic evidence"
+                : "the originals of " + joined(snapshot.requiredVerificationDocuments());
+        String conditions = offer.getConditionsText() == null || offer.getConditionsText().isBlank()
+                ? "" : " Conditions of this offer: " + offer.getConditionsText().trim();
+        return registration + " Use your application number when completing online registration through your authenticated eMhare workspace. You are also expected to bring "
+                + evidence + " for verification at the Faculty Office." + conditions;
     }
 
-    private String feeSchedule(FeeScheduleSnapshot schedule) {
+    private String feeIntroduction(FeeScheduleSnapshot schedule) {
         if (schedule == null || schedule.lines().isEmpty()) {
             return "Finance has not supplied a published fee snapshot for this letter. No fee amount is created or implied"
-                    + " by this document. Consult the authenticated eMhare Finance workspace before making payment.";
+                    + " by this document. Consult the authenticated eMhare Finance workspace before making payment."
+                    + " PLEASE NOTE THAT FEES ARE SUBJECT TO CHANGE WITHOUT NOTICE.";
         }
-        String currency = first(schedule.transactionCurrencyCode(), "USD").toUpperCase(Locale.ROOT);
-        StringBuilder value = new StringBuilder("Published Finance schedule ")
-                .append(first(schedule.financeFeeStructureCode(), "-")).append(" (version ")
-                .append(schedule.financeFeeStructureVersion()).append(")\n\n");
-        for (FeeLineSnapshot line : schedule.lines()) {
-            value.append(first(line.description(), line.code())).append("    ")
-                    .append(currency).append(' ').append(money(line.transactionAmount())).append('\n');
-        }
-        value.append("\nTOTAL    ").append(currency).append(' ').append(money(schedule.transactionTotal()));
-        if (!"USD".equals(currency) && schedule.baseTotal() != null) {
-            value.append("\nUSD base equivalent    USD ").append(money(schedule.baseTotal()));
-        }
-        return value.toString();
+        return "The fees payable per semester are as indicated below. The fees are payable in "
+                + schedule.transactionCurrencyCode() + ". PLEASE NOTE THAT FEES ARE SUBJECT TO CHANGE WITHOUT NOTICE.";
     }
 
-    private String paymentInstruction(FeeScheduleSnapshot schedule) {
+    private FeeColumns feeColumns(FeeScheduleSnapshot schedule) {
+        List<FeeLineSnapshot> lines = schedule == null || schedule.lines().isEmpty()
+                ? legacyFeeHeadings() : schedule.lines();
+        int rowsPerColumn = Math.max(1, (lines.size() + 2) / 3);
+        java.util.ArrayList<String> items = new java.util.ArrayList<>();
+        java.util.ArrayList<String> amounts = new java.util.ArrayList<>();
+        for (int column = 0; column < 3; column++) {
+            int start = Math.min(column * rowsPerColumn, lines.size());
+            int end = Math.min(start + rowsPerColumn, lines.size());
+            items.add(lines.subList(start, end).stream().map(line -> first(line.description(), line.code()))
+                    .reduce((left, right) -> left + "\n" + right).orElse(""));
+            amounts.add(lines.subList(start, end).stream()
+                    .map(line -> schedule == null || schedule.lines().isEmpty()
+                            ? "-" : amount(schedule, line.transactionAmount()))
+                    .reduce((left, right) -> left + "\n" + right).orElse(""));
+        }
+        return new FeeColumns(items, amounts);
+    }
+
+    private List<FeeLineSnapshot> legacyFeeHeadings() {
+        return List.of(
+                new FeeLineSnapshot("TUITION", "Tuition Fees", null, null),
+                new FeeLineSnapshot("MEDICAL", "Medical Fees", null, null),
+                new FeeLineSnapshot("EXAMINATION", "Examination Fees", null, null),
+                new FeeLineSnapshot("DEVELOPMENT", "Student Development Levy", null, null),
+                new FeeLineSnapshot("REGISTRATION", "Registration Fees", null, null),
+                new FeeLineSnapshot("STUDENT_UNION", "Student Union Levy", null, null),
+                new FeeLineSnapshot("LABORATORY", "Laboratory Fees", null, null),
+                new FeeLineSnapshot("SPORTS", "Sports Fees", null, null),
+                new FeeLineSnapshot("INDUSTRIALISATION", "Industrialisation Levy", null, null),
+                new FeeLineSnapshot("MAINTENANCE", "Maintenance Fees", null, null),
+                new FeeLineSnapshot("TECHNOLOGY", "Technology Fees", null, null),
+                new FeeLineSnapshot("ATTACHMENT", "Attachment Fees", null, null));
+    }
+
+    private String feeTotal(FeeScheduleSnapshot schedule) {
+        if (schedule == null || schedule.lines().isEmpty()) return "TOTAL    -";
+        String total = "TOTAL    " + amount(schedule, schedule.transactionTotal());
+        if (!"USD".equals(schedule.transactionCurrencyCode()) && schedule.baseTotal() != null) {
+            total += "    USD base equivalent    USD " + money(schedule.baseTotal());
+        }
+        return total;
+    }
+
+    private String amount(FeeScheduleSnapshot schedule, BigDecimal value) {
+        return schedule.transactionCurrencyCode() + " " + money(value);
+    }
+
+    private String paymentInstruction(OfferLetterContentSnapshot snapshot) {
+        FeeScheduleSnapshot schedule = snapshot.feeSchedule();
         String rating = schedule != null && schedule.exchangeRateId() != null
                 ? " Any non-USD conversion is backed by Finance exchange-rate evidence in this snapshot."
                 : "";
-        return "Use only payment methods and references displayed in your authenticated eMhare Finance workspace."
-                + " This letter never substitutes bank details or assumes an exchange rate." + rating;
+        if (!snapshot.bankAccounts().isEmpty()) {
+            Map<String, List<BankAccountSnapshot>> accountsByBank = new LinkedHashMap<>();
+            for (BankAccountSnapshot account : snapshot.bankAccounts()) {
+                accountsByBank.computeIfAbsent(account.bankName().trim(), ignored -> new java.util.ArrayList<>())
+                        .add(account);
+            }
+            String configuredAccounts = accountsByBank.entrySet().stream()
+                    .map(entry -> entry.getKey() + ": " + entry.getValue().stream()
+                            .map(account -> account.currencyCode() + " " + account.accountNumber().trim())
+                            .reduce((left, right) -> left + " | " + right).orElse(""))
+                    .reduce((left, right) -> left + "\n" + right).orElse("");
+            String references = snapshot.bankAccounts().stream()
+                    .map(BankAccountSnapshot::paymentReferenceInstructions)
+                    .filter(value -> !isBlank(value)).map(String::trim).distinct()
+                    .reduce((left, right) -> left + " " + right).orElse("");
+            return configuredAccounts + (references.isBlank() ? "" : ". " + references) + rating;
+        }
+        if (snapshot.bankDetails() == null || isBlank(snapshot.bankDetails().bankName())
+                || isBlank(snapshot.bankDetails().accountNumber())) {
+            return "Bank details have not been configured in the Institution Profile. Use only payment methods and references displayed in your authenticated eMhare Finance workspace." + rating;
+        }
+        var bank = snapshot.bankDetails();
+        String details = "BANK: " + bank.bankName().trim()
+                + " | CURRENCY: NOT RECORDED | ACCOUNT NUMBER: " + bank.accountNumber().trim();
+        return details + optional(". ", bank.paymentReferenceInstructions()) + rating;
     }
 
-    private String standardTerms() {
-        return "1. Admission remains subject to verification of the original evidence listed above.\n\n"
-                + "2. The offer applies only to the programme, route, intake and study options recorded in this letter.\n\n"
-                + "3. Registration is completed only after all academic, identity and Finance requirements are satisfied.\n\n"
-                + "4. The current published document in eMhare supersedes earlier versions.\n\n"
-                + "5. The University may withdraw an offer obtained using false, incomplete or misleading information.";
+    private String optional(String prefix, String value) {
+        return isBlank(value) ? "" : prefix + value.trim();
     }
 
-    private String contact(OfferLetterContentSnapshot snapshot) {
-        return joined(java.util.Arrays.asList(snapshot.institutionPostalAddress(), snapshot.institutionTelephone(),
-                snapshot.institutionEmail(), snapshot.institutionWebsite()).stream()
-                .filter(value -> value != null && !value.isBlank()).toList());
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private String commencementInstruction(OfferLetterProjection offer) {
+        if (offer.getCommencementDate() == null) {
+            return "Lecture commencement details will be communicated through your authenticated eMhare workspace.";
+        }
+        return "Lectures commence on " + date(offer.getCommencementDate())
+                + " for those who would have completed the registration process.";
+    }
+
+    private String acceptanceInstruction(OfferLetterProjection offer, FeeScheduleSnapshot schedule) {
+        String deposit = schedule == null ? "" : schedule.lines().stream()
+                .filter(line -> line.code() != null && line.code().toUpperCase(Locale.ROOT).contains("DEPOSIT"))
+                .findFirst().map(line -> " and pay the non-refundable deposit of " + amount(schedule, line.transactionAmount()))
+                .orElse("");
+        return "A. To confirm acceptance of your offer, use your authenticated eMhare applicant workspace"
+                + deposit + " by " + INSTANT_DATE.format(offer.getAcceptanceDeadline()) + ".";
+    }
+
+    private int academicYear(GeneratedDocument document, OfferLetterProjection offer) {
+        if (offer.getCommencementDate() != null) return offer.getCommencementDate().getYear();
+        if (document.getRequestedAt() != null) return document.getRequestedAt().atZone(ZoneId.of("Africa/Harare")).getYear();
+        return LocalDate.now(ZoneId.of("Africa/Harare")).getYear();
     }
 
     private byte[] addMetadata(byte[] generatedPdf, GeneratedDocument document, OfferLetterProjection offer) throws Exception {
@@ -180,10 +277,6 @@ public class OfficialOfferLetterPdfRenderer {
         }
     }
 
-    private void line(StringBuilder target, String label, String value) {
-        if (value != null && !value.isBlank()) target.append(label).append(":  ").append(value.trim()).append('\n');
-    }
-
     private String joined(List<String> values) {
         return values == null ? "" : values.stream().filter(value -> value != null && !value.isBlank())
                 .map(String::trim).reduce((left, right) -> left + ", " + right).orElse("");
@@ -195,9 +288,6 @@ public class OfficialOfferLetterPdfRenderer {
 
     private String date(LocalDate value) { return value == null ? null : DATE.format(value); }
     private String money(BigDecimal value) { return value == null ? "-" : String.format(Locale.US, "%,.2f", value); }
-    private boolean isInternational(String category) {
-        if (category == null) return false;
-        String normalized = category.toUpperCase(Locale.ROOT);
-        return normalized.contains("FOREIGN") || normalized.contains("INTERNATIONAL");
-    }
+
+    private record FeeColumns(List<String> items, List<String> amounts) { }
 }

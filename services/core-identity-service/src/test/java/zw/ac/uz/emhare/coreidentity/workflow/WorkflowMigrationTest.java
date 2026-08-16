@@ -64,6 +64,31 @@ class WorkflowMigrationTest {
     }
 
     @Test
+    void seedsCurrencySpecificUsdAndZwgInstitutionBankAccounts() throws SQLException {
+        assertEquals(4, institutionBankAccountCount(null));
+        assertEquals(2, institutionBankAccountCount("USD"));
+        assertEquals(2, institutionBankAccountCount("ZWG"));
+        assertEquals(1, institutionBankAccountNumberCount("01120770100249"));
+        assertEquals(1, institutionBankAccountNumberCount("01120770100052"));
+        assertEquals(1, institutionBankAccountNumberCount("10099186633010"));
+        assertEquals(1, institutionBankAccountNumberCount("10099183902014"));
+        assertEquals(4, institutionBankAccountPaymentReferenceCount(
+                "After accepting this offer, eMhare will generate your registration number. "
+                        + "Quote that registration number as the payment reference."));
+    }
+
+    @Test
+    void seedsTheRegistrarNameUsedByOfficialDocuments() throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT registrar_name FROM institution_profile WHERE code = 'UZ'")) {
+            try (ResultSet result = statement.executeQuery()) {
+                result.next();
+                assertEquals("Registrar", result.getString(1));
+            }
+        }
+    }
+
+    @Test
     void rejectsAmbiguousTaskAssigneesAndInvalidScope() throws SQLException {
         UUID firstUserId = createUser();
         UUID firstWorkflowId = createWorkflow(firstUserId);
@@ -106,6 +131,58 @@ class WorkflowMigrationTest {
                 "SELECT count(*) FROM permissions WHERE code IN (?, ?)")) {
             statement.setString(1, firstCode);
             statement.setString(2, secondCode);
+            try (ResultSet result = statement.executeQuery()) {
+                result.next();
+                return result.getInt(1);
+            }
+        }
+    }
+
+    private int institutionBankAccountCount(String currencyCode) throws SQLException {
+        String sql = """
+                SELECT count(*)
+                FROM institution_profile profile
+                CROSS JOIN LATERAL jsonb_array_elements(profile.bank_details_json -> 'accounts') account
+                WHERE profile.code = 'UZ'
+                  AND (? IS NULL OR account ->> 'currencyCode' = ?)
+                """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, currencyCode);
+            statement.setString(2, currencyCode);
+            try (ResultSet result = statement.executeQuery()) {
+                result.next();
+                return result.getInt(1);
+            }
+        }
+    }
+
+    private int institutionBankAccountNumberCount(String accountNumber) throws SQLException {
+        String sql = """
+                SELECT count(*)
+                FROM institution_profile profile
+                CROSS JOIN LATERAL jsonb_array_elements(profile.bank_details_json -> 'accounts') account
+                WHERE profile.code = 'UZ'
+                  AND account ->> 'accountNumber' = ?
+                """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, accountNumber);
+            try (ResultSet result = statement.executeQuery()) {
+                result.next();
+                return result.getInt(1);
+            }
+        }
+    }
+
+    private int institutionBankAccountPaymentReferenceCount(String instruction) throws SQLException {
+        String sql = """
+                SELECT count(*)
+                FROM institution_profile profile
+                CROSS JOIN LATERAL jsonb_array_elements(profile.bank_details_json -> 'accounts') account
+                WHERE profile.code = 'UZ'
+                  AND account ->> 'paymentReferenceInstructions' = ?
+                """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, instruction);
             try (ResultSet result = statement.executeQuery()) {
                 result.next();
                 return result.getInt(1);

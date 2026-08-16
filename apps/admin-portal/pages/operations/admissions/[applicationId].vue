@@ -16,6 +16,7 @@ definePageMeta({ layout: 'dashboard' })
 
 const route = useRoute()
 const api = useEmhareApi()
+const auth = useEmhareAuth()
 const { confirmAction, showError, showSuccess } = useEmhareConfirm()
 
 const workspace = ref<ApplicantApplicationWorkspace | null>(null)
@@ -31,7 +32,18 @@ const loadingDocumentPreview = ref(false)
 const documentPreviewError = ref('')
 const downloadingDocument = ref(false)
 const savingDocumentDecision = ref(false)
+const savingQualificationId = ref<string | null>(null)
 const openingOfferDocument = ref(false)
+const offerDocumentPollIntervalMs = 500
+const maximumOfferDocumentPolls = 60
+
+type OfferDocumentGenerationResult = {
+  id: string
+  documentVersion: number
+  status: string
+  generatedDocumentId?: string | null
+  failureReason?: string | null
+}
 
 const applicationId = computed(() => {
   const routeParameter = route.params.applicationId
@@ -70,6 +82,20 @@ const applicantInitials = computed(() => {
   if (!profile.value) return 'AP'
   return `${profile.value.firstName.charAt(0)}${profile.value.lastName.charAt(0)}`.toUpperCase()
 })
+const qualificationsAwaitingDecision = computed(() => workspace.value?.qualifications.filter(qualification => (
+  qualification.verificationStatus === 'CAPTURED'
+)) ?? [])
+const programmeRequirementsRoute = computed(() => ({
+  path: '/operations/programme-requirements',
+  query: {
+    programmeId: application.value?.programmeChoices[0]?.programmeId,
+    applicationTypeId: application.value?.applicationTypeId,
+    intakeId: application.value?.intakeId
+  }
+}))
+const recordedEligibility = computed(() => workItem.value?.auditHistory.find(event => (
+  event.fromStatus === 'UNDER_REVIEW' && ['ELIGIBLE', 'NOT_ELIGIBLE'].includes(event.toStatus)
+)) ?? workItem.value?.auditHistory.find(event => ['ELIGIBLE', 'NOT_ELIGIBLE'].includes(event.toStatus)) ?? null)
 
 useHead({
   title: computed(() => application.value
@@ -176,21 +202,96 @@ async function updateOfferTerms() {
   if (!offer) return
   const result = await Swal.fire({ title: 'Offer terms', html: `
     <label class="swal2-label">Offer type</label><select id="offer-type" class="swal2-select"><option value="FIRM">Firm</option><option value="CONDITIONAL">Conditional</option></select>
-    <label class="swal2-label">Acceptance deadline</label><input id="offer-deadline" type="date" class="swal2-input">
-    <label class="swal2-label">Commencement date</label><input id="offer-commencement" type="date" class="swal2-input">
+    <p class="swal2-html-container">Acceptance, registration, orientation and commencement dates are taken from <strong>${application.value?.intakeCode ?? 'the intake'}</strong>.</p>
     <label class="swal2-label">Conditions</label><textarea id="offer-conditions" class="swal2-textarea"></textarea>`,
     showCancelButton: true, confirmButtonText: 'Save terms', confirmButtonColor: '#20743a',
-    preConfirm: () => { const type=(document.getElementById('offer-type') as HTMLSelectElement).value; const deadline=(document.getElementById('offer-deadline') as HTMLInputElement).value; const commencement=(document.getElementById('offer-commencement') as HTMLInputElement).value; const conditions=(document.getElementById('offer-conditions') as HTMLTextAreaElement).value; if(!deadline||!commencement){Swal.showValidationMessage('Deadline and commencement date are required.');return false} return { type, deadline, commencement, conditions } } })
+    preConfirm: () => { const type=(document.getElementById('offer-type') as HTMLSelectElement).value; const conditions=(document.getElementById('offer-conditions') as HTMLTextAreaElement).value; return { type, conditions } } })
   if (!result.isConfirmed || !result.value) return
   workflowActionLoading.value = true
-  try { await api.request(`/api/admissions/offers/${offer.id}`, { method: 'PUT', body: { offerType: result.value.type, conditionsText: result.value.conditions || null, acceptanceDeadline: `${result.value.deadline}T23:59:59Z`, registrationDate: null, orientationDate: null, commencementDate: result.value.commencement } }); await loadApplication({ background: true }) }
+  try { await api.request(`/api/admissions/offers/${offer.id}`, { method: 'PUT', body: { offerType: result.value.type, conditionsText: result.value.conditions || null } }); await loadApplication({ background: true }) }
   catch (error) { await showError('Offer terms could not be saved', api.errorMessage(error)) }
   finally { workflowActionLoading.value = false }
 }
 
-async function generateOfferDocument() { if (workItem.value?.offer) await runWorkflowAction(`/api/admissions/offers/${workItem.value.offer.id}/document-generation`) }
+async function generateOfferDocument() {
+  const offer = workItem.value?.offer
+  if (!offer) return
+
+  const previewWindow = window.open('about:blank', '_blank')
+  if (previewWindow) previewWindow.opener = null
+  workflowActionLoading.value = true
+  try {
+    const generation = await api.request<OfferDocumentGenerationResult>(
+      `/api/admissions/offers/${offer.id}/document-generation`,
+      { method: 'POST' }
+    )
+    const storedDocument = await waitForStoredOfferDocument(generation.documentVersion)
+    if (!storedDocument.generatedDocumentId) {
+      throw new Error('The generated offer letter was stored without a document reference.')
+    }
+    const document = await api.request<OfficialDocumentDownload>(
+      `/api/documents/${storedDocument.generatedDocumentId}/download?disposition=inline`
+    )
+    if (previewWindow) {
+      previewWindow.location.href = document.downloadUrl
+    } else {
+      await showError('Offer letter generated', 'The PDF was generated, but the browser blocked its preview tab. Use Preview offer letter to open it.')
+    }
+  } catch (error) {
+    previewWindow?.close()
+    await showError('Offer letter could not be generated', api.errorMessage(error))
+  } finally {
+    workflowActionLoading.value = false
+  }
+}
+
+async function waitForStoredOfferDocument(documentVersion: number) {
+  for (let attempt = 0; attempt < maximumOfferDocumentPolls; attempt += 1) {
+    const loadedCase = await api.request<AdmissionsWorkItemCase>(`/api/admissions/work-items/${applicationId.value}`)
+    workItem.value = loadedCase
+    workspace.value = loadedCase.workspace
+    synchronizeSelectedDocument()
+    const document = loadedCase.documentVersions.find(candidate => candidate.version === documentVersion)
+    if (document?.status === 'STORED') return document
+    if (document?.status === 'FAILED') {
+      throw new Error(document.failureReason || 'The offer-letter PDF generation failed.')
+    }
+    if (attempt < maximumOfferDocumentPolls - 1) {
+      await new Promise(resolve => window.setTimeout(resolve, offerDocumentPollIntervalMs))
+    }
+  }
+  throw new Error('The offer letter is still being generated. Refresh the case before trying again.')
+}
 async function publishAndSend() { if (!workItem.value?.offer) return; const confirmed = await confirmAction({ title: 'Publish and send?', text: 'The latest PDF becomes authoritative in the applicant portal and an attachment email is queued.', confirmButtonText: 'Publish and send', icon: 'warning' }); if (confirmed) await runWorkflowAction(`/api/admissions/offers/${workItem.value.offer.id}/publish-and-send`) }
 async function retryOfferEmail() { if (!workItem.value?.offer) return; const result = await Swal.fire({ title: 'Retry offer email', input: 'textarea', showCancelButton: true, inputValidator: value => value.trim().length >= 10 ? undefined : 'Record at least 10 characters.', confirmButtonColor: '#20743a' }); if (result.isConfirmed) await runWorkflowAction(`/api/admissions/offers/${workItem.value.offer.id}/email-retry`, { reason: result.value.trim() }) }
+
+async function recordQualificationDecision(
+  qualification: Pick<ApplicantQualificationSitting, 'id' | 'level' | 'version'>,
+  decision: 'VERIFIED' | 'REJECTED'
+) {
+  const verifying = decision === 'VERIFIED'
+  const result = await Swal.fire({
+    title: verifying ? `Verify ${formatStatus(qualification.level)} evidence?` : `Reject ${formatStatus(qualification.level)} evidence?`, text: verifying ? 'Confirm that the uploaded evidence and captured results match.' : 'The application will remain blocked until the applicant corrects this evidence and resubmits.', input: 'textarea', inputLabel: verifying ? 'Verification note (optional)' : 'Rejection reason', inputPlaceholder: verifying ? 'Record what was checked' : 'Explain exactly what must be corrected', inputAttributes: { maxlength: '1000' }, inputValidator: value => !verifying && value.trim().length < 10 ? 'Record at least 10 characters explaining what must be corrected.' : undefined,
+    icon: verifying ? 'question' : 'warning', showCancelButton: true, confirmButtonText: verifying ? 'Verify qualification' : 'Reject qualification', cancelButtonText: 'Cancel', confirmButtonColor: verifying ? '#20743a' : '#dc2626'
+  })
+  if (!result.isConfirmed) return
+
+  savingQualificationId.value = qualification.id
+  try {
+    await api.request(`/api/admissions/applications/${applicationId.value}/qualifications/${qualification.id}/decision`, {
+      method: 'POST',
+      body: { decision, reason: String(result.value ?? '').trim() || null, expectedVersion: qualification.version }
+    })
+    await loadApplication({ background: true })
+    await showSuccess(verifying ? 'Qualification verified' : 'Qualification rejected', verifying
+      ? 'The workflow will advance automatically when every verification gate is clear.'
+      : 'The recorded reason is retained with the application evidence.')
+  } catch (error) {
+    await showError('Qualification decision could not be recorded', api.errorMessage(error))
+  } finally {
+    savingQualificationId.value = null
+  }
+}
 
 async function openOfferDocument(disposition: 'inline' | 'attachment') {
   const generatedDocumentId = latestStoredOfferDocument.value?.generatedDocumentId
@@ -198,13 +299,20 @@ async function openOfferDocument(disposition: 'inline' | 'attachment') {
     await showError('Offer letter is not available', 'A stored offer-letter PDF has not been generated yet.')
     return
   }
+  const documentWindow = window.open('about:blank', '_blank')
+  if (!documentWindow) {
+    await showError('Offer letter could not be opened', 'The browser blocked the document tab. Allow pop-ups for eMhare and try again.')
+    return
+  }
+  documentWindow.opener = null
   openingOfferDocument.value = true
   try {
     const document = await api.request<OfficialDocumentDownload>(
       `/api/documents/${generatedDocumentId}/download?disposition=${disposition}`
     )
-    window.open(document.downloadUrl, '_blank', 'noopener')
+    documentWindow.location.href = document.downloadUrl
   } catch (error) {
+    documentWindow.close()
     await showError('Offer letter could not be opened', api.errorMessage(error))
   } finally {
     openingOfferDocument.value = false
@@ -700,29 +808,23 @@ function formatDateTime(value: string | null | undefined) {
           </div>
         </section>
 
-        <UCard v-if="workItem" :ui="{ body: 'p-5 sm:p-5' }">
-          <div class="flex flex-wrap items-start justify-between gap-3">
+        <UCard v-if="workItem" :ui="{ body: 'p-5 sm:p-5' }" data-testid="next-admissions-action"><div class="flex flex-wrap items-start justify-between gap-3">
             <div><h2 class="text-lg font-semibold text-highlighted">Current Admissions action</h2><p class="mt-1 text-sm text-muted">Transitions and permissions are supplied by the server for this case.</p></div>
             <EmhareStatusPill :label="formatStatus(workspace.workflowProgress.currentStageCode)" tone="info" />
           </div>
-          <UAlert
-            v-if="application.status === 'SUBMITTED' && !workItem.blockers.length"
-            class="mt-4"
-            color="info"
-            variant="soft"
-            icon="i-lucide-loader-circle"
-            title="Review starts automatically"
-            description="Once payment, documents, qualifications and duplicate checks are clear, this application moves to the next action without a manual hand-off."
-          />
+          <div v-if="recordedEligibility" class="mt-4 flex flex-wrap items-start justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4" data-testid="recorded-eligibility">
+            <div><p class="text-sm font-semibold text-highlighted">Recorded eligibility</p><p class="mt-1 text-sm text-muted">{{ recordedEligibility.reason }}</p></div>
+            <EmhareStatusPill :label="formatStatus(recordedEligibility.toStatus)" :tone="recordedEligibility.toStatus === 'ELIGIBLE' ? 'success' : 'error'" />
+          </div>
+          <UAlert v-if="qualificationsAwaitingDecision.length" class="mt-4" color="warning" variant="soft" icon="i-lucide-graduation-cap" :title="`Verify ${qualificationsAwaitingDecision.length} qualification ${qualificationsAwaitingDecision.length === 1 ? 'sitting' : 'sittings'}`" description="Open Academic evidence below and record Verify or Reject for every captured sitting. This application cannot enter Eligibility until every sitting is verified." /><UAlert v-else-if="application.status === 'SUBMITTED' && !workItem.blockers.length" class="mt-4" color="info" variant="soft" icon="i-lucide-loader-circle" title="Review starts automatically" description="Once payment, documents, qualifications and duplicate checks are clear, this application moves to the next action without a manual hand-off." />
           <UAlert v-if="workItem.blockers.length" class="mt-4" color="warning" variant="soft" title="Processing blockers" :description="workItem.blockers.join(' · ')" />
           <div class="mt-4 flex flex-wrap gap-2">
-            <UButton v-if="can('RECALCULATE_ELIGIBILITY')" label="Recalculate eligibility" icon="i-lucide-calculator" color="neutral" variant="outline" :loading="workflowActionLoading" @click="recalculateEligibility" />
-            <UButton v-if="can('RESOLVE_ELIGIBILITY')" label="Resolve eligibility" icon="i-lucide-list-checks" :loading="workflowActionLoading" @click="resolveEligibility" />
+            <UButton v-if="auth.hasPermission('ADMISSIONS_SETUP_MANAGE')" label="Review programme requirements" icon="i-lucide-list-checks" color="neutral" variant="outline" :to="programmeRequirementsRoute" /><UButton v-if="workspace.workflowProgress.currentStageCode === 'ELIGIBILITY' && can('RECALCULATE_ELIGIBILITY')" label="Recalculate eligibility" icon="i-lucide-calculator" color="neutral" variant="outline" :loading="workflowActionLoading" @click="recalculateEligibility" /><UButton v-if="workspace.workflowProgress.currentStageCode === 'ELIGIBILITY' && can('RESOLVE_ELIGIBILITY')" label="Resolve eligibility" icon="i-lucide-list-checks" :loading="workflowActionLoading" @click="resolveEligibility" />
             <UButton v-if="can('RECORD_ACADEMIC_RECOMMENDATION')" label="Record recommendation" icon="i-lucide-message-square-check" :loading="workflowActionLoading" @click="recordRecommendation" />
             <UButton v-if="can('RECORD_ADMISSION_DECISION')" label="Record final decision" icon="i-lucide-gavel" :loading="workflowActionLoading" @click="recordDecision" />
             <UButton v-if="can('RETURN_ACADEMIC_RECOMMENDATION')" label="Return to academic reviewer" icon="i-lucide-undo-2" color="warning" variant="outline" :loading="workflowActionLoading" @click="returnRecommendation" />
             <UButton v-if="can('UPDATE_OFFER')" label="Edit offer terms" icon="i-lucide-pencil" color="neutral" variant="outline" :loading="workflowActionLoading" @click="updateOfferTerms" />
-            <UButton v-if="can('GENERATE_OFFER_DOCUMENT')" label="Generate replacement PDF" icon="i-lucide-file-output" color="neutral" variant="outline" :loading="workflowActionLoading" @click="generateOfferDocument" />
+            <UButton v-if="can('GENERATE_OFFER_DOCUMENT')" label="Generate and preview offer letter" icon="i-lucide-file-output" color="neutral" variant="outline" :loading="workflowActionLoading" @click="generateOfferDocument" />
             <UButton v-if="can('PUBLISH_AND_SEND')" label="Publish and send" icon="i-lucide-send" :loading="workflowActionLoading" @click="publishAndSend" />
             <UButton v-if="can('RETRY_EMAIL')" label="Retry email" icon="i-lucide-refresh-cw" color="warning" variant="outline" :loading="workflowActionLoading" @click="retryOfferEmail" />
           </div>
@@ -861,7 +963,10 @@ function formatDateTime(value: string | null | undefined) {
                           {{ qualification.centreNumber ?? 'No centre' }} · {{ qualification.candidateNumber ?? 'No candidate number' }}
                         </p>
                       </div>
-                      <EmhareStatusPill :label="formatStatus(qualification.verificationStatus)" :tone="qualificationStatusTone(qualification.verificationStatus)" />
+                      <div class="flex flex-wrap items-center justify-end gap-2">
+                        <EmhareStatusPill :label="formatStatus(qualification.verificationStatus)" :tone="qualificationStatusTone(qualification.verificationStatus)" />
+                        <template v-if="qualification.verificationStatus === 'CAPTURED' && !isAcademicRecommendationProfile && auth.hasPermission('ADMISSIONS_APPLICATION_REVIEW')"><UButton label="Verify qualification" icon="i-lucide-shield-check" color="primary" size="xs" :loading="savingQualificationId === qualification.id" @click="recordQualificationDecision(qualification, 'VERIFIED')" /><UButton label="Reject qualification" icon="i-lucide-circle-x" color="error" variant="outline" size="xs" :loading="savingQualificationId === qualification.id" @click="recordQualificationDecision(qualification, 'REJECTED')" /></template>
+                      </div>
                     </div>
                     <div class="overflow-x-auto">
                       <table class="w-full text-left text-sm">
@@ -996,10 +1101,10 @@ function formatDateTime(value: string | null | undefined) {
                     <UIcon name="i-lucide-git-branch" class="size-5 text-primary" />
                     <h2 class="text-lg font-semibold text-highlighted">Admissions workflow</h2>
                   </div>
-                  <p class="mt-1 text-sm text-muted">The applicant's current position from confirmation to offer.</p>
+                  <p class="mt-1 text-sm text-muted">The applicant's current position from verification through response.</p>
                 </div>
                 <UBadge color="primary" variant="subtle" size="sm">
-                  Step {{ currentWorkflowStep(workspace.workflowProgress) }} of 5
+                  Step {{ currentWorkflowStep(workspace.workflowProgress) }} of {{ workspace.workflowProgress.stages.length }}
                 </UBadge>
               </div>
 

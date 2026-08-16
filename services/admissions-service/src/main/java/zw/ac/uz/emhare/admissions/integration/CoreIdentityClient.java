@@ -78,6 +78,15 @@ public class CoreIdentityClient {
     }
 
     public record CoreInstitutionProfile(
-            UUID id, String code, String name, String legalName, String defaultCurrencyCode,
-            String countryCode, String timezone, String contactDetailsJson, String brandingJson, String legacyCode) { }
+            UUID id, String code, String name, String legalName, String registrarName, String defaultCurrencyCode,
+            String countryCode, String timezone, String contactDetailsJson, String brandingJson,
+            String bankDetailsJson, String legacyCode) {
+        public CoreInstitutionProfile(
+                UUID id, String code, String name, String legalName, String defaultCurrencyCode,
+                String countryCode, String timezone, String contactDetailsJson, String brandingJson,
+                String legacyCode) {
+            this(id, code, name, legalName, null, defaultCurrencyCode, countryCode, timezone,
+                    contactDetailsJson, brandingJson, null, legacyCode);
+        }
+    }
 }

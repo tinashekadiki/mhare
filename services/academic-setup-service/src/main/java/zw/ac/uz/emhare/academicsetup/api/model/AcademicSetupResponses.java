@@ -50,6 +50,8 @@ public final class AcademicSetupResponses {
     public record IntakeSummary(
             UUID id, UUID academicYearId, String academicYearName,
             String code, String name, LocalDate startsOn, LocalDate endsOn,
+            Instant offerAcceptanceDeadline, LocalDate registrationDate,
+            LocalDate orientationDate, LocalDate commencementDate,
             CalendarStatus status, int maximumProgrammeChoices, String changeReason,
             List<IntakeProgrammeLevelSummary> programmeLevels,
             List<IntakeProgrammeSummary> specificProgrammes,
@@ -80,6 +82,10 @@ public final class AcademicSetupResponses {
             String name,
             LocalDate startsOn,
             LocalDate endsOn,
+            Instant offerAcceptanceDeadline,
+            LocalDate registrationDate,
+            LocalDate orientationDate,
+            LocalDate commencementDate,
             CalendarStatus status,
             int maximumProgrammeChoices,
             List<AdmissionsProgrammeOption> programmes) {

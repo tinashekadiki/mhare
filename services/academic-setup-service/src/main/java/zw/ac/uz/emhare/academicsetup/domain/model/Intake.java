@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Objects;
 import org.hibernate.annotations.SQLRestriction;
@@ -39,6 +40,18 @@ public class Intake extends AuditableEntity {
     @Column(name = "ends_on", nullable = false)
     private LocalDate endsOn;
 
+    @Column(name = "offer_acceptance_deadline")
+    private Instant offerAcceptanceDeadline;
+
+    @Column(name = "registration_date")
+    private LocalDate registrationDate;
+
+    @Column(name = "orientation_date")
+    private LocalDate orientationDate;
+
+    @Column(name = "commencement_date")
+    private LocalDate commencementDate;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private CalendarStatus status;
@@ -63,6 +76,20 @@ public class Intake extends AuditableEntity {
             LocalDate startsOn,
             LocalDate endsOn,
             int maximumProgrammeChoices) {
+        this(academicYear, code, name, startsOn, endsOn, maximumProgrammeChoices, null, null, null, null);
+    }
+
+    public Intake(
+            AcademicYear academicYear,
+            String code,
+            String name,
+            LocalDate startsOn,
+            LocalDate endsOn,
+            int maximumProgrammeChoices,
+            Instant offerAcceptanceDeadline,
+            LocalDate registrationDate,
+            LocalDate orientationDate,
+            LocalDate commencementDate) {
         this.academicYear = academicYear;
         this.code = code.trim().toUpperCase(Locale.ROOT);
         this.name = name.trim();
@@ -70,6 +97,7 @@ public class Intake extends AuditableEntity {
         this.endsOn = endsOn;
         this.status = CalendarStatus.DRAFT;
         this.maximumProgrammeChoices = requireMaximumProgrammeChoices(maximumProgrammeChoices);
+        updateOfferDates(offerAcceptanceDeadline, registrationDate, orientationDate, commencementDate);
         this.changeReason = "Initial record creation.";
     }
 
@@ -80,6 +108,10 @@ public class Intake extends AuditableEntity {
             LocalDate startsOn,
             LocalDate endsOn,
             int maximumProgrammeChoices,
+            Instant offerAcceptanceDeadline,
+            LocalDate registrationDate,
+            LocalDate orientationDate,
+            LocalDate commencementDate,
             String changeReason,
             long expectedVersion) {
         requireVersion(expectedVersion);
@@ -94,7 +126,22 @@ public class Intake extends AuditableEntity {
         this.startsOn = startsOn;
         this.endsOn = endsOn;
         this.maximumProgrammeChoices = requireMaximumProgrammeChoices(maximumProgrammeChoices);
+        updateOfferDates(offerAcceptanceDeadline, registrationDate, orientationDate, commencementDate);
         this.changeReason = requireChangeReason(changeReason);
+    }
+
+    public void update(
+            AcademicYear academicYear,
+            String code,
+            String name,
+            LocalDate startsOn,
+            LocalDate endsOn,
+            int maximumProgrammeChoices,
+            String changeReason,
+            long expectedVersion) {
+        update(academicYear, code, name, startsOn, endsOn, maximumProgrammeChoices,
+                offerAcceptanceDeadline, registrationDate, orientationDate, commencementDate,
+                changeReason, expectedVersion);
     }
 
     public void update(
@@ -107,7 +154,20 @@ public class Intake extends AuditableEntity {
             long expectedVersion) {
         update(
                 academicYear, code, name, startsOn, endsOn, maximumProgrammeChoices,
+                offerAcceptanceDeadline, registrationDate, orientationDate, commencementDate,
                 changeReason, expectedVersion);
+    }
+
+    private void updateOfferDates(Instant acceptanceDeadline, LocalDate registration,
+            LocalDate orientation, LocalDate commencement) {
+        if (commencement != null && (registration != null && registration.isAfter(commencement)
+                || orientation != null && orientation.isAfter(commencement))) {
+            throw new IllegalArgumentException("Registration and orientation dates cannot be after commencement.");
+        }
+        offerAcceptanceDeadline = acceptanceDeadline;
+        registrationDate = registration;
+        orientationDate = orientation;
+        commencementDate = commencement;
     }
 
     public void open(long expectedVersion) {
@@ -166,6 +226,14 @@ public class Intake extends AuditableEntity {
     public LocalDate getEndsOn() {
         return endsOn;
     }
+
+    public Instant getOfferAcceptanceDeadline() { return offerAcceptanceDeadline; }
+
+    public LocalDate getRegistrationDate() { return registrationDate; }
+
+    public LocalDate getOrientationDate() { return orientationDate; }
+
+    public LocalDate getCommencementDate() { return commencementDate; }
 
     public CalendarStatus getStatus() {
         return status;

@@ -25,6 +25,9 @@ public record OfferLetterContentSnapshot(
         List<String> studyOptions,
         List<String> requiredVerificationDocuments,
         FeeScheduleSnapshot feeSchedule,
+        BankDetailsSnapshot bankDetails,
+        List<BankAccountSnapshot> bankAccounts,
+        String signatorySignatureDocumentId,
         String signatoryName,
         String signatoryTitle,
         String contentPolicyVersion) {
@@ -33,6 +36,88 @@ public record OfferLetterContentSnapshot(
         studyOptions = studyOptions == null ? List.of() : List.copyOf(studyOptions);
         requiredVerificationDocuments = requiredVerificationDocuments == null
                 ? List.of() : List.copyOf(requiredVerificationDocuments);
+        bankAccounts = bankAccounts == null ? List.of() : List.copyOf(bankAccounts);
+    }
+
+    public OfferLetterContentSnapshot(
+            String institutionName, String institutionLegalName, String institutionPostalAddress,
+            String institutionTelephone, String institutionEmail, String institutionWebsite,
+            String applicantPostalAddress, String applicantCategoryCode, String applicationRouteCode,
+            String applicationRouteName, String intakeName, String academicUnitName, String awardName,
+            String programmeLevelName, String programmeVersionCode, List<String> studyOptions,
+            List<String> requiredVerificationDocuments, FeeScheduleSnapshot feeSchedule,
+            BankDetailsSnapshot bankDetails, List<BankAccountSnapshot> bankAccounts,
+            String signatoryName, String signatoryTitle, String contentPolicyVersion) {
+        this(institutionName, institutionLegalName, institutionPostalAddress, institutionTelephone,
+                institutionEmail, institutionWebsite, applicantPostalAddress, applicantCategoryCode,
+                applicationRouteCode, applicationRouteName, intakeName, academicUnitName, awardName,
+                programmeLevelName, programmeVersionCode, studyOptions, requiredVerificationDocuments,
+                feeSchedule, bankDetails, bankAccounts, null, signatoryName, signatoryTitle,
+                contentPolicyVersion);
+    }
+
+    public OfferLetterContentSnapshot(
+            String institutionName, String institutionLegalName, String institutionPostalAddress,
+            String institutionTelephone, String institutionEmail, String institutionWebsite,
+            String applicantPostalAddress, String applicantCategoryCode, String applicationRouteCode,
+            String applicationRouteName, String intakeName, String academicUnitName, String awardName,
+            String programmeLevelName, String programmeVersionCode, List<String> studyOptions,
+            List<String> requiredVerificationDocuments, FeeScheduleSnapshot feeSchedule,
+            BankDetailsSnapshot bankDetails, String signatoryName, String signatoryTitle,
+            String contentPolicyVersion) {
+        this(institutionName, institutionLegalName, institutionPostalAddress, institutionTelephone,
+                institutionEmail, institutionWebsite, applicantPostalAddress, applicantCategoryCode,
+                applicationRouteCode, applicationRouteName, intakeName, academicUnitName, awardName,
+                programmeLevelName, programmeVersionCode, studyOptions, requiredVerificationDocuments,
+                feeSchedule, bankDetails, List.of(), null, signatoryName, signatoryTitle, contentPolicyVersion);
+    }
+
+    public OfferLetterContentSnapshot(
+            String institutionName, String institutionLegalName, String institutionPostalAddress,
+            String institutionTelephone, String institutionEmail, String institutionWebsite,
+            String applicantPostalAddress, String applicantCategoryCode, String applicationRouteCode,
+            String applicationRouteName, String intakeName, String academicUnitName, String awardName,
+            String programmeLevelName, String programmeVersionCode, List<String> studyOptions,
+            List<String> requiredVerificationDocuments, FeeScheduleSnapshot feeSchedule,
+            String signatoryName, String signatoryTitle, String contentPolicyVersion) {
+        this(institutionName, institutionLegalName, institutionPostalAddress, institutionTelephone,
+                institutionEmail, institutionWebsite, applicantPostalAddress, applicantCategoryCode,
+                applicationRouteCode, applicationRouteName, intakeName, academicUnitName, awardName,
+                programmeLevelName, programmeVersionCode, studyOptions, requiredVerificationDocuments,
+                feeSchedule, null, List.of(), null, signatoryName, signatoryTitle, contentPolicyVersion);
+    }
+
+    public record BankDetailsSnapshot(
+            String bankName,
+            String branchName,
+            String accountName,
+            String accountNumber,
+            String branchSortCode,
+            String swiftCode,
+            String paymentReferenceInstructions) { }
+
+    public record BankAccountSnapshot(
+            String currencyCode,
+            String bankName,
+            String branchName,
+            String accountName,
+            String accountNumber,
+            String branchSortCode,
+            String swiftCode,
+            String paymentReferenceInstructions) {
+        public BankAccountSnapshot {
+            String normalizedCurrencyCode = currencyCode == null
+                    ? null : currencyCode.trim().toUpperCase(Locale.ROOT);
+            if (normalizedCurrencyCode == null || normalizedCurrencyCode.length() != 3) {
+                throw new IllegalArgumentException("A three-letter currency code is required for each bank account.");
+            }
+            if (bankName == null || bankName.isBlank() || accountNumber == null || accountNumber.isBlank()) {
+                throw new IllegalArgumentException("A bank name and account number are required for each bank account.");
+            }
+            currencyCode = normalizedCurrencyCode;
+            bankName = bankName.trim();
+            accountNumber = accountNumber.trim();
+        }
     }
 
     public record FeeScheduleSnapshot(

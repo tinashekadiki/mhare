@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.BankAccountSnapshot;
 import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.FeeLineSnapshot;
 import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.FeeScheduleSnapshot;
 
@@ -33,6 +34,30 @@ class OfferLetterContentSnapshotTest {
         assertEquals(List.of(), schedule.lines());
         assertEquals("USD", schedule.transactionCurrencyCode());
         assertEquals("USD", schedule.baseCurrencyCode());
+    }
+
+    @Test
+    void normalizesAndDefensivelyCopiesCurrencySpecificBankAccounts() {
+        List<BankAccountSnapshot> bankAccounts = new java.util.ArrayList<>(List.of(
+                new BankAccountSnapshot(" usd ", "CBZ BANK", "Kwame Nkrumah Avenue", null,
+                        "01120770100249", "6101", "COBZZWHAXXX", "Use the application number"),
+                new BankAccountSnapshot(" zwg ", "CBZ BANK", "Kwame Nkrumah Avenue", null,
+                        "01120770100052", "6101", "COBZZWHAXXX", "Use the application number")));
+        OfferLetterContentSnapshot snapshot = new OfferLetterContentSnapshot(
+                "University of Zimbabwe", "University of Zimbabwe", null, null, null, null, null,
+                "LOCAL", "UG", "Undergraduate", "March", "Science", "BSc", "Undergraduate",
+                "2028.1", List.of(), List.of(), null, null, bankAccounts,
+                "Registrar", "Registrar", "V1");
+
+        bankAccounts.clear();
+
+        assertEquals(List.of("USD", "ZWG"), snapshot.bankAccounts().stream()
+                .map(BankAccountSnapshot::currencyCode).toList());
+        assertThrows(UnsupportedOperationException.class, () -> snapshot.bankAccounts().clear());
+        assertThrows(IllegalArgumentException.class, () -> new BankAccountSnapshot(
+                "ZW", "CBZ BANK", null, null, "123", null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> new BankAccountSnapshot(
+                "USD", " ", null, null, "123", null, null, null));
     }
 
     @Test

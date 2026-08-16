@@ -14,8 +14,10 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
 import zw.ac.uz.emhare.documentsreporting.infrastructure.persistence.projection.model.OfferLetterProjection;
 import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot;
+import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.BankAccountSnapshot;
 import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.FeeLineSnapshot;
 import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.FeeScheduleSnapshot;
+import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.BankDetailsSnapshot;
 
 /** @author Tinashe K */
 class OfficialOfferLetterPdfRendererTest {
@@ -45,23 +47,57 @@ class OfficialOfferLetterPdfRendererTest {
                         List.of(new FeeLineSnapshot("TUIT", "Tuition", new BigDecimal("1200.00"), new BigDecimal("1200.00")),
                                 new FeeLineSnapshot("REG", "Registration", new BigDecimal("50.00"), new BigDecimal("50.00"))),
                         new BigDecimal("1250.00"), new BigDecimal("1250.00")),
-                "Dr Registrar", "Registrar", "UZ-OFFER-LETTER-2026-01"));
+                new BankDetailsSnapshot("CBZ BANK", "KWAME NKRUMAH AVENUE, HARARE", "University of Zimbabwe",
+                        "01120770100042/52", "6101", "COBZZWHAXXX", "Use your application number as the payment reference"),
+                List.of(
+                        new BankAccountSnapshot("ZWG", "CBZ BANK", "KWAME NKRUMAH AVENUE, HARARE",
+                                "University of Zimbabwe", "01120770100052", "6101", "COBZZWHAXXX",
+                                "After accepting this offer, eMhare will generate your registration number. Quote that registration number as the payment reference."),
+                        new BankAccountSnapshot("USD", "CBZ BANK", "KWAME NKRUMAH AVENUE, HARARE",
+                                "University of Zimbabwe", "01120770100249", "6101", "COBZZWHAXXX",
+                                "After accepting this offer, eMhare will generate your registration number. Quote that registration number as the payment reference."),
+                        new BankAccountSnapshot("ZWG", "BancABC", null, "University of Zimbabwe",
+                                "10099183902014", null, null,
+                                "After accepting this offer, eMhare will generate your registration number. Quote that registration number as the payment reference."),
+                        new BankAccountSnapshot("USD", "BancABC", null, "University of Zimbabwe",
+                                "10099186633010", null, null,
+                                "After accepting this offer, eMhare will generate your registration number. Quote that registration number as the payment reference.")),
+                "42b272b2-6f22-4fad-baf2-cfc3d6438e76", "Dr Registrar", "Registrar",
+                "UZ-OFFER-LETTER-2026-01"));
 
-        var rendered=new OfficialOfferLetterPdfRenderer().render(document,offer);
+        var rendered=new OfficialOfferLetterPdfRenderer(documentId -> OfficialOfferLetterPdfRendererTest.class
+                .getResourceAsStream("/documents/uz-logo.jpg")).render(document,offer);
 
-        assertTrue(rendered.content().length>1_000); assertEquals(2,rendered.pageCount());
+        assertTrue(rendered.content().length>1_000); assertEquals(1,rendered.pageCount());
         try(var pdf=Loader.loadPDF(rendered.content())){
             assertEquals("Tinashe K",pdf.getDocumentInformation().getAuthor());
+            assertTrue(java.util.stream.StreamSupport.stream(
+                    pdf.getPage(0).getResources().getXObjectNames().spliterator(), false).count() >= 2);
             String text=new PDFTextStripper().getText(pdf);
-            assertTrue(text.contains("OFFICIAL ADMISSION OFFER"));
+            assertTrue(text.contains("UNIVERSITY OF ZIMBABWE"));
+            assertTrue(text.contains("ADMISSION IN THE YEAR 2028 TO THE Bachelor of Science in Computer Science (BSC-CS) IN THE Faculty of Science"));
+            assertTrue(text.contains("a place has been reserved for you"));
             assertTrue(text.contains("Nyasha Moyo"));
             assertTrue(text.contains("BSC-CS"));
             assertTrue(text.contains("Faculty of Science"));
             assertTrue(text.contains("Computer Science"));
             assertTrue(text.contains("Original academic certificates"));
+            assertTrue(text.contains("Cost Item"));
             assertTrue(text.contains("Tuition"));
             assertTrue(text.contains("USD 1,250.00"));
+            assertTrue(text.contains("CBZ BANK: ZWG 01120770100052 | USD 01120770100249"));
+            assertTrue(text.contains("BancABC: ZWG 10099183902014 | USD 10099186633010"));
+            assertFalse(text.contains("KWAME NKRUMAH AVENUE"));
+            assertFalse(text.contains("6101"));
+            assertFalse(text.contains("COBZZWHAXXX"));
             assertTrue(text.contains("Dr Registrar"));
+            assertTrue(text.contains("Yours sincerely"));
+            assertTrue(text.contains("eMhare will generate your registration number"));
+            assertTrue(text.contains("Quote that registration"));
+            assertTrue(text.contains("number as the payment reference"));
+            assertTrue(text.contains("I accept/do not accept the university offer"));
+            assertFalse(text.contains("Full Name(s)"));
+            assertFalse(text.contains("Signature................................"));
         }
     }
 
@@ -92,9 +128,9 @@ class OfficialOfferLetterPdfRendererTest {
 
         try(var pdf=Loader.loadPDF(rendered.content())){
             String text=new PDFTextStripper().getText(pdf);
-            assertTrue(text.contains("International applicant"));
             assertTrue(text.contains("Submit the final degree transcript before registration."));
             assertTrue(text.contains("Finance has not supplied a published fee snapshot for this letter."));
+            assertTrue(text.contains("Industrialisation Levy"));
             assertFalse(text.contains("USD 0.00"));
         }
     }
@@ -128,7 +164,6 @@ class OfficialOfferLetterPdfRendererTest {
 
         try (var pdf = Loader.loadPDF(rendered.content())) {
             String text = new PDFTextStripper().getText(pdf);
-            assertTrue(text.contains("International applicant"));
             assertTrue(text.contains("USD base equivalent"));
             assertTrue(text.contains("exchange-rate evidence"));
             assertTrue(text.contains("TUIT"));
@@ -152,8 +187,8 @@ class OfficialOfferLetterPdfRendererTest {
 
         try (var pdf = Loader.loadPDF(rendered.content())) {
             String text = new PDFTextStripper().getText(pdf);
-            assertTrue(text.contains("LEGACY-V2"));
-            assertTrue(text.contains("No additional conditions"));
+            assertTrue(text.contains("TO THE Legacy Programme"));
+            assertTrue(text.contains("Registration arrangements will be communicated"));
             assertTrue(text.contains("original identity and academic evidence"));
         }
 
@@ -161,5 +196,42 @@ class OfficialOfferLetterPdfRendererTest {
         when(invalid.getOfferType()).thenReturn(null);
         assertThrows(IllegalStateException.class,
                 () -> new OfficialOfferLetterPdfRenderer().render(document, invalid));
+    }
+
+    @Test
+    void rendersDepositInstructionAndUsesRequestYearWhenCommencementIsPending() throws Exception {
+        GeneratedDocument document = mock(GeneratedDocument.class);
+        when(document.getDocumentNumber()).thenReturn("OFFER-OF-2029-000004");
+        when(document.getRequestedAt()).thenReturn(Instant.parse("2029-01-10T08:00:00Z"));
+        OfferLetterProjection offer = mock(OfferLetterProjection.class);
+        when(offer.getOfferNumber()).thenReturn("OF-2029-000004");
+        when(offer.getApplicationNumber()).thenReturn("EMH-2029-000004");
+        when(offer.getApplicantName()).thenReturn("Kudzai Zhou");
+        when(offer.getProgrammeName()).thenReturn("Bachelor of Accountancy");
+        when(offer.getProgrammeCode()).thenReturn("BACC");
+        when(offer.getOfferType()).thenReturn("FIRM");
+        when(offer.getConditionsText()).thenReturn("  ");
+        when(offer.getAcceptanceDeadline()).thenReturn(Instant.parse("2029-02-28T21:59:59Z"));
+        when(offer.getContentSnapshot()).thenReturn(new OfferLetterContentSnapshot(
+                "University of Zimbabwe", "University of Zimbabwe", null, null, null, null, null,
+                "LOCAL", "UNDERGRAD", "Undergraduate", "August 2029 Intake", " ",
+                "Bachelor of Accountancy", "Undergraduate", "2029.1", List.of(), List.of("National identity document"),
+                new FeeScheduleSnapshot(UUID.randomUUID(), 2, "UG-BACC-2029", "ZWG", "USD", null, null,
+                        List.of(new FeeLineSnapshot(null, "Application charge", new BigDecimal("10.00"), null),
+                                new FeeLineSnapshot("ACCEPTANCE_DEPOSIT", "Acceptance deposit", new BigDecimal("250.00"), null),
+                                new FeeLineSnapshot("TUITION", "Tuition", new BigDecimal("4000.00"), null)),
+                        new BigDecimal("4260.00"), null),
+                "Registrar", "Registrar", "UZ-OFFER-LETTER-2026-01"));
+
+        var rendered = new OfficialOfferLetterPdfRenderer().render(document, offer);
+
+        try (var pdf = Loader.loadPDF(rendered.content())) {
+            String text = new PDFTextStripper().getText(pdf);
+            assertTrue(text.contains("ADMISSION IN THE YEAR 2029"));
+            assertTrue(text.contains("pay the non-refundable deposit of ZWG 250.00"));
+            assertTrue(text.contains("Lecture commencement details will be communicated"));
+            assertFalse(text.contains("Conditions of this offer:"));
+            assertFalse(text.contains("USD base equivalent"));
+        }
     }
 }

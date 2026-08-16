@@ -167,6 +167,69 @@ class CoreIdentityServiceTest {
     }
 
     @Test
+    void updateRoleAssignmentAcademicUnit_shouldMoveAcademicUnitScopedAssignment() {
+        UUID userId = UUID.randomUUID();
+        UUID assignmentId = UUID.randomUUID();
+        UUID currentAcademicUnitId = UUID.randomUUID();
+        UUID newAcademicUnitId = UUID.randomUUID();
+        PlatformUser user = new PlatformUser(
+                UUID.randomUUID(),
+                "academic.reviewer",
+                "academic.reviewer@example.test",
+                "Academic Reviewer");
+        ReflectionTestUtils.setField(user, "id", userId);
+        Role role = new Role("ACADEMIC_REVIEWER", "Academic Reviewer", RoleScope.ACADEMIC_UNIT, true);
+        ReflectionTestUtils.setField(role, "id", UUID.randomUUID());
+        UserRoleAssignment assignment = new UserRoleAssignment(
+                user,
+                role,
+                currentAcademicUnitId,
+                Instant.now().minusSeconds(60));
+        ReflectionTestUtils.setField(assignment, "id", assignmentId);
+        when(userRoleAssignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
+        when(userRoleAssignmentRepository.existsByUserAndRoleAndAcademicUnitIdAndEndsAtIsNull(
+                user, role, newAcademicUnitId)).thenReturn(false);
+
+        UserRoleAssignmentSummary summary = coreIdentityService.updateRoleAssignmentAcademicUnit(
+                userId,
+                assignmentId,
+                newAcademicUnitId);
+
+        assertEquals(newAcademicUnitId, summary.academicUnitId());
+        assertEquals(newAcademicUnitId, assignment.getAcademicUnitId());
+    }
+
+    @Test
+    void updateRoleAssignmentAcademicUnit_shouldRejectAssignmentOwnedByAnotherUser() {
+        UUID userId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        UUID assignmentId = UUID.randomUUID();
+        PlatformUser otherUser = new PlatformUser(
+                UUID.randomUUID(),
+                "other.reviewer",
+                "other.reviewer@example.test",
+                "Other Reviewer");
+        ReflectionTestUtils.setField(otherUser, "id", otherUserId);
+        Role role = new Role("ACADEMIC_REVIEWER", "Academic Reviewer", RoleScope.ACADEMIC_UNIT, true);
+        UserRoleAssignment assignment = new UserRoleAssignment(
+                otherUser,
+                role,
+                UUID.randomUUID(),
+                Instant.now().minusSeconds(60));
+        ReflectionTestUtils.setField(assignment, "id", assignmentId);
+        when(userRoleAssignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> coreIdentityService.updateRoleAssignmentAcademicUnit(
+                        userId,
+                        assignmentId,
+                        UUID.randomUUID()));
+
+        assertEquals("Role assignment does not belong to the user.", exception.getMessage());
+    }
+
+    @Test
     void can_shouldReturnDecisionFromResolvedPermissionCodes() {
         UUID userId = UUID.randomUUID();
         UUID academicUnitId = UUID.randomUUID();
@@ -435,16 +498,20 @@ class CoreIdentityServiceTest {
                 "uz",
                 "University of Zimbabwe",
                 "University of Zimbabwe",
+                "Dr Jane Dube",
                 "USD",
                 "ZW",
                 "Africa/Harare",
                 "{}",
                 "{}",
+                "{\"bankName\":\"CBZ BANK\"}",
                 "UZ"));
 
         assertEquals(profileId, summary.id());
         assertEquals("UZ", summary.code());
+        assertEquals("Dr Jane Dube", summary.registrarName());
         assertEquals("USD", summary.defaultCurrencyCode());
+        assertEquals("{\"bankName\":\"CBZ BANK\"}", summary.bankDetailsJson());
     }
 
     @Test

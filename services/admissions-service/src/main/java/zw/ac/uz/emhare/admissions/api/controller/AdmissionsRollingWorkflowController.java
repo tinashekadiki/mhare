@@ -101,10 +101,9 @@ public class AdmissionsRollingWorkflowController {
 
     @PutMapping("/offers/{offerId}")
     @PreAuthorize("@admissionsRbac.has(authentication, 'ADMISSIONS_OFFER_MANAGE')")
-    public AdmissionOfferSummary updateOffer(@PathVariable("offerId") UUID offerId,
+    public AdmissionOfferSummary updateOffer(Authentication authentication, @PathVariable("offerId") UUID offerId,
             @Valid @RequestBody UpdateOfferRequest request) {
-        return offerService.update(offerId, request.offerType(), request.conditionsText(), request.acceptanceDeadline(),
-                request.registrationDate(), request.orientationDate(), request.commencementDate());
+        return offerService.update(offerId, request.offerType(), request.conditionsText(), authorization(authentication));
     }
 
     @PostMapping("/offers/{offerId}/document-generation")

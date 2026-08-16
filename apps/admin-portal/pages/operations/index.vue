@@ -1,41 +1,56 @@
+<!-- Author: Tinashe K -->
 <script setup lang="ts">
+import {
+  loadOperationsOverview,
+  operationalDashboardModules,
+  type OperationalDashboardSnapshot
+} from '@emhare/portal-shell/utils/operational-dashboard'
+
+defineOptions({ name: 'OperationsDashboardPage' })
 definePageMeta({ layout: 'dashboard' })
 
 const route = useRoute()
-const auth = useEmhareAuth()
-const accessRestricted = computed(() => route.query.access === 'restricted')
+const api = useEmhareApi()
+const loading = ref(true)
+const refreshedAt = ref('')
+const loadingModuleKeys = ref(new Set(operationalDashboardModules.map(module => module.key)))
+const modules = ref<OperationalDashboardSnapshot[]>(operationalDashboardModules.map(module => ({
+  ...module,
+  available: false,
+  generatedAt: '',
+  scopeNote: '',
+  metrics: [],
+  actions: [],
+  distribution: [],
+  links: []
+})))
 
-const serviceCards = [
-  { label: 'Core Identity', icon: 'i-lucide-shield-check', state: 'Operational foundation', tone: 'success', to: '/operations/core' },
-  { label: 'Academic Setup', icon: 'i-lucide-school', state: 'Governed operational slice', tone: 'success', to: '/operations/academic-structure' },
-  { label: 'Admissions', icon: 'i-lucide-file-check-2', state: 'Evaluation, selection and governed offers', tone: 'success', to: '/operations/admissions' },
-  { label: 'Finance', icon: 'i-lucide-receipt-text', state: 'Governed pricing, billing, collections, corrections and student accounts', tone: 'success', to: '/operations/finance' },
-  { label: 'Student Records', icon: 'i-lucide-graduation-cap', state: 'Conversion and governed registration operational', tone: 'success', to: '/operations/student-registrations' },
-  { label: 'Assessment & Results', icon: 'i-lucide-clipboard-pen-line', state: 'Evidence, moderation, publication, corrections and progression operational', tone: 'success', to: '/operations/assessment' },
-  { label: 'Exams', icon: 'i-lucide-calendar-clock', state: 'Published scheduling, invigilation, attendance and incidents operational', tone: 'success', to: '/operations/exams' },
-  { label: 'Accommodation', icon: 'i-lucide-building-2', state: 'Planned', tone: 'neutral', to: '/operations/accommodation' },
-  { label: 'Documents', icon: 'i-lucide-files', state: 'Official result slips generated and stored', tone: 'success', to: '/operations/documents' }
-] as const
-const visibleServiceCards = computed(() => serviceCards.filter((serviceCard) =>
-  serviceCard.label !== 'Core Identity'
-  || [
-    'CORE_INSTITUTION_MANAGE',
-    'CORE_USER_MANAGE',
-    'CORE_ROLE_MANAGE',
-    'CORE_PERMISSION_MANAGE',
-    'CORE_ROLE_ASSIGN',
-    'CORE_REFERENCE_MANAGE',
-    'CORE_AUDIT_READ',
-    'CORE_WORKFLOW_MANAGE',
-    'CORE_WORKFLOW_TASK'
-  ].some(auth.hasPermission)
+const accessRestricted = computed(() => route.query.access === 'restricted')
+const availableModules = computed(() => modules.value.filter(module => module.available))
+const unavailableModules = computed(() => modules.value.filter(module => !module.available))
+const attentionCount = computed(() => availableModules.value.reduce(
+  (total, module) => total + module.actions.reduce((moduleTotal, action) => moduleTotal + action.value, 0),
+  0
 ))
 
-function serviceStatusLabel(tone: string) {
-  if (tone === 'success') return 'Ready'
-  if (tone === 'warning') return 'Partial'
-  if (tone === 'info') return 'Next'
-  return 'Planned'
+onMounted(loadDashboard)
+
+async function loadDashboard() {
+  loading.value = true
+  loadingModuleKeys.value = new Set(operationalDashboardModules.map(module => module.key))
+  await Promise.all(operationalDashboardModules.map(async (module, index) => {
+    const [loadedModule] = await loadOperationsOverview(api, [module.key])
+    if (loadedModule) modules.value[index] = loadedModule
+    loadingModuleKeys.value.delete(module.key)
+    loadingModuleKeys.value = new Set(loadingModuleKeys.value)
+  }))
+  refreshedAt.value = new Date().toISOString()
+  loading.value = false
+}
+
+function refreshedAtLabel() {
+  if (!refreshedAt.value) return 'Not yet refreshed'
+  return `Updated ${new Date(refreshedAt.value).toLocaleString()}`
 }
 </script>
 
@@ -46,54 +61,117 @@ function serviceStatusLabel(tone: string) {
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
+        <template #right>
+          <UButton
+            icon="i-lucide-refresh-cw"
+            color="neutral"
+            variant="outline"
+            aria-label="Refresh Operations dashboard"
+            :loading="loading"
+            @click="loadDashboard"
+          />
+        </template>
       </UDashboardNavbar>
       <UDashboardToolbar>
         <template #left>
-          <span class="text-sm text-muted">Delivery status by service-owned operational domain</span>
+          <span class="text-sm text-muted">{{ refreshedAtLabel() }}</span>
         </template>
         <template #right>
-          <UBadge color="primary" variant="soft" label="ERP operational workspaces" />
+          <UBadge color="primary" variant="soft" label="University operations" />
         </template>
       </UDashboardToolbar>
     </template>
 
     <template #body>
-      <div class="space-y-4 p-4">
+      <UContainer
+        data-testid="operations-dashboard-content"
+        class="w-full max-w-none space-y-6 py-4 sm:py-6 [--ui-primary:var(--ui-color-primary-800)] dark:[--ui-primary:var(--ui-color-primary-300)]"
+      >
         <UAlert
           v-if="accessRestricted"
           color="warning"
           variant="subtle"
           icon="i-lucide-triangle-alert"
           title="Access restricted"
-          description="Your assigned role does not include permission for that operational workspace. Contact a system administrator if your duties have changed."
+          description="Your assigned role does not include that operational workspace. Dashboards below only show data your current permissions can read."
         />
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <NuxtLink
-          v-for="serviceCard in visibleServiceCards"
-          :key="serviceCard.label"
-          :to="serviceCard.to"
-          :aria-label="`Open ${serviceCard.label}`"
-          class="block rounded-lg outline-primary/25 focus-visible:outline-3"
-        >
-          <UCard :ui="{ body: 'p-4' }">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <p class="truncate text-sm font-medium text-highlighted">
-                  {{ serviceCard.label }}
-                </p>
-                <p class="mt-1 text-xs text-muted">
-                  {{ serviceCard.state }}
-                </p>
-              </div>
-              <div class="flex items-center gap-2">
-                <UBadge :color="serviceCard.tone" variant="subtle" size="sm" :label="serviceStatusLabel(serviceCard.tone)" />
-                <UIcon :name="serviceCard.icon" class="size-5 shrink-0 text-primary" />
-              </div>
+
+        <section aria-labelledby="operations-pulse-heading" class="space-y-3">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-primary">Cross-module control</p>
+              <h2 id="operations-pulse-heading" class="mt-1 text-lg font-semibold text-highlighted">Operational pulse</h2>
             </div>
-          </UCard>
-        </NuxtLink>
-        </div>
-      </div>
+            <p class="max-w-2xl text-xs leading-5 text-muted">Every count comes from its owning service. Unavailable or unauthorised modules are identified explicitly and are never represented as zero.</p>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <EmhareKpiCard label="Module dashboards" :value="operationalDashboardModules.length" hint="Implemented operational domains" icon="i-lucide-layout-dashboard" tone="primary" />
+            <EmhareKpiCard label="Reporting now" :value="availableModules.length" hint="Modules that returned live metrics" icon="i-lucide-activity" tone="success" />
+            <EmhareKpiCard label="Work items" :value="attentionCount" hint="Actionable records across available modules" icon="i-lucide-list-checks" tone="warning" />
+            <EmhareKpiCard label="Unavailable" :value="unavailableModules.length" hint="Service or permission failures" icon="i-lucide-unplug" :tone="unavailableModules.length ? 'error' : 'neutral'" />
+          </div>
+        </section>
+
+        <section aria-labelledby="module-dashboards-heading" class="space-y-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-primary">Owned service evidence</p>
+            <h2 id="module-dashboards-heading" class="mt-1 text-lg font-semibold text-highlighted">Module dashboards</h2>
+          </div>
+          <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <UCard
+              v-for="module in modules"
+              :key="module.key"
+              :data-testid="`operations-module-${module.key}`"
+              :ui="{ body: 'p-5', footer: 'p-3 sm:px-5' }"
+              class="flex min-h-64 flex-col"
+            >
+              <div class="flex items-start justify-between gap-4">
+                <span class="grid size-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+                  <UIcon :name="module.icon" class="size-5" />
+                </span>
+                <UBadge
+                  :label="loadingModuleKeys.has(module.key) ? 'Loading' : module.available ? 'Live' : 'Unavailable'"
+                  :color="loadingModuleKeys.has(module.key) ? 'neutral' : module.available ? 'success' : 'error'"
+                  variant="subtle"
+                />
+              </div>
+              <h3 class="mt-4 text-base font-semibold text-highlighted">{{ module.label }}</h3>
+              <p class="mt-1 text-sm leading-5 text-muted">{{ module.description }}</p>
+
+              <div v-if="loadingModuleKeys.has(module.key)" class="mt-5 grid grid-cols-2 gap-3 border-t border-muted pt-4">
+                <USkeleton class="h-14 rounded-md" />
+                <USkeleton class="h-14 rounded-md" />
+              </div>
+              <div v-else-if="module.available" class="mt-5 grid grid-cols-2 gap-3 border-t border-muted pt-4">
+                <div v-for="metric in module.metrics.slice(0, 2)" :key="metric.label">
+                  <p class="text-2xl font-semibold tabular-nums text-highlighted">{{ metric.value }}</p>
+                  <p class="mt-1 text-xs text-muted">{{ metric.label }}</p>
+                </div>
+              </div>
+              <UAlert
+                v-else
+                class="mt-4"
+                color="error"
+                variant="soft"
+                title="Metrics not available"
+                :description="module.errorMessage"
+              />
+
+              <template #footer>
+                <UButton
+                  :to="module.dashboardPath"
+                  label="Open dashboard"
+                  icon="i-lucide-arrow-up-right"
+                  trailing
+                  color="neutral"
+                  variant="ghost"
+                  class="-mx-2 w-[calc(100%+1rem)] justify-between"
+                />
+              </template>
+            </UCard>
+          </div>
+        </section>
+      </UContainer>
     </template>
   </UDashboardPanel>
 </template>

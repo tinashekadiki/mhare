@@ -135,6 +135,31 @@ end_of_record
       branchesTotal: 2
     })
   })
+
+  it('does not fabricate an uncovered line from an LCOV branch-only location', () => {
+    const repositoryRoot = '/workspace/emhare'
+    const filePath = 'apps/admin-portal/pages/operations/example.vue'
+    const coverage = parseLcov(`TN:
+SF:/workspace/emhare/${filePath}
+DA:10,1
+BRDA:11,0,0,1
+BRDA:11,0,1,1
+end_of_record
+`, repositoryRoot)
+
+    const result = evaluateChangedCoverage(
+      new Map([[filePath, new Set([10, 11])]]),
+      coverage
+    )
+
+    expect(result.totals).toEqual({
+      linesCovered: 1,
+      linesTotal: 1,
+      branchesCovered: 2,
+      branchesTotal: 2
+    })
+    expect(result.passed).toBe(true)
+  })
 })
 
 describe('changed coverage evaluation', () => {

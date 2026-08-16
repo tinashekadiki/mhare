@@ -121,6 +121,72 @@ const notificationItems = computed(() => props.notifications.length
 )
 const unreadNotificationCount = computed(() => props.notifications.filter((notification) => !notification.readAt).length)
 
+const defaultPrimaryColor = '#20743a'
+const defaultSecondaryColor = '#f8b334'
+const primaryPaletteMixes: Record<string, [number, string]> = {
+  '50': [94, '#ffffff'],
+  '100': [87, '#ffffff'],
+  '200': [72, '#ffffff'],
+  '300': [52, '#ffffff'],
+  '400': [28, '#ffffff'],
+  '500': [10, '#ffffff'],
+  '600': [0, '#ffffff'],
+  '700': [15, '#000000'],
+  '800': [28, '#000000'],
+  '900': [40, '#000000'],
+  '950': [58, '#000000']
+}
+const secondaryPaletteMixes: Record<string, [number, string]> = {
+  '50': [94, '#ffffff'],
+  '100': [84, '#ffffff'],
+  '200': [68, '#ffffff'],
+  '300': [45, '#ffffff'],
+  '400': [20, '#ffffff'],
+  '500': [0, '#ffffff'],
+  '600': [18, '#000000'],
+  '700': [32, '#000000'],
+  '800': [44, '#000000'],
+  '900': [55, '#000000'],
+  '950': [68, '#000000']
+}
+
+function normalizedHexColor(value: unknown, fallback: string) {
+  if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.trim())) {
+    return fallback
+  }
+  return value.trim().toLowerCase()
+}
+
+function mixHexColors(baseColor: string, mixColor: string, mixPercentage: number) {
+  const baseChannels = [1, 3, 5].map(index => Number.parseInt(baseColor.slice(index, index + 2), 16))
+  const mixChannels = [1, 3, 5].map(index => Number.parseInt(mixColor.slice(index, index + 2), 16))
+  const mixRatio = mixPercentage / 100
+  return `#${baseChannels.map((channel, index) => Math.round(channel * (1 - mixRatio) + Number(mixChannels[index]) * mixRatio).toString(16).padStart(2, '0')).join('')}`
+}
+
+function applyColorPalette(variablePrefix: string, baseColor: string, paletteMixes: Record<string, [number, string]>) {
+  for (const [shade, [mixPercentage, mixColor]] of Object.entries(paletteMixes)) {
+    document.documentElement.style.setProperty(
+      `${variablePrefix}-${shade}`,
+      mixPercentage === 0 ? baseColor : mixHexColors(baseColor, mixColor, mixPercentage)
+    )
+  }
+}
+
+function applyInstitutionBranding(brandingJson?: string) {
+  if (import.meta.server) return
+  let branding: Record<string, unknown> = {}
+  try {
+    branding = JSON.parse(brandingJson || '{}') as Record<string, unknown>
+  } catch {
+    branding = {}
+  }
+  const primaryColor = normalizedHexColor(branding.primaryColor, defaultPrimaryColor)
+  const secondaryColor = normalizedHexColor(branding.secondaryColor, defaultSecondaryColor)
+  applyColorPalette('--color-uzgreen', primaryColor, primaryPaletteMixes)
+  applyColorPalette('--color-uzgold', secondaryColor, secondaryPaletteMixes)
+}
+
 const periodItems = computed(() => {
   if (props.academicPeriodsLoading) {
     return [{ label: 'Loading academic periods', icon: 'i-lucide-refresh-cw', disabled: true }]
@@ -188,6 +254,12 @@ watch(() => route.fullPath, async (fullPath) => {
   }
   await resolveAuthenticatedSession(fullPath)
 })
+
+watch(
+  () => auth.currentUserProfile.value?.institutionBrandingJson,
+  applyInstitutionBranding,
+  { immediate: true }
+)
 
 function handleQuickAction(action: EmhareQuickAction) {
   emit('quick-action', action)

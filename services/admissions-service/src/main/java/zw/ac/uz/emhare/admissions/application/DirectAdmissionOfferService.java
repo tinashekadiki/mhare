@@ -3,7 +3,6 @@ package zw.ac.uz.emhare.admissions.application;
 import jakarta.transaction.Transactional;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -12,6 +11,9 @@ import zw.ac.uz.emhare.admissions.domain.model.*;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.*;
 import zw.ac.uz.emhare.admissions.integration.AdmissionsIntegrationOutboxService;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient;
+import zw.ac.uz.emhare.admissions.integration.AcademicSetupCatalogueClient;
+import zw.ac.uz.emhare.admissions.integration.AcademicSetupCatalogueClient.AcademicAdmissionsIntake;
+import zw.ac.uz.emhare.admissions.application.OfferLetterFeeScheduleResolver.ResolvedOfferLetterCatalogue;
 
 /** Governed, versioned direct-offer commands for the rolling workflow. @author Tinashe K */
 @Service
@@ -26,6 +28,7 @@ public class DirectAdmissionOfferService {
     private final AdmissionsIntegrationOutboxService outboxService;
     private final OfferLetterFeeScheduleResolver feeScheduleResolver;
     private final CoreIdentityClient coreIdentityClient;
+    private final AcademicSetupCatalogueClient academicSetupCatalogueClient;
     private final Clock clock;
 
     public DirectAdmissionOfferService(AdmissionOfferRepository offerRepository,
@@ -33,7 +36,7 @@ public class DirectAdmissionOfferService {
             OfferDocumentVersionRepository documentRepository, OfferPublicationRepository publicationRepository,
             OfferDispatchRepository dispatchRepository, OfferStatusEventRepository statusEventRepository,
             AdmissionsIntegrationOutboxService outboxService, OfferLetterFeeScheduleResolver feeScheduleResolver,
-            CoreIdentityClient coreIdentityClient, Clock clock) {
+            CoreIdentityClient coreIdentityClient, AcademicSetupCatalogueClient academicSetupCatalogueClient, Clock clock) {
         this.offerRepository = offerRepository;
         this.responseRepository = responseRepository;
         this.conditionRepository = conditionRepository;
@@ -44,18 +47,17 @@ public class DirectAdmissionOfferService {
         this.outboxService = outboxService;
         this.feeScheduleResolver = feeScheduleResolver;
         this.coreIdentityClient = coreIdentityClient;
+        this.academicSetupCatalogueClient = academicSetupCatalogueClient;
         this.clock = clock;
     }
 
     @Transactional
     public AdmissionOfferSummary update(UUID offerId, String offerTypeCode, String conditionsText,
-            Instant acceptanceDeadline, LocalDate registrationDate, LocalDate orientationDate,
-            LocalDate commencementDate) {
+            String authorization) {
         AdmissionOffer offer = offer(offerId);
         requireUnanswered(offer);
         OfferType offerType = parse(OfferType.class, offerTypeCode, "offer type");
-        offer.updateTerms(offerType, conditionsText, acceptanceDeadline, registrationDate,
-                orientationDate, commencementDate, clock.instant());
+        applyIntakeOfferDates(offer, offerType, conditionsText, authorization);
         return summary(offerRepository.saveAndFlush(offer));
     }
 
@@ -68,28 +70,45 @@ public class DirectAdmissionOfferService {
     public DocumentGenerationResult generate(UUID offerId, UUID actorUserId, String authorization) {
         AdmissionOffer offer = offer(offerId);
         requireUnanswered(offer);
+        if (authorization != null && !authorization.isBlank() && offer.getOfferType() != null) {
+            applyIntakeOfferDates(offer, offer.getOfferType(), offer.getConditionsText(), authorization);
+            offerRepository.saveAndFlush(offer);
+        }
         if (offer.getOfferType() == null || offer.getAcceptanceDeadline() == null || offer.getCommencementDate() == null) {
             throw new IllegalStateException("Complete offer terms are required before document generation.");
         }
+        ResolvedOfferLetterCatalogue catalogue = feeScheduleResolver.resolve(offer, authorization, clock.instant());
+        CoreIdentityClient.CoreInstitutionProfile institutionProfile = institutionProfile(authorization);
         OfferDocumentVersion latestRequested = documentRepository
                 .findFirstByOfferIdAndStatusAndDeletedAtIsNullOrderByDocumentVersionDesc(
                         offerId, OfferDocumentVersionStatus.REQUESTED).orElse(null);
         if (latestRequested != null) {
             outboxService.enqueueOfferLetterRequested(
                     offer, latestRequested.getDocumentVersion(), actorUserId,
-                    feeScheduleResolver.resolve(offer, authorization), institutionProfile(authorization));
+                    catalogue.highestAcademicUnitName(), catalogue.feeSchedule(), institutionProfile);
             return result(latestRequested);
         }
         int version = documentRepository.countByOfferIdAndDeletedAtIsNull(offerId) + 1;
         OfferDocumentVersion document = documentRepository.saveAndFlush(
                 new OfferDocumentVersion(offer, version, actorUserId, clock.instant()));
         outboxService.enqueueOfferLetterRequested(offer, version, actorUserId,
-                feeScheduleResolver.resolve(offer, authorization), institutionProfile(authorization));
+                catalogue.highestAcademicUnitName(), catalogue.feeSchedule(), institutionProfile);
         return result(document);
     }
 
     private CoreIdentityClient.CoreInstitutionProfile institutionProfile(String authorization) {
         return authorization == null || authorization.isBlank() ? null : coreIdentityClient.institutionProfile(authorization);
+    }
+
+    private void applyIntakeOfferDates(AdmissionOffer offer, OfferType offerType, String conditionsText,
+            String authorization) {
+        AcademicAdmissionsIntake intake = academicSetupCatalogueClient.getAdmissionsIntake(offer.getIntakeId());
+        if (intake.offerAcceptanceDeadline() == null || intake.commencementDate() == null) {
+            throw new IllegalStateException("Configure the offer acceptance deadline and commencement date on intake "
+                    + intake.code() + " before generating offers.");
+        }
+        offer.updateTerms(offerType, conditionsText, intake.offerAcceptanceDeadline(), intake.registrationDate(),
+                intake.orientationDate(), intake.commencementDate(), clock.instant());
     }
 
     @Transactional

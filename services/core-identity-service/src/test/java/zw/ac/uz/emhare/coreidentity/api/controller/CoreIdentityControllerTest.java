@@ -97,7 +97,7 @@ class CoreIdentityControllerTest {
         CountrySummary country = new CountrySummary(recordId, "ZW", "ZWE", "Zimbabwe", "Zimbabwean");
         LookupSetSummary lookupSet = new LookupSetSummary(recordId, "GENDER", "Gender", "Values");
         LookupValueSummary lookupValue = new LookupValueSummary(recordId, recordId, "GENDER", "F", "Female", 1, true);
-        InstitutionProfileSummary profile = new InstitutionProfileSummary(recordId, "UZ", "University of Zimbabwe", "University of Zimbabwe", "USD", "ZW", "Africa/Harare", "{}", "{}", "UZ");
+        InstitutionProfileSummary profile = new InstitutionProfileSummary(recordId, "UZ", "University of Zimbabwe", "University of Zimbabwe", "Dr Jane Dube", "USD", "ZW", "Africa/Harare", "{}", "{}", "{\"bankName\":\"CBZ BANK\"}", "UZ");
 
         when(coreIdentityService.institutionProfile()).thenReturn(profile);
         when(coreIdentityService.upsertInstitutionProfile(any())).thenReturn(profile);
@@ -112,12 +112,13 @@ class CoreIdentityControllerTest {
         when(coreIdentityService.updatePermission(any(), any())).thenReturn(permission);
         when(coreIdentityService.grantPermissionToRole(any(), any())).thenReturn(grant);
         when(coreIdentityService.assignRole(any())).thenReturn(assignment);
+        when(coreIdentityService.updateRoleAssignmentAcademicUnit(any(), any(), any())).thenReturn(assignment);
         when(coreIdentityService.upsertCountry(any())).thenReturn(country);
         when(coreIdentityService.upsertLookupSet(any())).thenReturn(lookupSet);
         when(coreIdentityService.upsertLookupValue(any(), any())).thenReturn(lookupValue);
         when(provisioningService.provisionUserAccess(any())).thenReturn(new ProvisionedUserAccessSummary(user, List.of(assignment), true, "secret-never-audited"));
 
-        controller.upsertInstitutionProfile(authentication, new UpsertInstitutionProfileRequest("UZ", "University of Zimbabwe", "University of Zimbabwe", "USD", "ZW", "Africa/Harare", "{}", "{}", "UZ"));
+        controller.upsertInstitutionProfile(authentication, new UpsertInstitutionProfileRequest("UZ", "University of Zimbabwe", "University of Zimbabwe", "Dr Jane Dube", "USD", "ZW", "Africa/Harare", "{}", "{}", "{\"bankName\":\"CBZ BANK\"}", "UZ"));
         controller.registerUser(authentication, new RegisterUserRequest(null, "staff", "staff@uz.ac.zw", "Staff"));
         controller.provisionUserAccess(authentication, new ProvisionUserAccessRequest(null, "staff", "staff@uz.ac.zw", "Staff", null, List.of(new ProvisionedRoleAssignmentRequest(recordId, null, Instant.now()))));
         controller.updateUser(authentication, recordId, new UpdateUserRequest("Staff", null, UserStatus.ACTIVE));
@@ -131,6 +132,11 @@ class CoreIdentityControllerTest {
         controller.grantPermission(authentication, recordId, new GrantPermissionRequest(recordId));
         controller.revokePermission(authentication, recordId, recordId);
         controller.assignRole(authentication, recordId, new AssignRoleRequest(recordId, null, Instant.now()));
+        controller.updateRoleAssignmentAcademicUnit(
+                authentication,
+                recordId,
+                recordId,
+                new UpdateRoleAssignmentAcademicUnitRequest(recordId));
         controller.expireRoleAssignment(authentication, recordId, recordId);
         controller.upsertCountry(authentication, new UpsertCountryRequest("ZW", "ZWE", "Zimbabwe", "Zimbabwean"));
         controller.deleteCountry(authentication, recordId);
@@ -139,7 +145,7 @@ class CoreIdentityControllerTest {
         controller.upsertLookupValue(authentication, recordId, new UpsertLookupValueRequest("F", "Female", 1, true));
         controller.deleteLookupValue(authentication, recordId);
 
-        verify(auditService, org.mockito.Mockito.times(21)).record(any(), anyString(), anyString(), any(), anyString(), any(), any());
+        verify(auditService, org.mockito.Mockito.times(22)).record(any(), anyString(), anyString(), any(), anyString(), any(), any());
     }
 
     private JwtAuthenticationToken jwtAuthentication(Map<String, Object> claims) {

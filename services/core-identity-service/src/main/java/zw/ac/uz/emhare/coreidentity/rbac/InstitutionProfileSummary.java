@@ -9,11 +9,13 @@ public record InstitutionProfileSummary(
         String code,
         String name,
         String legalName,
+        String registrarName,
         String defaultCurrencyCode,
         String countryCode,
         String timezone,
         String contactDetailsJson,
         String brandingJson,
+        String bankDetailsJson,
         String legacyCode) {
     static InstitutionProfileSummary from(InstitutionProfile profile) {
         return new InstitutionProfileSummary(
@@ -21,11 +23,13 @@ public record InstitutionProfileSummary(
                 profile.getCode(),
                 profile.getName(),
                 profile.getLegalName(),
+                profile.getRegistrarName(),
                 profile.getDefaultCurrencyCode(),
                 profile.getCountryCode(),
                 profile.getTimezone(),
                 profile.getContactDetailsJson(),
                 profile.getBrandingJson(),
+                profile.getBankDetailsJson(),
                 profile.getLegacyCode());
     }
 }

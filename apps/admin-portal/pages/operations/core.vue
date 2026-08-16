@@ -66,7 +66,7 @@ type UserRoleAssignment = {
   roleId: string;
   roleCode: string;
   roleName: string;
-  academicUnitId?: string;
+  academicUnitId?: string | null;
   academicUnitName?: string;
   startsAt: string;
   endsAt?: string;
@@ -81,6 +81,7 @@ type ProvisionedUserAccess = {
 
 type UserAccessDraft = {
   key: string;
+  assignmentId?: string;
   roleId: string;
   academicUnitId: string;
   startsAt: string;
@@ -91,12 +92,25 @@ type InstitutionProfile = {
   code: string;
   name: string;
   legalName: string;
+  registrarName: string;
   defaultCurrencyCode: string;
   countryCode: string;
   timezone: string;
   contactDetailsJson?: string;
   brandingJson?: string;
+  bankDetailsJson?: string;
   legacyCode?: string;
+};
+
+type ProfileBankAccount = {
+  currencyCode: "USD" | "ZWG";
+  bankName: string;
+  branchName: string;
+  accountName: string;
+  accountNumber: string;
+  branchSortCode: string;
+  swiftCode: string;
+  paymentReferenceInstructions: string;
 };
 
 type CoreStatistics = {
@@ -364,13 +378,17 @@ const defaultProfile = {
   code: "UZ",
   name: "University of Zimbabwe",
   legalName: "University of Zimbabwe",
+  registrarName: "Registrar",
   defaultCurrencyCode: "USD",
   countryCode: "ZW",
   timezone: "Africa/Harare",
   contactDetailsJson: "{}",
   brandingJson: '{"primaryColor":"#20743a","secondaryColor":"#f8b334"}',
+  bankDetailsJson: "{}",
   legacyCode: "UZ",
 };
+const registrationNumberPaymentInstruction =
+  "After accepting this offer, eMhare will generate your registration number. Quote that registration number as the payment reference.";
 
 const institutionProfile = ref<InstitutionProfile>({ ...defaultProfile });
 const coreStatistics = ref<CoreStatistics>({
@@ -390,13 +408,21 @@ const profileBrandingForm = reactive({
   primaryColor: "#20743a",
   secondaryColor: "#f8b334",
   logoDocumentId: "",
+  registrarSignatureDocumentId: "",
 });
+const profileBankAccounts = ref<ProfileBankAccount[]>([]);
 const profileLogoFile = shallowRef<File | null>(null);
 const profileLogoPreviewUrl = ref("");
 const storedProfileLogo = ref<UploadedDocumentSummary | null>(null);
 const storedProfileLogoUrl = ref("");
 const profileLogoLoading = ref(false);
 const maximumLogoSizeBytes = 2 * 1024 * 1024;
+const profileRegistrarSignatureFile = shallowRef<File | null>(null);
+const profileRegistrarSignaturePreviewUrl = ref("");
+const storedProfileRegistrarSignature = ref<UploadedDocumentSummary | null>(null);
+const storedProfileRegistrarSignatureUrl = ref("");
+const profileRegistrarSignatureLoading = ref(false);
+const maximumRegistrarSignatureSizeBytes = 2 * 1024 * 1024;
 const userForm = reactive({
   id: "",
   username: "",
@@ -407,6 +433,7 @@ const userForm = reactive({
 });
 const userProvisioningStep = ref("identity");
 const userAccessDrafts = ref<UserAccessDraft[]>([]);
+const editingUserRoleAssignments = ref<UserRoleAssignment[]>([]);
 const rolePermissionCatalog = ref<Record<string, RolePermissionGrant[]>>({});
 const rolePermissionLoadingIds = ref<Set<string>>(new Set());
 let userAccessDraftSequence = 0;
@@ -642,6 +669,10 @@ const countryCodeOptions = computed(() =>
 const baseCurrencyOptions = [
   { label: "USD · transaction base currency", value: "USD" },
 ];
+const paymentCurrencyOptions = [
+  { label: "USD · Nostro account", value: "USD" },
+  { label: "ZWG · Local-currency account", value: "ZWG" },
+];
 const timezoneOptions = [
   { label: "Africa/Harare · Zimbabwe", value: "Africa/Harare" },
 ];
@@ -729,6 +760,11 @@ const userProvisioningSubmitLabel = computed(() => {
 });
 const activeProfileLogoUrl = computed(
   () => profileLogoPreviewUrl.value || storedProfileLogoUrl.value,
+);
+const activeProfileRegistrarSignatureUrl = computed(
+  () =>
+    profileRegistrarSignaturePreviewUrl.value ||
+    storedProfileRegistrarSignatureUrl.value,
 );
 const assignmentRows = computed(() =>
   assignments.value.map((assignment) => ({
@@ -828,6 +864,7 @@ const profileDetails = computed(() => [
   { label: "Institution code", value: institutionProfile.value.code },
   { label: "Operating name", value: institutionProfile.value.name },
   { label: "Legal name", value: institutionProfile.value.legalName },
+  { label: "Registrar", value: institutionProfile.value.registrarName },
   {
     label: "Base currency",
     value: institutionProfile.value.defaultCurrencyCode,
@@ -878,7 +915,7 @@ const drawerDescription = computed(() => {
       return "Maintain the single-institution identity and official document defaults.";
     case "user":
       return userForm.id
-        ? "Maintain the Core identity record. Authentication credentials remain governed by Keycloak."
+        ? "Maintain the Core identity record and its academic-unit-scoped role assignments. Authentication credentials remain governed by Keycloak."
         : "Complete the identity and role assignments before the user is activated.";
     case "role":
       return "Define a reusable responsibility boundary for operational access.";
@@ -912,9 +949,19 @@ const drawerSubmitDisabled = computed(() => {
         !profileForm.code.trim() ||
         !profileForm.name.trim() ||
         !profileForm.legalName.trim() ||
+        !profileForm.registrarName.trim() ||
         !profileForm.defaultCurrencyCode.trim() ||
         !profileForm.countryCode.trim() ||
-        !profileForm.timezone.trim()
+        !profileForm.timezone.trim() ||
+        profileBankAccounts.value.some(
+          (account) => !profileBankAccountComplete(account),
+        ) ||
+        !profileBankAccounts.value.some(
+          (account) => account.currencyCode === "USD",
+        ) ||
+        !profileBankAccounts.value.some(
+          (account) => account.currencyCode === "ZWG",
+        )
       );
     case "user":
       if (!userForm.id) {
@@ -929,7 +976,8 @@ const drawerSubmitDisabled = computed(() => {
       return (
         !userForm.username.trim() ||
         !userForm.email.trim() ||
-        !userForm.displayName.trim()
+        !userForm.displayName.trim() ||
+        !userAccessAssignmentsComplete()
       );
     case "role":
       return !roleForm.code.trim() || !roleForm.name.trim();
@@ -984,7 +1032,10 @@ const drawerSubmitDisabled = computed(() => {
 
 onMounted(loadCoreData);
 
-onBeforeUnmount(() => revokeProfileLogoPreview());
+onBeforeUnmount(() => {
+  revokeProfileLogoPreview();
+  revokeProfileRegistrarSignaturePreview();
+});
 
 watch(activeTab, loadCoreData);
 
@@ -1058,12 +1109,131 @@ function profileJsonValue(source: Record<string, unknown>, key: string) {
   return typeof source[key] === "string" ? String(source[key]) : "";
 }
 
+function emptyProfileBankAccount(
+  currencyCode: ProfileBankAccount["currencyCode"] = "USD",
+): ProfileBankAccount {
+  return {
+    currencyCode,
+    bankName: "",
+    branchName: "",
+    accountName: "",
+    accountNumber: "",
+    branchSortCode: "",
+    swiftCode: "",
+    paymentReferenceInstructions: registrationNumberPaymentInstruction,
+  };
+}
+
+function parsedProfileBankAccounts(
+  bankDetails: Record<string, unknown>,
+): ProfileBankAccount[] {
+  if (Array.isArray(bankDetails.accounts)) {
+    const accounts = bankDetails.accounts.flatMap((value) => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return [];
+      }
+      const account = value as Record<string, unknown>;
+      const currencyCode = profileJsonValue(account, "currencyCode").toUpperCase();
+      if (currencyCode !== "USD" && currencyCode !== "ZWG") {
+        return [];
+      }
+      return [
+        {
+          currencyCode,
+          bankName: profileJsonValue(account, "bankName"),
+          branchName: profileJsonValue(account, "branchName"),
+          accountName: profileJsonValue(account, "accountName"),
+          accountNumber: profileJsonValue(account, "accountNumber"),
+          branchSortCode: profileJsonValue(account, "branchSortCode"),
+          swiftCode: profileJsonValue(account, "swiftCode"),
+          paymentReferenceInstructions: profileJsonValue(
+            account,
+            "paymentReferenceInstructions",
+          ),
+        } satisfies ProfileBankAccount,
+      ];
+    });
+    if (accounts.length) {
+      return accounts;
+    }
+  }
+  const legacyAccountNumber = profileJsonValue(bankDetails, "accountNumber");
+  if (legacyAccountNumber) {
+    return [
+      {
+        currencyCode: "USD",
+        bankName: profileJsonValue(bankDetails, "bankName"),
+        branchName: profileJsonValue(bankDetails, "branchName"),
+        accountName: profileJsonValue(bankDetails, "accountName"),
+        accountNumber: legacyAccountNumber,
+        branchSortCode: profileJsonValue(bankDetails, "branchSortCode"),
+        swiftCode: profileJsonValue(bankDetails, "swiftCode"),
+        paymentReferenceInstructions: profileJsonValue(
+          bankDetails,
+          "paymentReferenceInstructions",
+        ),
+      },
+      emptyProfileBankAccount("ZWG"),
+    ];
+  }
+  return [emptyProfileBankAccount("USD"), emptyProfileBankAccount("ZWG")];
+}
+
+function profileBankDetailsJson(
+  source: Record<string, unknown>,
+  accounts: ProfileBankAccount[],
+) {
+  const result = { ...source };
+  for (const legacyKey of [
+    "bankName",
+    "branchName",
+    "accountName",
+    "accountNumber",
+    "branchSortCode",
+    "swiftCode",
+    "paymentReferenceInstructions",
+  ]) {
+    delete result[legacyKey];
+  }
+  result.accounts = accounts.map((account) =>
+    Object.fromEntries(
+      Object.entries(account)
+        .map(([key, value]) => [key, value.trim()])
+        .filter(([, value]) => Boolean(value)),
+    ),
+  );
+  return JSON.stringify(result);
+}
+
+function addProfileBankAccount() {
+  const usdCount = profileBankAccounts.value.filter(
+    (account) => account.currencyCode === "USD",
+  ).length;
+  const zwgCount = profileBankAccounts.value.filter(
+    (account) => account.currencyCode === "ZWG",
+  ).length;
+  profileBankAccounts.value.push(
+    emptyProfileBankAccount(usdCount <= zwgCount ? "USD" : "ZWG"),
+  );
+}
+
+function removeProfileBankAccount(index: number) {
+  profileBankAccounts.value.splice(index, 1);
+}
+
+function profileBankAccountComplete(account: ProfileBankAccount) {
+  return Boolean(
+    account.currencyCode && account.bankName.trim() && account.accountNumber.trim(),
+  );
+}
+
 function resetProfileForm() {
   Object.assign(profileForm, institutionProfile.value);
   const contactDetails = parseProfileJson(
     institutionProfile.value.contactDetailsJson,
   );
   const branding = parseProfileJson(institutionProfile.value.brandingJson);
+  const bankDetails = parseProfileJson(institutionProfile.value.bankDetailsJson);
   Object.assign(profileContactForm, {
     email: profileJsonValue(contactDetails, "email"),
     phone: profileJsonValue(contactDetails, "phone"),
@@ -1077,9 +1247,16 @@ function resetProfileForm() {
     secondaryColor:
       profileJsonValue(branding, "secondaryColor") || "#f8b334",
     logoDocumentId: profileJsonValue(branding, "logoDocumentId"),
+    registrarSignatureDocumentId: profileJsonValue(
+      branding,
+      "registrarSignatureDocumentId",
+    ),
   });
+  profileBankAccounts.value = parsedProfileBankAccounts(bankDetails);
   profileLogoFile.value = null;
+  profileRegistrarSignatureFile.value = null;
   revokeProfileLogoPreview();
+  revokeProfileRegistrarSignaturePreview();
 }
 
 function revokeProfileLogoPreview() {
@@ -1151,6 +1328,73 @@ function removeProfileLogo() {
   storedProfileLogoUrl.value = "";
 }
 
+function revokeProfileRegistrarSignaturePreview() {
+  if (profileRegistrarSignaturePreviewUrl.value) {
+    URL.revokeObjectURL(profileRegistrarSignaturePreviewUrl.value);
+    profileRegistrarSignaturePreviewUrl.value = "";
+  }
+}
+
+async function loadStoredProfileRegistrarSignature() {
+  storedProfileRegistrarSignature.value = null;
+  storedProfileRegistrarSignatureUrl.value = "";
+  const documentId = profileBrandingForm.registrarSignatureDocumentId;
+  if (!documentId) return;
+  profileRegistrarSignatureLoading.value = true;
+  try {
+    const [document, download] = await Promise.all([
+      api.request<UploadedDocumentSummary>(
+        `/api/documents/uploads/${documentId}`,
+      ),
+      api.request<UploadedDocumentDownload>(
+        `/api/documents/uploads/${documentId}/download?disposition=inline`,
+      ),
+    ]);
+    storedProfileRegistrarSignature.value = document;
+    storedProfileRegistrarSignatureUrl.value = download.downloadUrl;
+  } catch {
+    storedProfileRegistrarSignature.value = null;
+    storedProfileRegistrarSignatureUrl.value = "";
+  } finally {
+    profileRegistrarSignatureLoading.value = false;
+  }
+}
+
+async function selectProfileRegistrarSignature(value: unknown) {
+  const file = Array.isArray(value) ? value[0] : value;
+  revokeProfileRegistrarSignaturePreview();
+  if (!(file instanceof File)) {
+    profileRegistrarSignatureFile.value = null;
+    return;
+  }
+  if (!["image/png", "image/jpeg"].includes(file.type)) {
+    profileRegistrarSignatureFile.value = null;
+    await showError(
+      "Signature not accepted",
+      "Choose a genuine PNG or JPEG signature image.",
+    );
+    return;
+  }
+  if (file.size > maximumRegistrarSignatureSizeBytes) {
+    profileRegistrarSignatureFile.value = null;
+    await showError(
+      "Signature is too large",
+      "Choose a signature image smaller than 2 MB.",
+    );
+    return;
+  }
+  profileRegistrarSignatureFile.value = file;
+  profileRegistrarSignaturePreviewUrl.value = URL.createObjectURL(file);
+}
+
+function removeProfileRegistrarSignature() {
+  profileRegistrarSignatureFile.value = null;
+  revokeProfileRegistrarSignaturePreview();
+  profileBrandingForm.registrarSignatureDocumentId = "";
+  storedProfileRegistrarSignature.value = null;
+  storedProfileRegistrarSignatureUrl.value = "";
+}
+
 async function loadCoreData() {
   loading.value = true;
   error.value = "";
@@ -1169,7 +1413,10 @@ async function loadCoreData() {
         countries.value = countryResult;
         coreStatistics.value = statisticsResult;
         resetProfileForm();
-        await loadStoredProfileLogo();
+        await Promise.all([
+          loadStoredProfileLogo(),
+          loadStoredProfileRegistrarSignature(),
+        ]);
         break;
       }
       case "users":
@@ -1334,6 +1581,19 @@ function createUserAccessDraft(): UserAccessDraft {
   };
 }
 
+function userRoleAssignmentDraft(
+  assignment: UserRoleAssignment,
+): UserAccessDraft {
+  userAccessDraftSequence += 1;
+  return {
+    key: `user-access-${userAccessDraftSequence}`,
+    assignmentId: assignment.id,
+    roleId: assignment.roleId,
+    academicUnitId: assignment.academicUnitId ?? "",
+    startsAt: assignment.startsAt,
+  };
+}
+
 function addUserAccessDraft() {
   userAccessDrafts.value.push(createUserAccessDraft());
 }
@@ -1372,18 +1632,26 @@ function roleProvidesUsableAccess(roleId: string) {
 }
 
 function userAccessStepComplete() {
+  if (!userAccessAssignmentsComplete()) return false;
+  return userAccessDrafts.value.every((assignment) => {
+    const role = userProvisioningRole(assignment);
+    if (!role || rolePermissionLoadingIds.value.has(role.id)) return false;
+    return roleProvidesUsableAccess(role.id);
+  });
+}
+
+function userAccessAssignmentsComplete() {
   if (!userAccessDrafts.value.length) return false;
   const assignmentKeys = new Set<string>();
   return userAccessDrafts.value.every((assignment) => {
     const role = userProvisioningRole(assignment);
-    if (!role || rolePermissionLoadingIds.value.has(role.id)) return false;
+    if (!role) return false;
     if (
       role.scope === "ACADEMIC_UNIT" &&
       !assignment.academicUnitId
     ) {
       return false;
     }
-    if (!roleProvidesUsableAccess(role.id)) return false;
     const assignmentKey = `${role.id}:${assignment.academicUnitId}`;
     if (assignmentKeys.has(assignmentKey)) return false;
     assignmentKeys.add(assignmentKey);
@@ -1651,6 +1919,7 @@ async function saveProfile() {
       body: profilePayload(),
     },
   );
+  let brandingAssetsChanged = false;
   if (profileLogoFile.value) {
     if (!savedProfile.id) {
       throw new Error(
@@ -1670,6 +1939,33 @@ async function saveProfile() {
       },
     );
     profileBrandingForm.logoDocumentId = uploadedLogo.id;
+    brandingAssetsChanged = true;
+  }
+  if (profileRegistrarSignatureFile.value) {
+    if (!savedProfile.id) {
+      throw new Error(
+        "The institution profile must be saved before its registrar signature can be uploaded.",
+      );
+    }
+    const signatureUpload = new FormData();
+    signatureUpload.set("ownerType", "INSTITUTION");
+    signatureUpload.set("ownerId", savedProfile.id);
+    signatureUpload.set(
+      "documentTypeCode",
+      "INSTITUTION_REGISTRAR_SIGNATURE",
+    );
+    signatureUpload.set("file", profileRegistrarSignatureFile.value);
+    const uploadedSignature = await api.request<UploadedDocumentSummary>(
+      "/api/documents/uploads",
+      {
+        method: "POST",
+        body: signatureUpload,
+      },
+    );
+    profileBrandingForm.registrarSignatureDocumentId = uploadedSignature.id;
+    brandingAssetsChanged = true;
+  }
+  if (brandingAssetsChanged) {
     savedProfile = await api.request<InstitutionProfile>(
       "/api/core/institution-profile",
       {
@@ -1679,11 +1975,15 @@ async function saveProfile() {
     );
   }
   institutionProfile.value = savedProfile;
+  await auth.syncCoreUser();
   profileLogoFile.value = null;
+  profileRegistrarSignatureFile.value = null;
   revokeProfileLogoPreview();
+  revokeProfileRegistrarSignaturePreview();
   await showSuccess(
     "Institution profile saved",
-    profileBrandingForm.logoDocumentId
+    profileBrandingForm.logoDocumentId ||
+      profileBrandingForm.registrarSignatureDocumentId
       ? "Institution details and brand assets are updated."
       : "Institution details are updated.",
   );
@@ -1697,10 +1997,14 @@ function profilePayload() {
   const existingBranding = parseProfileJson(
     institutionProfile.value.brandingJson,
   );
+  const existingBankDetails = parseProfileJson(
+    institutionProfile.value.bankDetailsJson,
+  );
   return {
     code: profileForm.code,
     name: profileForm.name,
     legalName: profileForm.legalName,
+    registrarName: profileForm.registrarName,
     defaultCurrencyCode: profileForm.defaultCurrencyCode,
     countryCode: profileForm.countryCode,
     timezone: profileForm.timezone,
@@ -1715,7 +2019,13 @@ function profilePayload() {
       primaryColor: profileBrandingForm.primaryColor,
       secondaryColor: profileBrandingForm.secondaryColor,
       logoDocumentId: profileBrandingForm.logoDocumentId,
+      registrarSignatureDocumentId:
+        profileBrandingForm.registrarSignatureDocumentId,
     }),
+    bankDetailsJson: profileBankDetailsJson(
+      existingBankDetails,
+      profileBankAccounts.value,
+    ),
   };
 }
 
@@ -1729,6 +2039,7 @@ async function saveUser() {
     status: userForm.status,
   };
   if (userForm.id) {
+    await saveEditedUserAccessAssignments(userForm.id);
     await api.request(`/api/core/users/${userForm.id}`, {
       method: "PUT",
       body,
@@ -1767,17 +2078,79 @@ async function saveUser() {
   await loadCoreData();
 }
 
-function editUser(row: Record<string, unknown>) {
-  Object.assign(userForm, {
-    id: row.id,
-    username: row.username,
-    email: row.email,
-    phoneNumber: row.phoneNumber ?? "",
-    displayName: row.displayName,
-    status: row.status,
-  });
-  activeTab.value = "users";
-  openDrawer("user");
+async function saveEditedUserAccessAssignments(userId: string) {
+  const originalAssignments = new Map(
+    editingUserRoleAssignments.value.map((assignment) => [assignment.id, assignment]),
+  );
+  for (const assignment of userAccessDrafts.value) {
+    if (!assignment.assignmentId) {
+      await api.request(`/api/core/users/${userId}/role-assignments`, {
+        method: "POST",
+        body: {
+          roleId: assignment.roleId,
+          academicUnitId: assignment.academicUnitId || undefined,
+          startsAt: assignment.startsAt || undefined,
+        },
+      });
+      continue;
+    }
+    const originalAssignment = originalAssignments.get(assignment.assignmentId);
+    if (
+      (originalAssignment?.academicUnitId ?? "") !==
+      assignment.academicUnitId
+    ) {
+      await api.request(
+        `/api/core/users/${userId}/role-assignments/${assignment.assignmentId}/academic-unit`,
+        {
+          method: "PUT",
+          body: { academicUnitId: assignment.academicUnitId },
+        },
+      );
+    }
+  }
+  const retainedAssignmentIds = new Set(
+    userAccessDrafts.value
+      .map((assignment) => assignment.assignmentId)
+      .filter((assignmentId): assignmentId is string => Boolean(assignmentId)),
+  );
+  for (const originalAssignment of editingUserRoleAssignments.value) {
+    if (!retainedAssignmentIds.has(originalAssignment.id)) {
+      await api.request(
+        `/api/core/users/${userId}/role-assignments/${originalAssignment.id}`,
+        { method: "DELETE" },
+      );
+    }
+  }
+}
+
+async function editUser(row: Record<string, unknown>) {
+  try {
+    const [, roleAssignments] = await Promise.all([
+      ensureUserProvisioningOptions(),
+      api.request<UserRoleAssignment[]>(
+        `/api/core/users/${String(row.id)}/role-assignments`,
+      ),
+    ]);
+    Object.assign(userForm, {
+      id: row.id,
+      username: row.username,
+      email: row.email,
+      phoneNumber: row.phoneNumber ?? "",
+      displayName: row.displayName,
+      status: row.status,
+    });
+    editingUserRoleAssignments.value = roleAssignments;
+    userAccessDrafts.value = roleAssignments.length
+      ? roleAssignments.map(userRoleAssignmentDraft)
+      : [createUserAccessDraft()];
+    activeTab.value = "users";
+    openDrawer("user");
+  } catch (caught) {
+    await showError(
+      "User access could not be loaded",
+      api.errorMessage(caught, "Roles and academic units are unavailable."),
+    );
+  }
 }
 
 async function disableUser(row: Record<string, unknown>) {
@@ -1810,6 +2183,7 @@ function resetUserForm() {
   });
   userProvisioningStep.value = "identity";
   userAccessDrafts.value = [createUserAccessDraft()];
+  editingUserRoleAssignments.value = [];
   rolePermissionCatalog.value = {};
   rolePermissionLoadingIds.value = new Set();
 }
@@ -3395,7 +3769,7 @@ function rowAction(
             userProvisioningStep !== 'identity'
           "
           :width="
-            drawerKind === 'profile' || (drawerKind === 'user' && !userForm.id)
+            drawerKind === 'profile' || drawerKind === 'user'
               ? 'xl'
               : 'lg'
           "
@@ -3435,6 +3809,14 @@ function rowAction(
                 class="md:col-span-2"
                 required
               />
+              <EmhareFormField
+                v-model="profileForm.registrarName"
+                name="registrarName"
+                label="Registrar name"
+                description="Printed above the Registrar title on official admission letters."
+                class="md:col-span-2"
+                required
+              />
             </EmhareFormSection>
 
             <USeparator />
@@ -3471,6 +3853,105 @@ function rowAction(
                 disabled
                 description="USD is the governed ledger base currency. ZWG transactions require an effective exchange rate."
               />
+            </EmhareFormSection>
+
+            <USeparator />
+
+            <EmhareFormSection
+              title="Bank details"
+              description="Maintain every institution-owned payment account printed on official documents. At least one USD/Nostro and one ZWG account are required."
+              icon="i-lucide-landmark"
+            >
+              <div class="space-y-3 md:col-span-2">
+                <UAlert
+                  color="primary"
+                  variant="soft"
+                  icon="i-lucide-badge-dollar-sign"
+                  title="Currency-specific payment accounts"
+                  description="USD accounts are labelled as Nostro accounts on offer letters. ZWG transactions still require the effective Finance exchange rate when applicable."
+                />
+                <div
+                  v-for="(bankAccount, index) in profileBankAccounts"
+                  :key="`${bankAccount.currencyCode}-${index}`"
+                  class="rounded-lg border border-muted bg-elevated/40 p-4"
+                >
+                  <div class="mb-4 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                      <UBadge color="primary" variant="soft">
+                        {{ bankAccount.currencyCode }} account
+                      </UBadge>
+                      <span class="text-sm font-medium text-default">
+                        {{ bankAccount.bankName || `Payment account ${index + 1}` }}
+                      </span>
+                    </div>
+                    <UButton
+                      label="Remove"
+                      icon="i-lucide-trash-2"
+                      color="error"
+                      variant="ghost"
+                      size="sm"
+                      @click="removeProfileBankAccount(index)"
+                    />
+                  </div>
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <EmhareFormField
+                      v-model="bankAccount.currencyCode"
+                      type="select"
+                      :name="`bankAccounts.${index}.currencyCode`"
+                      label="Account currency"
+                      :items="paymentCurrencyOptions"
+                      required
+                    />
+                    <EmhareFormField
+                      v-model="bankAccount.bankName"
+                      :name="`bankAccounts.${index}.bankName`"
+                      label="Bank name"
+                      placeholder="CBZ BANK"
+                      required
+                    />
+                    <EmhareFormField
+                      v-model="bankAccount.accountNumber"
+                      :name="`bankAccounts.${index}.accountNumber`"
+                      label="Account number"
+                      required
+                    />
+                    <EmhareFormField
+                      v-model="bankAccount.accountName"
+                      :name="`bankAccounts.${index}.accountName`"
+                      label="Account name"
+                    />
+                    <EmhareFormField
+                      v-model="bankAccount.branchName"
+                      :name="`bankAccounts.${index}.branchName`"
+                      label="Branch"
+                      placeholder="Kwame Nkrumah Avenue, Harare"
+                    />
+                    <EmhareFormField
+                      v-model="bankAccount.branchSortCode"
+                      :name="`bankAccounts.${index}.branchSortCode`"
+                      label="Branch sort code"
+                    />
+                    <EmhareFormField
+                      v-model="bankAccount.swiftCode"
+                      :name="`bankAccounts.${index}.swiftCode`"
+                      label="SWIFT code"
+                    />
+                    <EmhareFormField
+                      v-model="bankAccount.paymentReferenceInstructions"
+                      :name="`bankAccounts.${index}.paymentReferenceInstructions`"
+                      label="Payment reference instructions"
+                      description="Applicants receive a registration number when they accept the offer and must quote it when paying."
+                    />
+                  </div>
+                </div>
+                <UButton
+                  label="Add bank account"
+                  icon="i-lucide-plus"
+                  color="primary"
+                  variant="outline"
+                  @click="addProfileBankAccount"
+                />
+              </div>
             </EmhareFormSection>
 
             <USeparator />
@@ -3564,6 +4045,66 @@ function rowAction(
                       variant="ghost"
                       size="xs"
                       @click="removeProfileLogo"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div
+                class="grid gap-5 rounded-xl border border-muted bg-elevated/40 p-4 md:col-span-2 sm:grid-cols-[8rem_minmax(0,1fr)]"
+              >
+                <div
+                  class="flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-muted bg-default p-3 shadow-sm"
+                >
+                  <img
+                    v-if="activeProfileRegistrarSignatureUrl"
+                    :src="activeProfileRegistrarSignatureUrl"
+                    :alt="`${profileForm.registrarName} signature preview`"
+                    class="size-full object-contain"
+                  />
+                  <UIcon
+                    v-else
+                    name="i-lucide-signature"
+                    class="size-10 text-dimmed"
+                  />
+                </div>
+                <div class="min-w-0 space-y-3">
+                  <div>
+                    <p class="text-sm font-semibold text-highlighted">
+                      Registrar signature
+                    </p>
+                    <p class="mt-1 text-sm text-muted">
+                      Upload the transparent PNG or JPEG signature printed above
+                      the configured Registrar name on new offer letters.
+                    </p>
+                  </div>
+                  <EmhareFormField
+                    :model-value="profileRegistrarSignatureFile"
+                    type="file"
+                    name="registrarSignature"
+                    label="Choose registrar signature"
+                    accept="image/png,image/jpeg"
+                    @update:model-value="selectProfileRegistrarSignature"
+                  />
+                  <div
+                    v-if="storedProfileRegistrarSignature || profileRegistrarSignatureFile"
+                    class="flex flex-wrap items-center gap-2 text-xs text-muted"
+                  >
+                    <span class="truncate">
+                      {{
+                        profileRegistrarSignatureFile?.name ||
+                        storedProfileRegistrarSignature?.originalFileName
+                      }}
+                    </span>
+                    <span v-if="profileRegistrarSignatureLoading">
+                      Loading preview…
+                    </span>
+                    <UButton
+                      label="Remove"
+                      icon="i-lucide-trash-2"
+                      color="error"
+                      variant="ghost"
+                      size="xs"
+                      @click="removeProfileRegistrarSignature"
                     />
                   </div>
                 </div>
@@ -3802,42 +4343,132 @@ function rowAction(
               </div>
             </template>
 
-            <div v-else class="space-y-4">
-              <EmhareFormField
-                v-model="userForm.username"
-                name="username"
-                label="Username"
-                required
-                readonly
-              />
-              <EmhareFormField
-                v-model="userForm.email"
-                type="email"
-                name="email"
-                label="Email"
-                required
-                readonly
-              />
-              <EmhareFormField
-                v-model="userForm.displayName"
-                name="displayName"
-                label="Display name"
-                required
-              />
-              <EmhareFormField
-                v-model="userForm.phoneNumber"
-                type="phone"
-                name="phoneNumber"
-                label="Phone number"
-              />
-              <EmhareFormField
-                v-model="userForm.status"
-                type="select"
-                name="status"
-                label="Status"
-                :items="userStatuses"
-                required
-              />
+            <div v-else class="space-y-8">
+              <EmhareFormSection
+                title="User identity"
+                description="Update the local profile while Keycloak continues to govern sign-in credentials."
+                icon="i-lucide-user-round"
+              >
+                <EmhareFormField
+                  v-model="userForm.username"
+                  name="username"
+                  label="Username"
+                  required
+                  readonly
+                />
+                <EmhareFormField
+                  v-model="userForm.email"
+                  type="email"
+                  name="email"
+                  label="Email"
+                  required
+                  readonly
+                />
+                <EmhareFormField
+                  v-model="userForm.displayName"
+                  name="displayName"
+                  label="Display name"
+                  required
+                />
+                <EmhareFormField
+                  v-model="userForm.phoneNumber"
+                  type="phone"
+                  name="phoneNumber"
+                  label="Phone number"
+                />
+                <EmhareFormField
+                  v-model="userForm.status"
+                  type="select"
+                  name="status"
+                  label="Status"
+                  :items="userStatuses"
+                  required
+                />
+              </EmhareFormSection>
+
+              <EmhareFormSection
+                title="Role and academic-unit assignments"
+                description="Academic-unit roles operate only within the selected unit. System roles remain institution-wide."
+                icon="i-lucide-building-2"
+                class="grid-cols-1"
+              >
+                <UAlert
+                  color="primary"
+                  variant="soft"
+                  icon="i-lucide-shield-check"
+                  title="Keep access scope explicit"
+                  description="Choose an academic unit for every academic-unit role. Existing role identities are locked; remove an assignment and add another when the responsibility itself changes."
+                />
+
+                <div
+                  v-for="(assignment, assignmentIndex) in userAccessDrafts"
+                  :key="assignment.key"
+                  class="rounded-xl border border-muted bg-elevated/40 p-4 sm:p-5"
+                >
+                  <div class="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-sm font-semibold text-highlighted">
+                        Role assignment {{ assignmentIndex + 1 }}
+                      </p>
+                      <p class="mt-1 text-xs text-muted">
+                        {{ assignment.assignmentId ? "Existing active assignment" : "New assignment" }}
+                      </p>
+                    </div>
+                    <UButton
+                      icon="i-lucide-trash-2"
+                      label="Remove"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      @click="removeUserAccessDraft(assignment.key)"
+                    />
+                  </div>
+
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <EmhareFormField
+                      :model-value="assignment.roleId"
+                      type="searchable-select"
+                      :name="`edit-role-${assignment.key}`"
+                      label="Role"
+                      placeholder="Select role"
+                      :items="roleOptions"
+                      :disabled="Boolean(assignment.assignmentId)"
+                      required
+                      @update:model-value="updateUserProvisioningRole(assignment, $event)"
+                    />
+                    <EmhareFormField
+                      v-if="userProvisioningRoleNeedsScope(assignment)"
+                      v-model="assignment.academicUnitId"
+                      type="searchable-select"
+                      :name="`edit-academic-unit-${assignment.key}`"
+                      label="Academic unit"
+                      placeholder="Search by unit code or name"
+                      :items="academicUnitOptions"
+                      required
+                    />
+                    <div
+                      v-else
+                      class="rounded-lg border border-dashed border-muted px-4 py-3"
+                    >
+                      <p class="text-xs font-semibold uppercase tracking-wide text-muted">
+                        Scope
+                      </p>
+                      <p class="mt-1 text-sm text-highlighted">
+                        Institution-wide
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <UButton
+                  icon="i-lucide-plus"
+                  label="Add another role"
+                  color="primary"
+                  variant="outline"
+                  class="w-fit"
+                  @click="addUserAccessDraft"
+                />
+              </EmhareFormSection>
             </div>
           </div>
 

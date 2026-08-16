@@ -72,4 +72,8 @@ public class UserRoleAssignment extends AuditableEntity {
     public void end(Instant endedAt) {
         endsAt = endedAt;
     }
+
+    public void assignAcademicUnit(UUID assignedAcademicUnitId) {
+        academicUnitId = assignedAcademicUnitId;
+    }
 }

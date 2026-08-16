@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 /** @author Tinashe K */
@@ -41,6 +42,31 @@ class CalendarLifecycleTest {
         intake.close(0);
 
         assertThat(intake.getStatus()).isEqualTo(CalendarStatus.CLOSED);
+    }
+
+    @Test
+    void intakeOwnsReusableOfferLetterDates() {
+        Intake intake = new Intake(
+                academicYear, "MAR-2028", "March 2028 Intake",
+                LocalDate.parse("2028-01-01"), LocalDate.parse("2028-02-15"), 3,
+                Instant.parse("2028-02-28T21:59:59Z"), LocalDate.parse("2028-02-26"),
+                LocalDate.parse("2028-02-29"), LocalDate.parse("2028-03-04"));
+
+        assertThat(intake.getOfferAcceptanceDeadline()).isEqualTo(Instant.parse("2028-02-28T21:59:59Z"));
+        assertThat(intake.getRegistrationDate()).isEqualTo(LocalDate.parse("2028-02-26"));
+        assertThat(intake.getOrientationDate()).isEqualTo(LocalDate.parse("2028-02-29"));
+        assertThat(intake.getCommencementDate()).isEqualTo(LocalDate.parse("2028-03-04"));
+    }
+
+    @Test
+    void intakeRejectsRegistrationAfterCommencement() {
+        assertThatThrownBy(() -> new Intake(
+                academicYear, "MAR-2028", "March 2028 Intake",
+                LocalDate.parse("2028-01-01"), LocalDate.parse("2028-02-15"), 3,
+                Instant.parse("2028-02-28T21:59:59Z"), LocalDate.parse("2028-03-05"),
+                null, LocalDate.parse("2028-03-04")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Registration and orientation dates cannot be after commencement.");
     }
 
     @Test

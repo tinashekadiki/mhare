@@ -205,7 +205,7 @@ export function parseLcov(lcovText, repositoryRoot) {
       const [lineNumberText, executionCountText] = line.slice(3).split(',')
       const lineNumber = Number(lineNumberText)
       const existingCoverage = currentFileCoverage.get(lineNumber) ?? {
-        lineCovered: false,
+        lineCovered: null,
         branchesCovered: 0,
         branchesTotal: 0
       }
@@ -218,7 +218,7 @@ export function parseLcov(lcovText, repositoryRoot) {
       const [lineNumberText, , , executionCountText] = line.slice(5).split(',')
       const lineNumber = Number(lineNumberText)
       const existingCoverage = currentFileCoverage.get(lineNumber) ?? {
-        lineCovered: false,
+        lineCovered: null,
         branchesCovered: 0,
         branchesTotal: 0
       }
@@ -242,7 +242,11 @@ export function mergeCoverage(targetCoverage, additionalCoverage) {
         continue
       }
       targetLines.set(lineNumber, {
-        lineCovered: targetMetric.lineCovered || additionalMetric.lineCovered,
+        lineCovered: targetMetric.lineCovered === true || additionalMetric.lineCovered === true
+          ? true
+          : targetMetric.lineCovered === false || additionalMetric.lineCovered === false
+            ? false
+            : null,
         branchesCovered: Math.max(targetMetric.branchesCovered, additionalMetric.branchesCovered),
         branchesTotal: Math.max(targetMetric.branchesTotal, additionalMetric.branchesTotal)
       })
@@ -287,9 +291,11 @@ export function evaluateChangedCoverage(changedLinesByFile, coverageByFile, thre
       for (const lineNumber of [...changedLines].sort((left, right) => left - right)) {
         const metric = fileCoverage.get(lineNumber)
         if (!metric) continue
-        fileResult.linesTotal += 1
-        if (metric.lineCovered) fileResult.linesCovered += 1
-        else fileResult.uncoveredLines.push(lineNumber)
+        if (metric.lineCovered !== null) {
+          fileResult.linesTotal += 1
+          if (metric.lineCovered) fileResult.linesCovered += 1
+          else fileResult.uncoveredLines.push(lineNumber)
+        }
 
         fileResult.branchesTotal += metric.branchesTotal
         fileResult.branchesCovered += metric.branchesCovered

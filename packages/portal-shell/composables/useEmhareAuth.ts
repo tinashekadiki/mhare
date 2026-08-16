@@ -21,6 +21,7 @@ type CoreCurrentUserProfile = {
   realmRoles?: string[]
   effectivePermissionCodes?: string[]
   operationalAccess?: boolean
+  institutionBrandingJson?: string
 }
 
 const OPERATIONAL_REALM_ROLES = new Set([

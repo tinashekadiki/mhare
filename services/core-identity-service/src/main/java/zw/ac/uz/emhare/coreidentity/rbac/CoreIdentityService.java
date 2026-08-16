@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -40,6 +41,9 @@ import zw.ac.uz.emhare.common.security.EmhareCurrentUser;
 
 @Service
 public class CoreIdentityService {
+
+    private static final String DEFAULT_INSTITUTION_BRANDING_JSON =
+            "{\"primaryColor\":\"#20743a\",\"secondaryColor\":\"#f8b334\"}";
 
     private static final Set<String> SELF_SERVICE_ROLE_CODES = Set.of("APPLICANT", "STUDENT");
 
@@ -154,11 +158,13 @@ public class CoreIdentityService {
                 normalizeCode(command.code()),
                 command.name(),
                 command.legalName(),
+                command.registrarName(),
                 command.defaultCurrencyCode(),
                 command.countryCode(),
                 command.timezone(),
                 command.contactDetailsJson(),
                 command.brandingJson(),
+                command.bankDetailsJson(),
                 command.legacyCode());
         return InstitutionProfileSummary.from(institutionProfileRepository.save(profile));
     }
@@ -283,6 +289,11 @@ public class CoreIdentityService {
         boolean operationalAccess = user.getStatus() == UserStatus.ACTIVE
                 && (normalizedRealmRoles.contains("system-admin")
                         || (hasOperationalAssignment && !effectivePermissionCodes.isEmpty()));
+        String institutionBrandingJson = institutionProfileRepository
+                .findFirstByDeletedAtIsNullOrderByCreatedAtAsc()
+                .map(InstitutionProfile::getBrandingJson)
+                .filter(brandingJson -> !brandingJson.isBlank())
+                .orElse(DEFAULT_INSTITUTION_BRANDING_JSON);
         return new CurrentUserProfile(
                 CoreUserSummary.from(user),
                 activeRoleAssignments.stream()
@@ -290,7 +301,8 @@ public class CoreIdentityService {
                         .toList(),
                 Set.copyOf(normalizedRealmRoles),
                 Set.copyOf(effectivePermissionCodes),
-                operationalAccess);
+                operationalAccess,
+                institutionBrandingJson);
     }
 
     @Transactional
@@ -403,6 +415,32 @@ public class CoreIdentityService {
         return userRoleAssignmentRepository.findByUserIdAndDeletedAtIsNull(userId).stream()
                 .map(UserRoleAssignmentSummary::from)
                 .toList();
+    }
+
+    @Transactional
+    public UserRoleAssignmentSummary updateRoleAssignmentAcademicUnit(
+            UUID userId,
+            UUID assignmentId,
+            UUID academicUnitId) {
+        UserRoleAssignment assignment = userRoleAssignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Role assignment not found."));
+        if (!assignment.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Role assignment does not belong to the user.");
+        }
+        if (assignment.isDeleted() || assignment.getEndsAt() != null) {
+            throw new IllegalStateException("Only an active role assignment can be updated.");
+        }
+        Role role = assignment.getRole();
+        validateScope(role, academicUnitId);
+        if (Objects.equals(academicUnitId, assignment.getAcademicUnitId())) {
+            return UserRoleAssignmentSummary.from(assignment);
+        }
+        if (userRoleAssignmentRepository.existsByUserAndRoleAndAcademicUnitIdAndEndsAtIsNull(
+                assignment.getUser(), role, academicUnitId)) {
+            throw new IllegalStateException("User already has this active role assignment.");
+        }
+        assignment.assignAcademicUnit(academicUnitId);
+        return UserRoleAssignmentSummary.from(assignment);
     }
 
     @Transactional(readOnly = true)

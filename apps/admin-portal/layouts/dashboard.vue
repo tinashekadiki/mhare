@@ -84,6 +84,11 @@ const navigationGroups = [
     icon: "i-lucide-shield-check",
     items: [
       {
+        label: "Core overview",
+        icon: "i-lucide-layout-dashboard",
+        to: "/operations/dashboard/core",
+      },
+      {
         label: "Core Identity",
         icon: "i-lucide-shield-check",
         to: "/operations/core",
@@ -94,6 +99,11 @@ const navigationGroups = [
     label: "Academic Setup",
     icon: "i-lucide-network",
     items: [
+      {
+        label: "Academic overview",
+        icon: "i-lucide-layout-dashboard",
+        to: "/operations/dashboard/academic-setup",
+      },
       {
         label: "Academic structure",
         icon: "i-lucide-network",
@@ -126,7 +136,12 @@ const navigationGroups = [
     icon: "i-lucide-file-check-2",
     items: [
       {
-        label: "Admissions",
+        label: "Admissions overview",
+        icon: "i-lucide-layout-dashboard",
+        to: "/operations/admissions-dashboard",
+      },
+      {
+        label: "Admissions workflow",
         icon: "i-lucide-workflow",
         to: "/operations/admissions",
       },
@@ -134,6 +149,11 @@ const navigationGroups = [
         label: "Application types",
         icon: "i-lucide-files",
         to: "/operations/application-types",
+      },
+      {
+        label: "Programme requirements",
+        icon: "i-lucide-list-checks",
+        to: "/operations/programme-requirements",
       },
       {
         label: "Applicant register",
@@ -152,9 +172,9 @@ const navigationGroups = [
     icon: "i-lucide-receipt-text",
     items: [
       {
-        label: "Finance",
-        icon: "i-lucide-receipt-text",
-        to: "/operations/finance",
+        label: "Finance overview",
+        icon: "i-lucide-layout-dashboard",
+        to: "/operations/dashboard/finance",
       },
       {
         label: "Fee catalogue",
@@ -188,6 +208,11 @@ const navigationGroups = [
     icon: "i-lucide-user-round-check",
     items: [
       {
+        label: "Student Records overview",
+        icon: "i-lucide-layout-dashboard",
+        to: "/operations/dashboard/student-records",
+      },
+      {
         label: "Student conversions",
         icon: "i-lucide-user-round-check",
         to: "/operations/student-conversions",
@@ -203,6 +228,11 @@ const navigationGroups = [
     label: "Teaching and Assessment",
     icon: "i-lucide-clipboard-pen-line",
     items: [
+      {
+        label: "Assessment overview",
+        icon: "i-lucide-layout-dashboard",
+        to: "/operations/dashboard/assessment-results",
+      },
       {
         label: "Assessment schemes",
         icon: "i-lucide-list-checks",
@@ -250,6 +280,11 @@ const navigationGroups = [
     icon: "i-lucide-calendar-clock",
     items: [
       {
+        label: "Exams overview",
+        icon: "i-lucide-layout-dashboard",
+        to: "/operations/dashboard/exams-timetabling",
+      },
+      {
         label: "Exam setup",
         icon: "i-lucide-building-2",
         to: "/operations/exam-setup",
@@ -270,6 +305,11 @@ const navigationGroups = [
     label: "Accommodation",
     icon: "i-lucide-building-2",
     items: [
+      {
+        label: "Accommodation overview",
+        icon: "i-lucide-layout-dashboard",
+        to: "/operations/dashboard/accommodation",
+      },
       {
         label: "Accommodation",
         icon: "i-lucide-building-2",
@@ -294,6 +334,11 @@ const navigationGroups = [
     icon: "i-lucide-utensils",
     items: [
       {
+        label: "Dining overview",
+        icon: "i-lucide-layout-dashboard",
+        to: "/operations/dashboard/dining",
+      },
+      {
         label: "Dining",
         icon: "i-lucide-utensils",
         to: "/operations/dining",
@@ -317,6 +362,11 @@ const navigationGroups = [
     icon: "i-lucide-files",
     items: [
       {
+        label: "Documents overview",
+        icon: "i-lucide-layout-dashboard",
+        to: "/operations/dashboard/documents",
+      },
+      {
         label: "Documents",
         icon: "i-lucide-files",
         to: "/operations/documents",
@@ -327,6 +377,11 @@ const navigationGroups = [
     label: "Notifications",
     icon: "i-lucide-send",
     items: [
+      {
+        label: "Notifications overview",
+        icon: "i-lucide-layout-dashboard",
+        to: "/operations/dashboard/notifications",
+      },
       {
         label: "Notifications",
         icon: "i-lucide-send",
@@ -350,16 +405,10 @@ const quickActions = [
     to: "/operations/admissions",
   },
   {
-    id: "selection-round",
-    label: "Selection round",
+    id: "programme-requirements",
+    label: "Programme requirements",
     icon: "i-lucide-list-checks",
-    to: "/operations/admissions-selection",
-  },
-  {
-    id: "offer-batch",
-    label: "Offer batch",
-    icon: "i-lucide-mail-check",
-    to: "/operations/admissions-offers",
+    to: "/operations/programme-requirements",
   },
   {
     id: "student-conversions",
@@ -493,10 +542,12 @@ const visibleQuickActions = computed(() =>
 );
 
 const academicPeriodScopedRoutes = new Set([
+  "/operations/admissions-dashboard",
   "/operations/admissions",
   "/operations/admissions-reports",
   "/operations/admissions-verification",
   "/operations/admissions-evaluation",
+  "/operations/programme-requirements",
   "/operations/admissions-selection",
   "/operations/admissions-offers",
   "/operations/admissions-documents",

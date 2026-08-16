@@ -22,8 +22,8 @@ describe('Admissions reports catalogue', () => {
     template: '<a v-if="to" :href="to">{{ label }}</a><button v-else :aria-label="$attrs[\'aria-label\']" @click="$emit(\'click\')">{{ label }}</button>'
   })
   const BadgeStub = defineComponent({
-    props: ['label'],
-    template: '<span class="badge-stub">{{ label }}</span>'
+    props: ['label', 'color'],
+    template: '<span class="badge-stub" :data-color="color">{{ label }}</span>'
   })
   const AlertStub = defineComponent({
     props: ['title', 'description'],
@@ -35,6 +35,23 @@ describe('Admissions reports catalogue', () => {
   const IconStub = defineComponent({
     template: '<span class="icon-stub" />'
   })
+  const ContainerStub = defineComponent({
+    template: '<main class="container-stub"><slot /></main>'
+  })
+  const PageGridStub = defineComponent({
+    template: '<section class="page-grid-stub"><slot /></section>'
+  })
+  const PageCardStub = defineComponent({
+    props: ['title', 'description', 'icon'],
+    template: '<article class="page-card-stub"><slot name="header" /><h2>{{ title }}</h2><slot name="description"><p>{{ description }}</p></slot><slot name="body" /><slot name="footer" /><slot /></article>'
+  })
+  const SeparatorStub = defineComponent({
+    template: '<hr class="separator-stub">'
+  })
+  const EmptyStub = defineComponent({
+    props: ['title', 'description'],
+    template: '<section class="empty-stub"><h2>{{ title }}</h2><p>{{ description }}</p></section>'
+  })
 
   const catalogue = [
     {
@@ -42,7 +59,7 @@ describe('Admissions reports catalogue', () => {
       family: 'Application demand',
       title: 'Programme and academic-unit demand',
       description: 'Compare distinct applications and ranked Programme choices.',
-      formats: ['SCREEN', 'BAR_CHART', 'PDF'],
+      formats: ['SCREEN', 'BAR_CHART', 'XLSX', 'PDF'],
       variants: [
         'Programme application report',
         'Academic-unit Programme statistics',
@@ -79,7 +96,12 @@ describe('Admissions reports catalogue', () => {
           UBadge: BadgeStub,
           UAlert: AlertStub,
           USkeleton: SkeletonStub,
-          UIcon: IconStub
+          UIcon: IconStub,
+          UContainer: ContainerStub,
+          UPageGrid: PageGridStub,
+          UPageCard: PageCardStub,
+          USeparator: SeparatorStub,
+          UEmpty: EmptyStub
         }
       }
     })
@@ -104,26 +126,38 @@ describe('Admissions reports catalogue', () => {
 
     expect(request).toHaveBeenCalledOnce()
     expect(request).toHaveBeenCalledWith('/api/admissions/reports/catalogue')
-    expect(wrapper.text()).toContain('Report catalogue')
-    expect(wrapper.text()).toContain('Open a report to apply filters, review results and export.')
+    expect(wrapper.text()).not.toContain('Report catalogue')
+    expect(wrapper.text()).not.toContain('Open a report to apply filters, review results and export.')
     expect(wrapper.text()).not.toContain('Current pipeline status')
     expect(wrapper.text()).not.toContain('Detailed application register')
     expect(wrapper.text()).not.toContain('Distinct pipeline totals')
     expect(wrapper.findAll('select')).toHaveLength(0)
   })
 
-  it('uses a flat operational UZ treatment without generated-dashboard decoration', async () => {
+  it('uses standard Nuxt UI with a balanced professional palette', async () => {
     const ReportsPage = (await import('../../pages/operations/admissions-reports/index.vue')).default
     const wrapper = mountReportsPage(ReportsPage)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Report catalogue')
+    expect(wrapper.text()).not.toContain('Report catalogue')
     expect(wrapper.text()).not.toContain('Admissions intelligence')
-    expect(wrapper.html()).toContain('uzgreen-900')
+    expect(wrapper.find('.page-header-stub').exists()).toBe(false)
+    expect(wrapper.find('.page-grid-stub').exists()).toBe(true)
+    expect(wrapper.findAll('.page-card-stub')).toHaveLength(3)
+    expect(wrapper.get('[data-testid="admissions-reports-content"]').classes()).toContain('max-w-none')
+    expect(wrapper.html()).toContain('ui-color-primary-800')
+    expect(wrapper.html()).not.toContain('border-primary pl-4')
+    expect(wrapper.html()).not.toContain('uzgreen-900')
+    expect(wrapper.html()).not.toContain('border-t-uzgreen')
     expect(wrapper.html()).not.toContain('bg-gradient')
     expect(wrapper.html()).not.toContain('blur-3xl')
     expect(wrapper.html()).not.toContain('hover:-translate')
     expect(wrapper.html()).not.toContain('padStart')
+    expect(wrapper.find('[data-color="neutral"]').exists()).toBe(true)
+    expect(wrapper.find('[data-color="info"]').exists()).toBe(true)
+    expect(wrapper.find('[data-color="success"]').exists()).toBe(true)
+    expect(wrapper.find('[data-color="error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-color="secondary"]').exists()).toBe(true)
   })
 
   it('shows concise report cards with formats and dedicated destinations', async () => {

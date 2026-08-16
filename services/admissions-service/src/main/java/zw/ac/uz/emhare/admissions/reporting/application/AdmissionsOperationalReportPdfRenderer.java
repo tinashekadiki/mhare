@@ -31,14 +31,14 @@ final class AdmissionsOperationalReportPdfRenderer {
             .withZone(ZoneId.of("Africa/Harare"));
 
     private static final Color UZ_GREEN = new Color(0x00, 0x66, 0x33);
-    private static final Color UZ_GREEN_DARK = new Color(0x08, 0x3F, 0x2B);
     private static final Color UZ_GOLD = new Color(0xE0, 0xB5, 0x22);
-    private static final Color INK = new Color(0x17, 0x2A, 0x24);
-    private static final Color MUTED = new Color(0x5F, 0x72, 0x6A);
-    private static final Color BORDER = new Color(0xD7, 0xE1, 0xDC);
-    private static final Color SURFACE = new Color(0xF5, 0xF8, 0xF6);
-    private static final Color GREEN_TINT = new Color(0xE8, 0xF3, 0xED);
-    private static final Color GOLD_TINT = new Color(0xFB, 0xF5, 0xDC);
+    private static final Color DATA_BLUE = new Color(0x33, 0x5C, 0x81);
+    private static final Color INK = new Color(0x1D, 0x29, 0x39);
+    private static final Color MUTED = new Color(0x66, 0x70, 0x85);
+    private static final Color BORDER = new Color(0xD0, 0xD5, 0xDD);
+    private static final Color SURFACE = new Color(0xF8, 0xFA, 0xFC);
+    private static final Color ACCENT_TINT = new Color(0xEC, 0xF2, 0xF7);
+    private static final Color TABLE_HEADER = new Color(0xF2, 0xF4, 0xF7);
     private static final Color WHITE = Color.WHITE;
 
     private static final float MARGIN = 30;
@@ -121,19 +121,22 @@ final class AdmissionsOperationalReportPdfRenderer {
         }
 
         private void drawInstitutionHeader() throws IOException {
-            fillRect(0, PAGE_SIZE.getHeight() - HEADER_HEIGHT, PAGE_SIZE.getWidth(), HEADER_HEIGHT, UZ_GREEN_DARK);
-            fillRect(0, PAGE_SIZE.getHeight() - HEADER_HEIGHT, 6, HEADER_HEIGHT, UZ_GOLD);
+            fillRect(0, PAGE_SIZE.getHeight() - HEADER_HEIGHT, PAGE_SIZE.getWidth(), HEADER_HEIGHT, WHITE);
+            line(0, PAGE_SIZE.getHeight() - HEADER_HEIGHT, PAGE_SIZE.getWidth(),
+                    PAGE_SIZE.getHeight() - HEADER_HEIGHT, BORDER, 0.7f);
+            fillRect(MARGIN, PAGE_SIZE.getHeight() - HEADER_HEIGHT, 54, 2, UZ_GREEN);
+            fillRect(MARGIN + 54, PAGE_SIZE.getHeight() - HEADER_HEIGHT, 22, 2, UZ_GOLD);
             float badgeX = MARGIN;
             float badgeY = PAGE_SIZE.getHeight() - 44;
             fillRect(badgeX, badgeY, 30, 30, UZ_GOLD);
-            centeredText("UZ", badgeX, badgeY + 10, 30, BOLD, 11, UZ_GREEN_DARK);
+            centeredText("UZ", badgeX, badgeY + 10, 30, BOLD, 11, UZ_GREEN);
 
-            text("UNIVERSITY OF ZIMBABWE", badgeX + 40, PAGE_SIZE.getHeight() - 25, BOLD, 13, WHITE);
-            text("ADMISSIONS & ENROLMENT", badgeX + 40, PAGE_SIZE.getHeight() - 40, BOLD, 7.4f, UZ_GOLD);
+            text("UNIVERSITY OF ZIMBABWE", badgeX + 40, PAGE_SIZE.getHeight() - 25, BOLD, 13, INK);
+            text("ADMISSIONS & ENROLMENT", badgeX + 40, PAGE_SIZE.getHeight() - 40, BOLD, 7.4f, UZ_GREEN);
             float right = PAGE_SIZE.getWidth() - MARGIN;
-            rightText("eMHARE", right, PAGE_SIZE.getHeight() - 25, BOLD, 10, WHITE);
+            rightText("eMHARE", right, PAGE_SIZE.getHeight() - 25, BOLD, 10, INK);
             rightText("UNIVERSITY OPERATIONS", right, PAGE_SIZE.getHeight() - 40, REGULAR, 6.5f,
-                    new Color(0xD5, 0xE6, 0xDD));
+                    MUTED);
         }
 
         private void drawTitleBlock() throws IOException {
@@ -170,8 +173,8 @@ final class AdmissionsOperationalReportPdfRenderer {
             for (int index = 0; index < count; index++) {
                 AdmissionsOperationalReport.Metric metric = report.metrics().get(index);
                 float x = MARGIN + index * (width + gap);
-                fillRect(x, cursorY - height, width, height, index == 0 ? GREEN_TINT : SURFACE);
-                fillRect(x, cursorY - height, 3, height, index == 0 ? UZ_GREEN : UZ_GOLD);
+                fillRect(x, cursorY - height, width, height, SURFACE);
+                fillRect(x, cursorY - height, 3, height, metricAccent(index));
                 text(metric.label().toUpperCase(Locale.ROOT), x + 12, cursorY - 15, BOLD, 6.4f, MUTED);
                 text(metric.value(), x + 12, cursorY - 36, BOLD, 17, INK);
             }
@@ -192,9 +195,9 @@ final class AdmissionsOperationalReportPdfRenderer {
             float barWidth = CONTENT_WIDTH - labelWidth - valueWidth - 10;
             for (AdmissionsOperationalReport.ChartPoint point : points) {
                 text(ellipsize(point.label(), REGULAR, 7, labelWidth), MARGIN, cursorY, REGULAR, 7, MUTED);
-                fillRect(MARGIN + labelWidth, cursorY - 1, barWidth, 6, GREEN_TINT);
+                fillRect(MARGIN + labelWidth, cursorY - 1, barWidth, 6, ACCENT_TINT);
                 fillRect(MARGIN + labelWidth, cursorY - 1,
-                        Math.max(3, barWidth * point.value() / maximum), 6, UZ_GREEN);
+                        Math.max(3, barWidth * point.value() / maximum), 6, DATA_BLUE);
                 rightText(Long.toString(point.value()), PAGE_SIZE.getWidth() - MARGIN, cursorY, BOLD, 7, INK);
                 cursorY -= 14;
             }
@@ -207,9 +210,9 @@ final class AdmissionsOperationalReportPdfRenderer {
             List<String> lines = wrap(notes, REGULAR, 7.2f, CONTENT_WIDTH - 26, 3);
             float height = 23 + lines.size() * 9;
             ensureSpace(height + 8, false);
-            fillRect(MARGIN, cursorY - height, CONTENT_WIDTH, height, GOLD_TINT);
+            fillRect(MARGIN, cursorY - height, CONTENT_WIDTH, height, SURFACE);
             fillRect(MARGIN, cursorY - height, 3, height, UZ_GOLD);
-            text("COUNTING BASIS", MARGIN + 12, cursorY - 14, BOLD, 6.4f, UZ_GREEN_DARK);
+            text("COUNTING BASIS", MARGIN + 12, cursorY - 14, BOLD, 6.4f, INK);
             float y = cursorY - 27;
             for (String line : lines) {
                 text(line, MARGIN + 12, y, REGULAR, 7.2f, INK);
@@ -229,7 +232,10 @@ final class AdmissionsOperationalReportPdfRenderer {
         private void drawTableHeader() throws IOException {
             if (report.columns().isEmpty()) return;
             float height = 27;
-            fillRect(MARGIN, cursorY - height, CONTENT_WIDTH, height, UZ_GREEN_DARK);
+            fillRect(MARGIN, cursorY - height, CONTENT_WIDTH, height, TABLE_HEADER);
+            line(MARGIN, cursorY, PAGE_SIZE.getWidth() - MARGIN, cursorY, BORDER, 0.7f);
+            line(MARGIN, cursorY, MARGIN + 54, cursorY, UZ_GREEN, 1.2f);
+            line(MARGIN, cursorY - height, PAGE_SIZE.getWidth() - MARGIN, cursorY - height, BORDER, 0.6f);
             float x = MARGIN;
             for (int index = 0; index < report.columns().size(); index++) {
                 float width = columnWidths[index];
@@ -239,7 +245,7 @@ final class AdmissionsOperationalReportPdfRenderer {
                         BOLD, headerFontSize, width - 7, 3);
                 float y = cursorY - 10;
                 for (String line : lines) {
-                    text(line, x + 3.5f, y, BOLD, headerFontSize, WHITE);
+                    text(line, x + 3.5f, y, BOLD, headerFontSize, INK);
                     y -= headerFontSize + 1.6f;
                 }
                 x += width;
@@ -294,13 +300,14 @@ final class AdmissionsOperationalReportPdfRenderer {
             if (totals.isEmpty()) return;
             float height = 23;
             if (cursorY - height < FOOTER_HEIGHT + 8) newPage(true);
-            fillRect(MARGIN, cursorY - height, CONTENT_WIDTH, height, GREEN_TINT);
+            fillRect(MARGIN, cursorY - height, CONTENT_WIDTH, height, SURFACE);
+            line(MARGIN, cursorY, PAGE_SIZE.getWidth() - MARGIN, cursorY, BORDER, 0.8f);
             float x = MARGIN;
             for (int column = 0; column < report.columns().size(); column++) {
                 float width = columnWidths[column];
-                if (column == 0) text("TOTAL", x + 4, cursorY - 15, BOLD, tableFontSize, UZ_GREEN_DARK);
+                if (column == 0) text("TOTAL", x + 4, cursorY - 15, BOLD, tableFontSize, INK);
                 if (totals.containsKey(column)) rightText(Long.toString(totals.get(column)), x + width - 4,
-                        cursorY - 15, BOLD, tableFontSize, UZ_GREEN_DARK);
+                        cursorY - 15, BOLD, tableFontSize, INK);
                 x += width;
             }
             cursorY -= height;
@@ -310,8 +317,8 @@ final class AdmissionsOperationalReportPdfRenderer {
             float height = 88;
             fillRect(MARGIN, cursorY - height, CONTENT_WIDTH, height, SURFACE);
             fillRect(MARGIN, cursorY - height, 4, height, UZ_GREEN);
-            fillRect(MARGIN + 18, cursorY - 53, 34, 34, GREEN_TINT);
-            centeredText("0", MARGIN + 18, cursorY - 42, 34, BOLD, 11, UZ_GREEN);
+            fillRect(MARGIN + 18, cursorY - 53, 34, 34, ACCENT_TINT);
+            centeredText("0", MARGIN + 18, cursorY - 42, 34, BOLD, 11, DATA_BLUE);
             text("No records found", MARGIN + 68, cursorY - 31, BOLD, 12, INK);
             text("No records match the selected filters. Adjust the report filters and generate it again.",
                     MARGIN + 68, cursorY - 49, REGULAR, 8, MUTED);
@@ -328,7 +335,7 @@ final class AdmissionsOperationalReportPdfRenderer {
                             footer, MARGIN, FOOTER_HEIGHT, PAGE_SIZE.getWidth() - MARGIN, FOOTER_HEIGHT,
                             BORDER, 0.6f);
                     AdmissionsOperationalReportPdfRenderer.text(
-                            footer, "eMhare | Admissions & Enrolment", MARGIN, 16, BOLD, 6.5f, UZ_GREEN_DARK);
+                            footer, "eMhare | Admissions & Enrolment", MARGIN, 16, BOLD, 6.5f, INK);
                     AdmissionsOperationalReportPdfRenderer.centeredText(
                             footer, "Internal operational report", MARGIN, 16, CONTENT_WIDTH,
                             REGULAR, 6.5f, MUTED);
@@ -373,6 +380,14 @@ final class AdmissionsOperationalReportPdfRenderer {
             content.setNonStrokingColor(color);
             content.addRect(x, y, width, height);
             content.fill();
+        }
+
+        private Color metricAccent(int index) {
+            return switch (index % 3) {
+                case 0 -> UZ_GREEN;
+                case 1 -> UZ_GOLD;
+                default -> DATA_BLUE;
+            };
         }
 
         private void line(float x1, float y1, float x2, float y2, Color color, float width) throws IOException {

@@ -16,6 +16,7 @@ fi
 run_directory="${EMHARE_RUN_DIR:-/private/tmp/emhare}"
 log_directory="${run_directory}/logs"
 pid_directory="${run_directory}/pids"
+runtime_jar_directory="${run_directory}/jars"
 startup_timeout_seconds="${EMHARE_STARTUP_TIMEOUT_SECONDS:-180}"
 
 usage() {
@@ -37,7 +38,7 @@ case "${process_kind}" in
   *) usage ;;
 esac
 
-mkdir -p "${log_directory}" "${pid_directory}"
+mkdir -p "${log_directory}" "${pid_directory}" "${runtime_jar_directory}"
 
 pid_file="${pid_directory}/${process_name}.pid"
 log_file="${log_directory}/${process_name}.log"
@@ -45,11 +46,7 @@ screen_session_name="emhare-${process_name}"
 
 health_url() {
   if [[ "${process_kind}" == "backend" ]]; then
-    if [[ "${process_name}" == "api-gateway" ]]; then
-      printf 'http://localhost:%s/actuator/health/readiness' "${process_port}"
-    else
-      printf 'http://localhost:%s/actuator/health' "${process_port}"
-    fi
+    printf 'http://localhost:%s/actuator/health/readiness' "${process_port}"
   else
     printf 'http://localhost:%s/' "${process_port}"
   fi
@@ -209,13 +206,17 @@ start_process() {
   printf 'Starting %s (screen: %s, log: %s)\n' "${process_name}" "${screen_session_name}" "${log_file}"
 
   if [[ "${process_kind}" == "backend" ]]; then
-    local service_jar jvm_arguments_text
+    local service_jar runtime_service_jar temporary_runtime_service_jar jvm_arguments_text
     local -a jvm_arguments
     service_jar="$(find "${project_root}/services/${process_name}/target" -maxdepth 1 -type f -name '*.jar' ! -name '*.original' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -n 1)"
     if [[ -z "${service_jar}" ]]; then
       printf 'No packaged jar found for %s. Run `make build-all` or `make up` first.\n' "${process_name}" >&2
       exit 1
     fi
+    runtime_service_jar="${runtime_jar_directory}/${process_name}.jar"
+    temporary_runtime_service_jar="${runtime_service_jar}.tmp.$$"
+    cp "${service_jar}" "${temporary_runtime_service_jar}"
+    mv -f "${temporary_runtime_service_jar}" "${runtime_service_jar}"
     jvm_arguments_text="${EMHARE_SERVICE_JVM_ARGUMENTS:--Xms32m -Xmx256m -XX:MaxMetaspaceSize=192m -XX:+UseSerialGC}"
     read -r -a jvm_arguments <<< "${jvm_arguments_text}"
     screen -dmS "${screen_session_name}" bash -c \
@@ -224,7 +225,7 @@ start_process() {
       EUREKA_INSTANCE_IP_ADDRESS="${EUREKA_INSTANCE_IP_ADDRESS:-127.0.0.1}" \
       EUREKA_PREFER_IP_ADDRESS="${EUREKA_PREFER_IP_ADDRESS:-true}" \
       NOTIFICATIONS_DELIVERY_PROVIDER="${NOTIFICATIONS_DELIVERY_PROVIDER:-local-log}" \
-      java "${jvm_arguments[@]}" -jar "${service_jar}"
+      java "${jvm_arguments[@]}" -jar "${runtime_service_jar}"
   else
     local npm_script
     case "${process_name}" in

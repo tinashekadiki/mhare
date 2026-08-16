@@ -363,7 +363,8 @@ public class AcademicSetupService {
                 command.programmeLevelIds(), command.programmeIds());
         Intake intake = intakeRepository.saveAndFlush(new Intake(
                 academicYear, command.code(), command.name(), command.startsOn(), command.endsOn(),
-                command.maximumProgrammeChoices()));
+                command.maximumProgrammeChoices(), command.offerAcceptanceDeadline(), command.registrationDate(),
+                command.orientationDate(), command.commencementDate()));
         createIntakeEligibilityTargets(intake, eligibilityTargets);
         return intakeSummaryWithTargets(intake);
     }
@@ -395,6 +396,10 @@ public class AcademicSetupService {
                 command.startsOn(),
                 command.endsOn(),
                 command.maximumProgrammeChoices(),
+                command.offerAcceptanceDeadline(),
+                command.registrationDate(),
+                command.orientationDate(),
+                command.commencementDate(),
                 command.changeReason(),
                 command.expectedVersion());
         Intake savedIntake = intakeRepository.saveAndFlush(intake);
@@ -787,6 +792,10 @@ public class AcademicSetupService {
                 intake.getName(),
                 intake.getStartsOn(),
                 intake.getEndsOn(),
+                intake.getOfferAcceptanceDeadline(),
+                intake.getRegistrationDate(),
+                intake.getOrientationDate(),
+                intake.getCommencementDate(),
                 intake.getStatus(),
                 intake.getMaximumProgrammeChoices(),
                 programmes);
@@ -1067,6 +1076,10 @@ public class AcademicSetupService {
                 value.getName(),
                 value.getStartsOn(),
                 value.getEndsOn(),
+                value.getOfferAcceptanceDeadline(),
+                value.getRegistrationDate(),
+                value.getOrientationDate(),
+                value.getCommencementDate(),
                 value.getStatus(),
                 value.getMaximumProgrammeChoices(),
                 value.getChangeReason(),

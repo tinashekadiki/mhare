@@ -11,7 +11,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.cloud.client.circuitbreaker.NoFallbackAvailableException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import zw.ac.uz.emhare.admissions.integration.FinanceCatalogueClient.AcademicUnitPathItem;
@@ -87,6 +89,25 @@ class OfferLetterCatalogueClientsTest {
                 () -> client.resolveAcademicFeeStructure("server", request));
         assertThrows(ServiceDependencyUnavailableException.class,
                 () -> client.resolveAcademicFeeStructure("transport", request));
+    }
+
+    @Test
+    void preservesFinanceBusinessRejectionWrappedByCircuitBreaker() {
+        FinanceHttpService http = mock(FinanceHttpService.class);
+        FinanceCatalogueClient client = new FinanceCatalogueClient(http);
+        ResolveAcademicFeeStructureRequest request = request();
+        RestClientResponseException conflict = mock(RestClientResponseException.class);
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, "No active fee structure matches this billing context.");
+        when(conflict.getStatusCode()).thenReturn(HttpStatus.CONFLICT);
+        when(conflict.getResponseBodyAs(ProblemDetail.class)).thenReturn(problemDetail);
+        when(http.resolveAcademicFeeStructure("wrapped-conflict", request)).thenThrow(
+                new NoFallbackAvailableException("No fallback available.", conflict));
+
+        IllegalStateException rejection = assertThrows(IllegalStateException.class,
+                () -> client.resolveAcademicFeeStructure("wrapped-conflict", request));
+
+        assertEquals("No active fee structure matches this billing context.", rejection.getMessage());
     }
 
     private CoreIdentityClient.CoreInstitutionProfile profile() {

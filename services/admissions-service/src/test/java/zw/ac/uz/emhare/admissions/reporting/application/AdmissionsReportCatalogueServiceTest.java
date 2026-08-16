@@ -23,8 +23,8 @@ class AdmissionsReportCatalogueServiceTest {
                 AdmissionsReportCode.INTAKE_MOVEMENTS,
                 AdmissionsReportCode.ADMISSIONS_ANALYSIS,
                 AdmissionsReportCode.OFFER_LETTERS);
-        assertThat(reports.get(1).formats()).containsExactly("SCREEN", "XLSX", "PDF");
-        assertThat(reports.get(2).formats()).containsExactly("SCREEN", "XLSX");
+        assertThat(reports.subList(0, 7))
+                .allSatisfy(report -> assertThat(report.formats()).contains("XLSX", "PDF"));
         assertThat(reports.get(7).formats()).containsExactly("PDF", "EMAIL");
     }
 }

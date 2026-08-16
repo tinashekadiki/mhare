@@ -31,6 +31,15 @@ const formatLabels: Record<string, string> = {
   EMAIL: 'Email'
 }
 
+const formatColors: Record<string, 'neutral' | 'info' | 'success' | 'error' | 'secondary'> = {
+  SCREEN: 'neutral',
+  BAR_CHART: 'info',
+  GRAPH: 'info',
+  XLSX: 'success',
+  PDF: 'error',
+  EMAIL: 'secondary'
+}
+
 onMounted(loadCatalogue)
 
 async function loadCatalogue() {
@@ -58,6 +67,10 @@ function reportActionLabel(reportCode: ReportCode) {
 function formatLabel(format: string) {
   return formatLabels[format] ?? format
 }
+
+function formatColor(format: string) {
+  return formatColors[format] ?? 'neutral'
+}
 </script>
 
 <template>
@@ -67,26 +80,10 @@ function formatLabel(format: string) {
     </template>
 
     <template #body>
-      <div class="mx-auto w-full max-w-[1480px] space-y-6 p-4 sm:p-6 lg:p-8">
-        <section
-          aria-labelledby="admissions-report-catalogue-heading"
-          class="border-b border-default pb-5"
-        >
-          <div class="flex max-w-3xl items-start gap-3">
-            <div class="flex size-10 shrink-0 items-center justify-center rounded-md bg-uzgreen-900 text-white dark:bg-uzgreen-800">
-              <UIcon name="i-lucide-library-big" class="size-5" />
-            </div>
-            <div>
-              <h1 id="admissions-report-catalogue-heading" class="text-xl font-semibold text-highlighted">
-                Report catalogue
-              </h1>
-              <p class="mt-1 max-w-2xl text-sm leading-5 text-muted">
-                Open a report to apply filters, review results and export.
-              </p>
-            </div>
-          </div>
-        </section>
-
+      <UContainer
+        data-testid="admissions-reports-content"
+        class="w-full max-w-none space-y-6 py-4 sm:py-6 [--ui-primary:var(--ui-color-primary-800)] dark:[--ui-primary:var(--ui-color-primary-300)]"
+      >
         <UAlert
           v-if="errorMessage"
           color="error"
@@ -107,78 +104,90 @@ function formatLabel(format: string) {
           </template>
         </UAlert>
 
-        <div v-if="loading" aria-label="Loading admissions report catalogue" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <UPageGrid v-if="loading" aria-label="Loading admissions report catalogue" class="gap-4 xl:grid-cols-3">
           <USkeleton v-for="index in 6" :key="index" class="h-72 rounded-lg" />
-        </div>
+        </UPageGrid>
 
-        <section
+        <UPageGrid
           v-else-if="reportCatalogue.length"
           aria-label="Admissions report families"
-          class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+          class="gap-4 xl:grid-cols-3"
         >
-          <article
+          <UPageCard
             v-for="reportDefinition in reportCatalogue"
             :key="reportDefinition.code"
-            class="flex min-h-72 flex-col rounded-lg border border-default border-t-2 border-t-uzgreen-800 bg-default p-5"
+            :icon="reportIcons[reportDefinition.code]"
+            :title="reportDefinition.title"
+            :description="reportDefinition.description"
+            variant="outline"
+            class="min-h-72"
+            :ui="{
+              container: 'p-5 sm:p-5',
+              wrapper: 'h-full items-stretch',
+              header: 'mb-3',
+              leading: 'mb-3',
+              leadingIcon: 'size-5 text-toned',
+              title: 'text-lg leading-snug',
+              description: 'mt-2 text-sm leading-5 text-muted',
+              footer: 'mt-auto border-t border-muted pt-3'
+            }"
           >
-            <div class="flex size-9 items-center justify-center rounded-md bg-uzgreen-900 text-white dark:bg-uzgreen-800">
-              <UIcon :name="reportIcons[reportDefinition.code]" class="size-4" />
-            </div>
+            <template #header>
+              <UBadge :label="reportDefinition.family" color="neutral" variant="subtle" size="sm" />
+            </template>
 
-            <div class="mt-4">
-              <p class="text-xs font-semibold uppercase tracking-wide text-uzgreen-800 dark:text-uzgreen-300">{{ reportDefinition.family }}</p>
-              <h2 class="mt-1 text-lg font-semibold leading-snug text-highlighted">{{ reportDefinition.title }}</h2>
-              <p class="mt-2 text-sm leading-5 text-muted">{{ reportDefinition.description }}</p>
-            </div>
+            <template #title>
+              <h2>{{ reportDefinition.title }}</h2>
+            </template>
 
-            <div class="mt-4 flex flex-wrap gap-1.5" aria-label="Available formats">
-              <UBadge
-                v-for="format in reportDefinition.formats"
-                :key="format"
-                :label="formatLabel(format)"
-                color="neutral"
-                variant="soft"
-                size="sm"
-              />
-            </div>
+            <template #description>
+              <p>{{ reportDefinition.description }}</p>
+              <div class="mt-4 flex flex-wrap gap-1.5" aria-label="Available formats">
+                <UBadge
+                  v-for="format in reportDefinition.formats"
+                  :key="format"
+                  :label="formatLabel(format)"
+                  :color="formatColor(format)"
+                  variant="subtle"
+                  size="sm"
+                />
+              </div>
+              <USeparator class="my-4" />
+              <ul class="space-y-2 text-sm text-muted">
+                <li v-for="variant in reportDefinition.variants.slice(0, 3)" :key="variant" class="flex items-start gap-2">
+                  <span class="mt-2 size-1.5 shrink-0 rounded-full bg-accented" aria-hidden="true" />
+                  <span class="leading-5">{{ variant }}</span>
+                </li>
+                <li v-if="reportDefinition.variants.length > 3" class="pl-3.5 text-xs text-dimmed">
+                  +{{ reportDefinition.variants.length - 3 }} more covered outputs
+                </li>
+              </ul>
+            </template>
 
-            <ul class="mt-4 space-y-2 border-t border-default pt-4 text-sm text-muted">
-              <li v-for="variant in reportDefinition.variants.slice(0, 3)" :key="variant" class="flex items-start gap-2">
-                <UIcon name="i-lucide-check" class="mt-0.5 size-4 shrink-0 text-primary" />
-                <span class="leading-5">{{ variant }}</span>
-              </li>
-              <li v-if="reportDefinition.variants.length > 3" class="pl-6 text-xs font-medium text-primary">
-                +{{ reportDefinition.variants.length - 3 }} more covered outputs
-              </li>
-            </ul>
-
-            <div class="mt-auto pt-5">
+            <template #footer>
               <UButton
                 :to="reportPath(reportDefinition.code)"
                 :label="reportActionLabel(reportDefinition.code)"
                 :icon="reportDefinition.code === 'OFFER_LETTERS' ? 'i-lucide-mails' : 'i-lucide-arrow-up-right'"
                 trailing
                 block
-                color="neutral"
-                variant="outline"
-                class="justify-center border-uzgreen-800 text-uzgreen-900 hover:bg-uzgreen-50 dark:border-uzgreen-600 dark:text-uzgreen-200 dark:hover:bg-uzgreen-950"
+                color="primary"
+                variant="ghost"
+                class="-mx-2 justify-between"
               />
-            </div>
-          </article>
-        </section>
+            </template>
+          </UPageCard>
+        </UPageGrid>
 
-        <section
+        <UEmpty
           v-else-if="!errorMessage"
-          class="rounded-lg border border-dashed border-default bg-elevated/40 px-6 py-16 text-center"
-          aria-labelledby="empty-report-catalogue-heading"
-        >
-          <div class="mx-auto flex size-12 items-center justify-center rounded-xl bg-muted text-muted">
-            <UIcon name="i-lucide-library" class="size-6" />
-          </div>
-          <h2 id="empty-report-catalogue-heading" class="mt-4 font-semibold text-highlighted">No report families are available</h2>
-          <p class="mx-auto mt-1 max-w-md text-sm text-muted">The admissions report catalogue has not been configured yet.</p>
-        </section>
-      </div>
+          icon="i-lucide-library"
+          title="No report families are available"
+          description="The admissions report catalogue has not been configured yet."
+          variant="outline"
+          class="min-h-64"
+        />
+      </UContainer>
     </template>
   </UDashboardPanel>
 </template>

@@ -31,6 +31,8 @@ import zw.ac.uz.emhare.common.messaging.AcademicRecommendationRecordedEvent;
 import zw.ac.uz.emhare.common.messaging.OfferLetterRequestedEvent;
 import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot;
 import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.FeeScheduleSnapshot;
+import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.BankAccountSnapshot;
+import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.BankDetailsSnapshot;
 import zw.ac.uz.emhare.common.messaging.NotificationAttachmentReference;
 import zw.ac.uz.emhare.common.messaging.OfferPublicationEvent;
 import zw.ac.uz.emhare.admissions.domain.model.OfferDispatch;
@@ -161,6 +163,12 @@ public class AdmissionsIntegrationOutboxService {
 
     public void enqueueOfferLetterRequested(AdmissionOffer offer, int documentVersion, UUID requestedByUserId,
             FeeScheduleSnapshot feeSchedule, CoreIdentityClient.CoreInstitutionProfile institutionProfile) {
+        enqueueOfferLetterRequested(offer, documentVersion, requestedByUserId, null, feeSchedule, institutionProfile);
+    }
+
+    public void enqueueOfferLetterRequested(AdmissionOffer offer, int documentVersion, UUID requestedByUserId,
+            String highestAcademicUnitName, FeeScheduleSnapshot feeSchedule,
+            CoreIdentityClient.CoreInstitutionProfile institutionProfile) {
         UUID eventId = UUID.nameUUIDFromBytes(("offer-letter:v" + OfferLetterRequestedEvent.CURRENT_SCHEMA_VERSION
                 + ":" + offer.getId() + ":" + documentVersion + ":" + offer.getVersion())
                 .getBytes(StandardCharsets.UTF_8));
@@ -186,6 +194,10 @@ public class AdmissionsIntegrationOutboxService {
                 institutionProfile == null ? null : institutionProfile.contactDetailsJson());
         Map<String, String> institutionBranding = jsonValues(
                 institutionProfile == null ? null : institutionProfile.brandingJson());
+        Map<String, Object> institutionBankConfiguration = jsonObject(
+                institutionProfile == null ? null : institutionProfile.bankDetailsJson());
+        BankDetailsSnapshot bankDetails = legacyBankDetails(institutionBankConfiguration);
+        List<BankAccountSnapshot> bankAccounts = bankAccounts(institutionBankConfiguration);
         OfferLetterContentSnapshot contentSnapshot = new OfferLetterContentSnapshot(
                 institutionProfile == null ? "University of Zimbabwe" : institutionProfile.name(),
                 institutionProfile == null ? "University of Zimbabwe" : institutionProfile.legalName(),
@@ -194,10 +206,15 @@ public class AdmissionsIntegrationOutboxService {
                 institutionContacts.get("website"),
                 applicant.getPostalAddress(), applicant.getApplicantCategoryCode(), application.getApplicationType().getCode(),
                 application.getApplicationType().getName(), application.getIntakeName(),
-                programmeChoice.getOwningAcademicUnitName(), programmeChoice.getAwardName(),
+                firstOrDefault(highestAcademicUnitName, programmeChoice.getOwningAcademicUnitName()),
+                programmeChoice.getAwardName(),
                 programmeSnapshot == null ? null : programmeSnapshot.getProgrammeLevelName(),
-                programmeChoice.getProgrammeVersionCode(), studyOptions, requiredDocuments, feeSchedule,
-                firstOrDefault(institutionBranding.get("offerLetterSignatoryName"), "Registrar"),
+                programmeChoice.getProgrammeVersionCode(), studyOptions, requiredDocuments, feeSchedule, bankDetails,
+                bankAccounts,
+                institutionBranding.get("registrarSignatureDocumentId"),
+                firstOrDefault(
+                        institutionProfile == null ? null : institutionProfile.registrarName(),
+                        firstOrDefault(institutionBranding.get("offerLetterSignatoryName"), "Registrar")),
                 firstOrDefault(institutionBranding.get("offerLetterSignatoryTitle"), "Registrar"),
                 "UZ-OFFER-LETTER-2026-01");
         OfferLetterRequestedEvent event = new OfferLetterRequestedEvent(
@@ -219,6 +236,50 @@ public class AdmissionsIntegrationOutboxService {
         if (json == null || json.isBlank()) return Map.of();
         try { return objectMapper.readValue(json, Map.class); }
         catch (JacksonException exception) { throw new IllegalStateException("Institution document profile is invalid.", exception); }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> jsonObject(String json) {
+        if (json == null || json.isBlank()) return Map.of();
+        try { return objectMapper.readValue(json, Map.class); }
+        catch (JacksonException exception) { throw new IllegalStateException("Institution bank configuration is invalid.", exception); }
+    }
+
+    private BankDetailsSnapshot legacyBankDetails(Map<String, Object> configuration) {
+        if (configuration.containsKey("accounts")) return null;
+        String bankName = stringValue(configuration, "bankName");
+        String accountNumber = stringValue(configuration, "accountNumber");
+        if (bankName == null || accountNumber == null) return null;
+        return new BankDetailsSnapshot(bankName, stringValue(configuration, "branchName"),
+                stringValue(configuration, "accountName"), accountNumber,
+                stringValue(configuration, "branchSortCode"), stringValue(configuration, "swiftCode"),
+                stringValue(configuration, "paymentReferenceInstructions"));
+    }
+
+    private List<BankAccountSnapshot> bankAccounts(Map<String, Object> configuration) {
+        Object configuredAccounts = configuration.get("accounts");
+        if (!(configuredAccounts instanceof List<?> accountValues)) return List.of();
+        return accountValues.stream().map(value -> {
+            if (!(value instanceof Map<?, ?> account)) {
+                throw new IllegalStateException("Each institution bank account must be a JSON object.");
+            }
+            String currencyCode = stringValue(account, "currencyCode");
+            String bankName = stringValue(account, "bankName");
+            String accountNumber = stringValue(account, "accountNumber");
+            if (currencyCode == null || bankName == null || accountNumber == null) {
+                throw new IllegalStateException("Each institution bank account requires a currency, bank name and account number.");
+            }
+            return new BankAccountSnapshot(currencyCode, bankName, stringValue(account, "branchName"),
+                    stringValue(account, "accountName"), accountNumber,
+                    stringValue(account, "branchSortCode"), stringValue(account, "swiftCode"),
+                    stringValue(account, "paymentReferenceInstructions"));
+        }).toList();
+    }
+
+    private String stringValue(Map<?, ?> values, String key) {
+        Object value = values.get(key);
+        if (!(value instanceof String text) || text.isBlank()) return null;
+        return text.trim();
     }
 
     private String first(Map<String, String> values, String firstKey, String secondKey) {

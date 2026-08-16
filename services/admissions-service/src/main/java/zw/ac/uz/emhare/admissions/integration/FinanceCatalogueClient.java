@@ -16,6 +16,9 @@ import zw.ac.uz.emhare.admissions.integration.http.FinanceHttpService;
 @Component
 public class FinanceCatalogueClient {
 
+    private static final String NO_ACTIVE_FEE_STRUCTURE_DETAIL =
+            "No active fee structure matches this billing context.";
+
     private final FinanceHttpService financeHttpService;
 
     public FinanceCatalogueClient(FinanceHttpService financeHttpService) {
@@ -54,21 +57,39 @@ public class FinanceCatalogueClient {
             return pricing;
         } catch (ServiceDependencyUnavailableException exception) {
             throw exception;
-        } catch (RestClientResponseException exception) {
-            String detail = pricingRejectionDetail(exception);
-            if (exception.getStatusCode().value() == HttpStatus.BAD_REQUEST.value()
-                    || exception.getStatusCode().value() == HttpStatus.CONFLICT.value()) {
-                throw new IllegalStateException(detail, exception);
-            }
-            throw unavailable(exception);
-        } catch (RestClientException exception) {
+        } catch (RuntimeException exception) {
+            RestClientResponseException responseException = responseException(exception);
+            if (responseException != null) throw academicPricingRejection(responseException);
             throw unavailable(exception);
         }
     }
 
+    public static boolean isMissingAcademicFeeStructure(IllegalStateException exception) {
+        return NO_ACTIVE_FEE_STRUCTURE_DETAIL.equals(exception.getMessage());
+    }
+
+    private RuntimeException academicPricingRejection(RestClientResponseException exception) {
+        String detail = pricingRejectionDetail(exception);
+        if (exception.getStatusCode().value() == HttpStatus.BAD_REQUEST.value()
+                || exception.getStatusCode().value() == HttpStatus.CONFLICT.value()) {
+            return new IllegalStateException(detail, exception);
+        }
+        return unavailable(exception);
+    }
+
+    private RestClientResponseException responseException(Throwable exception) {
+        Throwable current = exception;
+        while (current != null) {
+            if (current instanceof RestClientResponseException responseException) return responseException;
+            if (current == current.getCause()) return null;
+            current = current.getCause();
+        }
+        return null;
+    }
+
     private ServiceDependencyUnavailableException unavailable(Throwable exception) {
         return new ServiceDependencyUnavailableException(
-                "Finance is unavailable, so the application fee cannot be safely resolved.", exception);
+                "Finance is unavailable, so pricing cannot be safely resolved.", exception);
     }
 
     private String pricingRejectionDetail(RestClientResponseException exception) {

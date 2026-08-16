@@ -25,6 +25,9 @@ public class InstitutionProfile extends AuditableEntity {
     @Column(name = "legal_name", nullable = false, length = 250)
     private String legalName;
 
+    @Column(name = "registrar_name", nullable = false, length = 200)
+    private String registrarName;
+
     @Column(name = "default_currency_code", nullable = false, length = 3)
     private String defaultCurrencyCode;
 
@@ -41,6 +44,10 @@ public class InstitutionProfile extends AuditableEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "branding_json", columnDefinition = "jsonb")
     private String brandingJson;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "bank_details_json", columnDefinition = "jsonb")
+    private String bankDetailsJson;
 
     @Column(name = "legacy_code", length = 50)
     private String legacyCode;
@@ -61,20 +68,24 @@ public class InstitutionProfile extends AuditableEntity {
             String newCode,
             String newName,
             String newLegalName,
+            String newRegistrarName,
             String newDefaultCurrencyCode,
             String newCountryCode,
             String newTimezone,
             String newContactDetailsJson,
             String newBrandingJson,
+            String newBankDetailsJson,
             String newLegacyCode) {
         code = newCode;
         name = newName;
         legalName = newLegalName;
+        registrarName = newRegistrarName;
         defaultCurrencyCode = newDefaultCurrencyCode;
         countryCode = newCountryCode;
         timezone = newTimezone;
         contactDetailsJson = newContactDetailsJson;
         brandingJson = newBrandingJson;
+        bankDetailsJson = newBankDetailsJson;
         legacyCode = newLegacyCode;
     }
 
@@ -88,6 +99,10 @@ public class InstitutionProfile extends AuditableEntity {
 
     public String getLegalName() {
         return legalName;
+    }
+
+    public String getRegistrarName() {
+        return registrarName;
     }
 
     public String getDefaultCurrencyCode() {
@@ -108,6 +123,10 @@ public class InstitutionProfile extends AuditableEntity {
 
     public String getBrandingJson() {
         return brandingJson;
+    }
+
+    public String getBankDetailsJson() {
+        return bankDetailsJson;
     }
 
     public String getLegacyCode() {

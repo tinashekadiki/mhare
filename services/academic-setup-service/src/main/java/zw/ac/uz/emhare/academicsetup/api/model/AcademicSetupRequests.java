@@ -12,6 +12,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -114,6 +115,10 @@ public final class AcademicSetupRequests {
             @NotBlank @Size(max = 150) String name,
             @NotNull LocalDate startsOn,
             @NotNull LocalDate endsOn,
+            @NotNull Instant offerAcceptanceDeadline,
+            LocalDate registrationDate,
+            LocalDate orientationDate,
+            @NotNull LocalDate commencementDate,
             @Min(1) @Max(20) int maximumProgrammeChoices,
             @NotEmpty @Size(max = 100) List<@NotNull UUID> programmeLevelIds,
             @NotNull @Size(max = 500) List<@NotNull UUID> programmeIds) {
@@ -125,7 +130,8 @@ public final class AcademicSetupRequests {
                 LocalDate endsOn,
                 List<UUID> programmeLevelIds,
                 List<UUID> programmeIds) {
-            this(academicYearId, code, name, startsOn, endsOn, 3, programmeLevelIds, programmeIds);
+            this(academicYearId, code, name, startsOn, endsOn, null, null, null, null, 3,
+                    programmeLevelIds, programmeIds);
         }
     }
 
@@ -136,6 +142,10 @@ public final class AcademicSetupRequests {
             @NotBlank @Size(max = 150) String name,
             @NotNull LocalDate startsOn,
             @NotNull LocalDate endsOn,
+            @NotNull Instant offerAcceptanceDeadline,
+            LocalDate registrationDate,
+            LocalDate orientationDate,
+            @NotNull LocalDate commencementDate,
             @Min(1) @Max(20) int maximumProgrammeChoices,
             @NotEmpty @Size(max = 100) List<@NotNull UUID> programmeLevelIds,
             @NotNull @Size(max = 500) List<@NotNull UUID> programmeIds,
@@ -152,7 +162,7 @@ public final class AcademicSetupRequests {
                 String changeReason,
                 long expectedVersion) {
             this(
-                    academicYearId, code, name, startsOn, endsOn, 3,
+                    academicYearId, code, name, startsOn, endsOn, null, null, null, null, 3,
                     programmeLevelIds, programmeIds, changeReason, expectedVersion);
         }
     }

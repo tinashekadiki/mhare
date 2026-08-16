@@ -118,11 +118,13 @@ public class CoreIdentityController {
                 request.code(),
                 request.name(),
                 request.legalName(),
+                request.registrarName(),
                 request.defaultCurrencyCode(),
                 request.countryCode(),
                 request.timezone(),
                 request.contactDetailsJson(),
                 request.brandingJson(),
+                request.bankDetailsJson(),
                 request.legacyCode()));
         recordAudit(authentication, "CORE_INSTITUTION_PROFILE_SAVED", "INSTITUTION_PROFILE", result.id(),
                 "Saved institution profile.", before, result);
@@ -352,6 +354,23 @@ public class CoreIdentityController {
         coreIdentityService.expireRoleAssignment(userId, assignmentId, actorUserId(authentication));
         recordAudit(authentication, "CORE_USER_ROLE_EXPIRED", "PLATFORM_USER", userId,
                 "Expired user role assignment.", Map.of("assignmentId", assignmentId), null);
+    }
+
+    @PutMapping("/users/{userId}/role-assignments/{assignmentId}/academic-unit")
+    @PreAuthorize("@coreRbac.has(authentication, 'CORE_ROLE_ASSIGN')")
+    public UserRoleAssignmentSummary updateRoleAssignmentAcademicUnit(
+            Authentication authentication,
+            @PathVariable("userId") UUID userId,
+            @PathVariable("assignmentId") UUID assignmentId,
+            @Valid @RequestBody UpdateRoleAssignmentAcademicUnitRequest request) {
+        UserRoleAssignmentSummary result = coreIdentityService.updateRoleAssignmentAcademicUnit(
+                userId,
+                assignmentId,
+                request.academicUnitId());
+        recordAudit(authentication, "CORE_USER_ROLE_SCOPE_UPDATED", "PLATFORM_USER", userId,
+                "Updated academic-unit scope for role " + result.roleCode() + ".",
+                Map.of("assignmentId", assignmentId), result);
+        return result;
     }
 
     @GetMapping("/users/{userId}/permissions/{permissionCode}")

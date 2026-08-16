@@ -40,6 +40,7 @@ import zw.ac.uz.emhare.common.messaging.EmhareMessagingTopology;
 import zw.ac.uz.emhare.common.messaging.NotificationRequestedEvent;
 import zw.ac.uz.emhare.common.messaging.MissingApplicationDocumentWorkflowRequestedEvent;
 import zw.ac.uz.emhare.common.messaging.OfferLetterRequestedEvent;
+import zw.ac.uz.emhare.common.messaging.OfferLetterContentSnapshot.BankAccountSnapshot;
 
 /** @author Tinashe K */
 class AdmissionsIntegrationOutboxServiceTest {
@@ -102,10 +103,15 @@ class AdmissionsIntegrationOutboxServiceTest {
                 .thenReturn(java.util.Optional.of(programmeSnapshot));
 
         CoreIdentityClient.CoreInstitutionProfile institutionProfile = new CoreIdentityClient.CoreInstitutionProfile(
-                UUID.randomUUID(), "UZ", "University of Zimbabwe", "University of Zimbabwe", "USD", "ZW",
+                UUID.randomUUID(), "UZ", "University of Zimbabwe", "University of Zimbabwe", "Dr Jane Dube", "USD", "ZW",
                 "Africa/Harare", "{\"email\":\"admissions@uz.ac.zw\",\"phone\":\"+263 24 2303211\"}",
-                "{\"offerLetterSignatoryName\":\"Dr Registrar\",\"offerLetterSignatoryTitle\":\"Registrar\"}", "UZ");
-        service.enqueueOfferLetterRequested(offer, 2, UUID.randomUUID(), null, institutionProfile);
+                "{\"offerLetterSignatoryName\":\"Legacy Signatory\",\"offerLetterSignatoryTitle\":\"Registrar\","
+                        + "\"registrarSignatureDocumentId\":\"42b272b2-6f22-4fad-baf2-cfc3d6438e76\"}",
+                "{\"accounts\":["
+                        + "{\"currencyCode\":\"USD\",\"bankName\":\"CBZ BANK\",\"accountNumber\":\"01120770100249\",\"swiftCode\":\"COBZZWHAXXX\"},"
+                        + "{\"currencyCode\":\"ZWG\",\"bankName\":\"CBZ BANK\",\"accountNumber\":\"01120770100052\",\"swiftCode\":\"COBZZWHAXXX\"}]}", "UZ");
+        service.enqueueOfferLetterRequested(offer, 2, UUID.randomUUID(), "University of Zimbabwe", null,
+                institutionProfile);
 
         ArgumentCaptor<AdmissionsOutboxEvent> eventCaptor = ArgumentCaptor.forClass(AdmissionsOutboxEvent.class);
         verify(repository).save(eventCaptor.capture());
@@ -113,12 +119,18 @@ class AdmissionsIntegrationOutboxServiceTest {
         assertEquals(OfferLetterRequestedEvent.CURRENT_SCHEMA_VERSION, event.schemaVersion());
         assertNotNull(event.contentSnapshot());
         assertEquals("14 Samora Machel Avenue, Harare", event.contentSnapshot().applicantPostalAddress());
-        assertEquals("Faculty of Science", event.contentSnapshot().academicUnitName());
+        assertEquals("University of Zimbabwe", event.contentSnapshot().academicUnitName());
         assertEquals("Undergraduate", event.contentSnapshot().programmeLevelName());
         assertEquals(List.of("Computer Science"), event.contentSnapshot().studyOptions());
         assertEquals(List.of("Identity document"), event.contentSnapshot().requiredVerificationDocuments());
         assertEquals("admissions@uz.ac.zw", event.contentSnapshot().institutionEmail());
-        assertEquals("Dr Registrar", event.contentSnapshot().signatoryName());
+        assertEquals("Dr Jane Dube", event.contentSnapshot().signatoryName());
+        assertEquals("42b272b2-6f22-4fad-baf2-cfc3d6438e76",
+                event.contentSnapshot().signatorySignatureDocumentId());
+        assertEquals(List.of("USD", "ZWG"), event.contentSnapshot().bankAccounts().stream()
+                .map(BankAccountSnapshot::currencyCode).toList());
+        assertEquals(List.of("01120770100249", "01120770100052"), event.contentSnapshot().bankAccounts().stream()
+                .map(BankAccountSnapshot::accountNumber).toList());
         assertNull(event.contentSnapshot().feeSchedule());
     }
 

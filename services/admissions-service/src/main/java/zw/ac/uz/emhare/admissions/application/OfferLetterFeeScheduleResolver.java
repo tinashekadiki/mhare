@@ -1,7 +1,7 @@
 package zw.ac.uz.emhare.admissions.application;
 
 import java.math.BigDecimal;
-import java.time.ZoneId;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -29,21 +29,31 @@ public class OfferLetterFeeScheduleResolver {
         this.financeCatalogueClient = financeCatalogueClient;
     }
 
-    public FeeScheduleSnapshot resolve(AdmissionOffer offer, String authorization) {
-        if (authorization == null || authorization.isBlank()) return null;
+    public ResolvedOfferLetterCatalogue resolve(AdmissionOffer offer, String authorization, Instant pricingEffectiveAt) {
+        if (authorization == null || authorization.isBlank()) return new ResolvedOfferLetterCatalogue(null, null);
         var application = offer.getApplication();
         var programme = programmeSnapshotRepository
                 .findByApplicationIdAndProgrammeIdAndDeletedAtIsNull(application.getId(), offer.getProgrammeId())
                 .orElseThrow(() -> new IllegalStateException("The immutable programme snapshot required for offer pricing was not found."));
         var hierarchy = academicSetupCatalogueClient.getProgrammeHierarchy(offer.getProgrammeId(), authorization);
+        String highestAcademicUnitName = hierarchy.highestAcademicUnit() == null
+                ? null : hierarchy.highestAcademicUnit().name();
         List<AcademicUnitPathItem> academicUnitPath = hierarchy.ancestorPath().stream()
                 .map(unit -> new AcademicUnitPathItem(unit.id(), unit.code(), unit.name())).toList();
-        var resolved = financeCatalogueClient.resolveAcademicFeeStructure(authorization,
-                new ResolveAcademicFeeStructureRequest("ACADEMIC",
-                        offer.getCommencementDate().atStartOfDay(ZoneId.of("Africa/Harare")).toInstant(),
-                        null, offer.getProgrammeId(), academicUnitPath, programme.getProgrammeLevelId(),
-                        programme.getProgrammeLevelCode(), programme.getProgrammeTypeId(),
-                        application.getApplicant().getApplicantCategoryCode(), 1));
+        FinanceCatalogueClient.ResolvedAcademicFeeStructure resolved;
+        try {
+            resolved = financeCatalogueClient.resolveAcademicFeeStructure(authorization,
+                    new ResolveAcademicFeeStructureRequest("ACADEMIC",
+                            Objects.requireNonNull(pricingEffectiveAt, "pricingEffectiveAt"),
+                            null, offer.getProgrammeId(), academicUnitPath, programme.getProgrammeLevelId(),
+                            programme.getProgrammeLevelCode(), programme.getProgrammeTypeId(),
+                            application.getApplicant().getApplicantCategoryCode(), 1));
+        } catch (IllegalStateException exception) {
+            if (FinanceCatalogueClient.isMissingAcademicFeeStructure(exception)) {
+                return new ResolvedOfferLetterCatalogue(highestAcademicUnitName, null);
+            }
+            throw exception;
+        }
         if (!"ACTIVE".equalsIgnoreCase(resolved.status())) {
             throw new IllegalStateException("Finance did not return an active academic fee schedule.");
         }
@@ -63,8 +73,9 @@ public class OfferLetterFeeScheduleResolver {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal baseTotal = lines.stream().allMatch(line -> line.baseAmount() != null)
                 ? lines.stream().map(FeeLineSnapshot::baseAmount).reduce(BigDecimal.ZERO, BigDecimal::add) : null;
-        return new FeeScheduleSnapshot(resolved.id(), resolved.version(), resolved.code(), currency, baseCurrency,
-                exchangeRateId, exchangeRate, lines, transactionTotal, baseTotal);
+        FeeScheduleSnapshot feeSchedule = new FeeScheduleSnapshot(resolved.id(), resolved.version(), resolved.code(),
+                currency, baseCurrency, exchangeRateId, exchangeRate, lines, transactionTotal, baseTotal);
+        return new ResolvedOfferLetterCatalogue(highestAcademicUnitName, feeSchedule);
     }
 
     private <T> T distinct(List<T> values, String label) {
@@ -81,4 +92,6 @@ public class OfferLetterFeeScheduleResolver {
     private <T> T missing(String label) {
         throw new IllegalStateException("Finance did not return a " + label + ".");
     }
+
+    public record ResolvedOfferLetterCatalogue(String highestAcademicUnitName, FeeScheduleSnapshot feeSchedule) { }
 }

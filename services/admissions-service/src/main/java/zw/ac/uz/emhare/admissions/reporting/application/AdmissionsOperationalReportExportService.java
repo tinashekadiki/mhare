@@ -59,7 +59,7 @@ public class AdmissionsOperationalReportExportService {
             headerFont.setBold(true);
             headerFont.setColor(IndexedColors.WHITE.getIndex());
             headerStyle.setFont(headerFont);
-            headerStyle.setFillForegroundColor(IndexedColors.DARK_GREEN.getIndex());
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_80_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             Row header = sheet.createRow(0);
             for (int index = 0; index < report.columns().size(); index++) {

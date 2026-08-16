@@ -8,5 +8,6 @@ public record CurrentUserProfile(
         List<UserRoleAssignmentSummary> roleAssignments,
         Set<String> realmRoles,
         Set<String> effectivePermissionCodes,
-        boolean operationalAccess) {
+        boolean operationalAccess,
+        String institutionBrandingJson) {
 }

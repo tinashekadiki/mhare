@@ -70,6 +70,10 @@ export interface IntakeSummary {
   name: string
   startsOn: string
   endsOn: string
+  offerAcceptanceDeadline: string | null
+  registrationDate: string | null
+  orientationDate: string | null
+  commencementDate: string | null
   status: CalendarStatus
   maximumProgrammeChoices: number
   changeReason: string

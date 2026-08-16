@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.time.Clock;
 import java.time.Instant;
@@ -12,6 +14,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.ArrayList;
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
@@ -128,20 +131,56 @@ class AdmissionsOperationalReportExportServiceTest {
                     .contains("COUNTING BASIS")
                     .contains("HACCN | Bachelor of Accounting Honours")
                     .contains("Computer Science Department");
+
+            BufferedImage renderedPage = new PDFRenderer(document).renderImageWithDPI(0, 72);
+            Color mastheadBackground = new Color(renderedPage.getRGB(renderedPage.getWidth() / 2, 20));
+            assertThat(mastheadBackground.getRed()).isGreaterThan(240);
+            assertThat(mastheadBackground.getGreen()).isGreaterThan(240);
+            assertThat(mastheadBackground.getBlue()).isGreaterThan(240);
+            assertThat(darkGreenPixelRatio(renderedPage)).isLessThan(0.01);
         }
     }
 
     @Test
-    void rejectsFormatsOutsideTheFamilyContract() {
-        when(reportService.generate(AdmissionsReportCode.APPLICATION_DEMAND, AdmissionsPipelineReportQuery.empty()))
-                .thenReturn(report(AdmissionsReportCode.APPLICATION_DEMAND, "Programme", "1"));
-
-        assertThatThrownBy(() -> exportService.export(
+    void generatesExcelAndPdfForEveryAnalyticalReportFamily() {
+        for (AdmissionsReportCode reportCode : List.of(
                 AdmissionsReportCode.APPLICATION_DEMAND,
-                AdmissionsPipelineReportQuery.empty(),
-                AdmissionsDetailedExportFormat.XLSX))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("XLSX is not enabled for this report family.");
+                AdmissionsReportCode.EXECUTIVE_STATISTICS,
+                AdmissionsReportCode.APPLICANT_REGISTERS,
+                AdmissionsReportCode.SPECIAL_CATEGORY_REGISTERS,
+                AdmissionsReportCode.SELECTION_SCHEDULES,
+                AdmissionsReportCode.INTAKE_MOVEMENTS,
+                AdmissionsReportCode.ADMISSIONS_ANALYSIS)) {
+            when(reportService.generate(reportCode, AdmissionsPipelineReportQuery.empty()))
+                    .thenReturn(report(reportCode, "Report row", "1"));
+
+            AdmissionsDetailedExport spreadsheet = exportService.export(
+                    reportCode, AdmissionsPipelineReportQuery.empty(), AdmissionsDetailedExportFormat.XLSX);
+            AdmissionsDetailedExport document = exportService.export(
+                    reportCode, AdmissionsPipelineReportQuery.empty(), AdmissionsDetailedExportFormat.PDF);
+
+            assertThat(spreadsheet.fileName()).endsWith(".xlsx");
+            assertThat(spreadsheet.content()).isNotEmpty();
+            assertThat(document.fileName()).endsWith(".pdf");
+            assertThat(document.content()).startsWith((byte) '%', (byte) 'P', (byte) 'D', (byte) 'F');
+        }
+    }
+
+    private static double darkGreenPixelRatio(BufferedImage image) {
+        long darkGreenPixels = 0;
+        long totalPixels = (long) image.getWidth() * image.getHeight();
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                Color pixel = new Color(image.getRGB(x, y));
+                if (pixel.getRed() < 60
+                        && pixel.getGreen() >= 70
+                        && pixel.getGreen() > pixel.getRed() * 1.8
+                        && pixel.getGreen() > pixel.getBlue() * 1.4) {
+                    darkGreenPixels++;
+                }
+            }
+        }
+        return (double) darkGreenPixels / totalPixels;
     }
 
     @Test
