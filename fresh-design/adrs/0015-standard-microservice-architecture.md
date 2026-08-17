@@ -32,12 +32,14 @@ Business services shall be organised by capability first. Each capability may co
 - Synchronous client DTOs are consumer-owned and shall not be shared between services.
 - Shared libraries contain technical primitives or versioned integration contracts only.
 
-The transitional `service-common` library shall be replaced incrementally by:
+The former transitional `service-common` library has been fully replaced by:
 
 - `service-foundation` for security, correlation, API errors, and standard service configuration;
 - `persistence-audit` for the audited entity and Envers infrastructure;
 - `integration-contracts` for versioned RabbitMQ event contracts;
 - `test-support` for architecture rules and shared test utilities.
+
+No service may depend on or import from a `service-common` module. The parent reactor and bootstrap tooling include only the four purpose-specific libraries above.
 
 ### Discovery and routing
 
@@ -74,7 +76,8 @@ Spring Cloud Config and central secret management are deferred. Configuration us
 ## Verification
 
 - Maven Enforcer rejects OpenFeign and direct service-artifact dependencies.
-- ArchUnit verifies domain isolation, service boundaries, controller and command placement, business and technical entity placement, and repository placement.
+- ArchUnit verifies domain isolation, service boundaries, controller and command placement, business and technical entity placement, repository placement, and the canonical Hibernate soft-delete restriction on every auditable entity.
+- Springdoc generates OpenAPI from live MVC mappings; documentation endpoints remain restricted to system administrators.
 - Contract tests verify internal HTTP and RabbitMQ payloads.
 - Topology tests verify registration, load-balanced routing, removal, and recovery.
 - Failure tests cover timeouts, circuit opening, and recovery without fabricated responses.

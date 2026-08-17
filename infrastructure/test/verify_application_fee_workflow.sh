@@ -13,7 +13,7 @@ keycloak_admin_password="${KEYCLOAK_ADMIN_PASSWORD:-admin}"
 core_identity_base_url="${CORE_IDENTITY_BASE_URL:-http://localhost:18081}"
 admissions_base_url="${ADMISSIONS_BASE_URL:-http://localhost:18083}"
 finance_base_url="${FINANCE_BASE_URL:-http://localhost:18084}"
-postgres_container="${POSTGRES_CONTAINER:-emhare-flyway-postgres}"
+postgres_container="${POSTGRES_CONTAINER:-emhare-postgres}"
 pause_after_reference_seconds="${E2E_PAUSE_AFTER_REFERENCE_SECONDS:-0}"
 
 test_run_identifier=$(uuidgen | tr '[:upper:]' '[:lower:]')

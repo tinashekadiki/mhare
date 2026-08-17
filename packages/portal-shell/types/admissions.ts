@@ -12,6 +12,23 @@ export type AdmissionsPaymentSummary = {
   paidAt: string | null;
 };
 
+export type AdmissionsApplicationFeePolicySummary = {
+  policyStatus: "FEE_STRUCTURE" | "FEE_FREE" | "LEGACY_UNSNAPSHOTTED";
+  feeStructureId: string | null;
+  feeStructureCode: string | null;
+  feeStructureName: string | null;
+  feeStructureVersion: number | null;
+  programmeLevelId: string | null;
+  programmeLevelCode: string | null;
+  applicantCategoryCode: string | null;
+  amount: number | null;
+  currencyCode: string | null;
+  effectiveAt: string | null;
+  feeFreeReason: string | null;
+  feePolicyDecidedByUserId: string | null;
+  feePolicyDecidedAt: string | null;
+};
+
 export type AdmissionsApplicationSummary = {
   id: string;
   applicationNumber: string;
@@ -23,8 +40,8 @@ export type AdmissionsApplicationSummary = {
   applicationTypeName: string;
   status: string;
   paymentRequired: boolean;
-  paymentClearanceStatus:
-    "NOT_REQUIRED" | "PENDING" | "UNRATED" | "PAID" | "WAIVED";
+  feePolicy: AdmissionsApplicationFeePolicySummary;
+  paymentClearanceStatus: "NOT_REQUIRED" | "PENDING" | "UNRATED" | "PAID" | "WAIVED";
   paymentWaiverReason: string | null;
   canSubmit: boolean;
   canEnterReview: boolean;
@@ -192,8 +209,7 @@ export type AcademicReviewSummary = {
   recommendationAcademicUnitCode: string;
   recommendationAcademicUnitName: string;
   hierarchyPathJson: string;
-  status:
-    "OPEN" | "CLAIMED" | "RECOMMENDED" | "RETURNED" | "COMPLETED" | "CANCELLED";
+  status: "OPEN" | "CLAIMED" | "RECOMMENDED" | "RETURNED" | "COMPLETED" | "CANCELLED";
   releaseAttempt: number;
   releasedByUserId: string;
   releasedAt: string;
@@ -256,14 +272,7 @@ export type AdmissionOfferSummary = {
   intakeId: string;
   offerType: "FIRM" | "CONDITIONAL" | null;
   status:
-    | "DRAFT"
-    | "APPROVED"
-    | "SENT"
-    | "ACCEPTED"
-    | "DECLINED"
-    | "EXPIRED"
-    | "WITHDRAWN"
-    | "CONVERTED";
+    "DRAFT" | "APPROVED" | "SENT" | "ACCEPTED" | "DECLINED" | "EXPIRED" | "WITHDRAWN" | "CONVERTED";
   currentDocumentVersionId: string | null;
   currentPublicationId: string | null;
   amendmentPending: boolean;
@@ -383,6 +392,7 @@ export type ApplicationTypeOption = {
   requiresReferees: boolean;
   fee: {
     required: boolean;
+    policyStatus: "FEE_STRUCTURE" | "FEE_FREE" | "UNCONFIGURED";
     amount: number | null;
     currencyCode: string | null;
   };
@@ -417,8 +427,7 @@ export type ApplicationRouteOption = {
   programmes: ProgrammeOption[];
 };
 
-export type ApplicationDocumentState =
-  "MISSING" | "PENDING" | "VERIFIED" | "REJECTED";
+export type ApplicationDocumentState = "MISSING" | "PENDING" | "VERIFIED" | "REJECTED";
 
 export type ApplicationDocumentRequirementState = {
   requirementCode: string;
@@ -458,12 +467,7 @@ export type AcademicUnitApplicationDocumentEntry = {
 };
 
 export type ApplicationSectionStatus =
-  | "NOT_STARTED"
-  | "IN_PROGRESS"
-  | "COMPLETE"
-  | "VERIFIED"
-  | "REJECTED"
-  | "CORRECTION_REQUIRED";
+  "NOT_STARTED" | "IN_PROGRESS" | "COMPLETE" | "VERIFIED" | "REJECTED" | "CORRECTION_REQUIRED";
 
 export type ApplicationWorkspaceSection = {
   id: string;
@@ -514,17 +518,12 @@ export type ApplicantReferee = {
   verificationStatus: "PENDING" | "VERIFIED" | "REJECTED";
   referenceDocumentId: string | null;
   rejectionReason: string | null;
-  invitationStatus:
-    "NOT_SENT" | "SENT" | "OPENED" | "SUBMITTED" | "REVOKED" | "EXPIRED";
+  invitationStatus: "NOT_SENT" | "SENT" | "OPENED" | "SUBMITTED" | "REVOKED" | "EXPIRED";
   invitedAt: string | null;
   referenceRelationshipToApplicant: string | null;
   yearsKnown: number | null;
   recommendation:
-    | "STRONGLY_RECOMMEND"
-    | "RECOMMEND"
-    | "RECOMMEND_WITH_RESERVATIONS"
-    | "DO_NOT_RECOMMEND"
-    | null;
+    "STRONGLY_RECOMMEND" | "RECOMMEND" | "RECOMMEND_WITH_RESERVATIONS" | "DO_NOT_RECOMMEND" | null;
   referenceComments: string | null;
   referenceSubmittedAt: string | null;
   version: number;
@@ -623,13 +622,25 @@ export type ApplicantApplicationWorkspace = {
 };
 
 export type AdmissionsApplicationWorkflowProgress = {
-  currentStageCode: "VERIFICATION" | "ELIGIBILITY" | "ACADEMIC_REVIEW" | "ADMISSION_DECISION" | "OFFER" | "RESPONSE";
+  currentStageCode:
+    | "VERIFICATION"
+    | "ELIGIBILITY"
+    | "ACADEMIC_REVIEW"
+    | "ADMISSION_DECISION"
+    | "OFFER"
+    | "RESPONSE";
   stages: AdmissionsApplicationWorkflowStage[];
 };
 
 export type AdmissionsApplicationWorkflowStage = {
   sequence: number;
-  code: "VERIFICATION" | "ELIGIBILITY" | "ACADEMIC_REVIEW" | "ADMISSION_DECISION" | "OFFER" | "RESPONSE";
+  code:
+    | "VERIFICATION"
+    | "ELIGIBILITY"
+    | "ACADEMIC_REVIEW"
+    | "ADMISSION_DECISION"
+    | "OFFER"
+    | "RESPONSE";
   label: string;
   state: "COMPLETED" | "CURRENT" | "PENDING" | "NOT_APPLICABLE";
   statusLabel: string;
@@ -638,26 +649,95 @@ export type AdmissionsApplicationWorkflowStage = {
 };
 
 export type AdmissionsWorkItemRow = {
-  applicationId: string; applicationNumber: string; applicantNumber: string; applicantName: string;
-  intakeId: string; intakeCode: string; applicationTypeId: string; applicationTypeName: string;
-  programmeId: string | null; programmeCode: string | null; programmeName: string | null;
-  points: number | null; paymentState: string; stage: string; outcome: string;
-  blockers: string[]; lastActivityAt: string;
+  applicationId: string;
+  applicationNumber: string;
+  applicantNumber: string;
+  applicantName: string;
+  intakeId: string;
+  intakeCode: string;
+  applicationTypeId: string;
+  applicationTypeName: string;
+  programmeId: string | null;
+  programmeCode: string | null;
+  programmeName: string | null;
+  points: number | null;
+  paymentState: string;
+  stage: string;
+  outcome: string;
+  blockers: string[];
+  lastActivityAt: string;
 };
 
-export type AdmissionsWorkItemPage = { content: AdmissionsWorkItemRow[]; page: number; size: number; totalElements: number; totalPages: number };
+export type AdmissionsWorkItemPage = {
+  content: AdmissionsWorkItemRow[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
 
-export type AdmissionsOfferDocumentVersion = { id: string; version: number; status: string; generatedDocumentId: string | null; documentNumber: string | null; checksumSha256: string | null; requestedAt: string; storedAt: string | null; failureReason: string | null };
-export type AdmissionsOfferPublication = { id: string; documentVersionId: string; sequence: number; portalPublishedAt: string; publishedByUserId: string; emailStatus: string; emailStatusAt: string; emailFailureReason: string | null; current: boolean; supersededAt: string | null };
+export type AdmissionsOfferDocumentVersion = {
+  id: string;
+  version: number;
+  status: string;
+  generatedDocumentId: string | null;
+  documentNumber: string | null;
+  checksumSha256: string | null;
+  requestedAt: string;
+  storedAt: string | null;
+  failureReason: string | null;
+};
+export type AdmissionsOfferPublication = {
+  id: string;
+  documentVersionId: string;
+  sequence: number;
+  portalPublishedAt: string;
+  publishedByUserId: string;
+  emailStatus: string;
+  emailStatusAt: string;
+  emailFailureReason: string | null;
+  current: boolean;
+  supersededAt: string | null;
+};
 export type AdmissionsWorkItemCase = {
   workspace: ApplicantApplicationWorkspace;
-  academicReview: { id: string; programmeChoiceId: string; status: string; recommendationAcademicUnitId: string; recommendationAcademicUnitName: string; claimedByUserId: string | null; claimedAt: string | null; completedAt: string | null; version: number } | null;
-  academicRecommendation: { id: string; recommendation: string; reason: string; recommendedByUserId: string; recommendedAt: string; reviewStatus: string } | null;
-  admissionDecision: { id: string; decision: string; reason: string; decidedByUserId: string; decidedAt: string } | null;
+  academicReview: {
+    id: string;
+    programmeChoiceId: string;
+    status: string;
+    recommendationAcademicUnitId: string;
+    recommendationAcademicUnitName: string;
+    claimedByUserId: string | null;
+    claimedAt: string | null;
+    completedAt: string | null;
+    version: number;
+  } | null;
+  academicRecommendation: {
+    id: string;
+    recommendation: string;
+    reason: string;
+    recommendedByUserId: string;
+    recommendedAt: string;
+    reviewStatus: string;
+  } | null;
+  admissionDecision: {
+    id: string;
+    decision: string;
+    reason: string;
+    decidedByUserId: string;
+    decidedAt: string;
+  } | null;
   offer: AdmissionOfferSummary | null;
   documentVersions: AdmissionsOfferDocumentVersion[];
   publications: AdmissionsOfferPublication[];
-  auditHistory: Array<{ id: string; fromStatus: string | null; toStatus: string; reason: string; changedByUserId: string; changedAt: string }>;
+  auditHistory: Array<{
+    id: string;
+    fromStatus: string | null;
+    toStatus: string;
+    reason: string;
+    changedByUserId: string;
+    changedAt: string;
+  }>;
   blockers: string[];
   availableActions: string[];
 };
@@ -688,13 +768,23 @@ export type AdmissionsVerificationQueue = {
 };
 
 export type AdmissionsReportDimensionCount = { code: string; count: number };
-export type AdmissionsReportRankedChoiceCount = { rank: number; choices: number; applications: number };
+export type AdmissionsReportRankedChoiceCount = {
+  rank: number;
+  choices: number;
+  applications: number;
+};
 export type AdmissionsReportFilterOption = { value: string; code: string; label: string };
 
 export type AdmissionsReportDefinition = {
-  code: 'APPLICATION_DEMAND' | 'EXECUTIVE_STATISTICS' | 'APPLICANT_REGISTERS' |
-    'SPECIAL_CATEGORY_REGISTERS' | 'SELECTION_SCHEDULES' | 'INTAKE_MOVEMENTS' |
-    'ADMISSIONS_ANALYSIS' | 'OFFER_LETTERS';
+  code:
+    | "APPLICATION_DEMAND"
+    | "EXECUTIVE_STATISTICS"
+    | "APPLICANT_REGISTERS"
+    | "SPECIAL_CATEGORY_REGISTERS"
+    | "SELECTION_SCHEDULES"
+    | "INTAKE_MOVEMENTS"
+    | "ADMISSIONS_ANALYSIS"
+    | "OFFER_LETTERS";
   family: string;
   title: string;
   description: string;

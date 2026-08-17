@@ -10,8 +10,7 @@ const keycloakBaseUrl = process.env.KEYCLOAK_URL ?? "http://localhost:8099";
 const keycloakRealm = process.env.KEYCLOAK_REALM ?? "emhare";
 const keycloakAdminUsername = process.env.KEYCLOAK_ADMIN_USERNAME ?? "admin";
 const keycloakAdminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD ?? "admin";
-const applicantPortalUrl =
-  process.env.APPLICANT_PORTAL_URL ?? "http://localhost:3001";
+const applicantPortalUrl = process.env.APPLICANT_PORTAL_URL ?? "http://localhost:3001";
 const testPassword = "Passw0rd!234";
 
 type KeycloakRole = {
@@ -56,10 +55,7 @@ async function createKeycloakAdminRequestContext() {
   });
 }
 
-async function findKeycloakUserId(
-  adminRequest: APIRequestContext,
-  username: string,
-) {
+async function findKeycloakUserId(adminRequest: APIRequestContext, username: string) {
   const response = await adminRequest.get(
     `${keycloakBaseUrl}/admin/realms/${keycloakRealm}/users?username=${encodeURIComponent(username)}&exact=true`,
   );
@@ -69,11 +65,7 @@ async function findKeycloakUserId(
   return users[0].id as string;
 }
 
-async function assignRealmRole(
-  adminRequest: APIRequestContext,
-  userId: string,
-  roleName: string,
-) {
+async function assignRealmRole(adminRequest: APIRequestContext, userId: string, roleName: string) {
   const roleResponse = await adminRequest.get(
     `${keycloakBaseUrl}/admin/realms/${keycloakRealm}/roles/${roleName}`,
   );
@@ -141,11 +133,7 @@ async function ensureApplicantUser(username: string) {
   await adminRequest.dispose();
 }
 
-async function ensureOperationalUser(
-  username: string,
-  roleName: string,
-  lastName: string,
-) {
+async function ensureOperationalUser(username: string, roleName: string, lastName: string) {
   const adminRequest = await createKeycloakAdminRequestContext();
   const createResponse = await adminRequest.post(
     `${keycloakBaseUrl}/admin/realms/${keycloakRealm}/users`,
@@ -194,6 +182,60 @@ async function readBrowserAccessToken(page: Page) {
   });
 }
 
+async function useFixtureAcademicPeriod(
+  page: Page,
+  academicPeriodId: string,
+  academicPeriodCode = "2027-S1",
+) {
+  await page.context().addCookies([
+    {
+      name: "emhare-academic-period-id",
+      value: academicPeriodId,
+      url: "http://localhost:3000",
+    },
+  ]);
+  await page.route("**/api/academic/overview", async (route) => {
+    const response = await route.fetch();
+    const overview = await response.json();
+    const academicYearId = "00000000-0000-4000-8000-000000002027";
+    await route.fulfill({
+      response,
+      json: {
+        ...overview,
+        academicYears: [
+          ...overview.academicYears.filter((year: { id: string }) => year.id !== academicYearId),
+          {
+            id: academicYearId,
+            name: "2027 Academic Year",
+            startDate: "2027-01-01",
+            endDate: "2027-12-31",
+            status: "OPEN",
+            version: 1,
+          },
+        ],
+        academicPeriods: [
+          ...overview.academicPeriods.filter(
+            (period: { id: string }) => period.id !== academicPeriodId,
+          ),
+          {
+            id: academicPeriodId,
+            academicYearId,
+            academicYearName: "2027 Academic Year",
+            academicPeriodTypeId: "00000000-0000-4000-8000-000000000001",
+            academicPeriodTypeName: "Semester",
+            code: academicPeriodCode,
+            name: "Semester 1",
+            startDate: "2027-01-01",
+            endDate: "2027-06-30",
+            status: "OPEN",
+            version: 1,
+          },
+        ],
+      },
+    });
+  });
+}
+
 test.describe("Core Identity authentication and RBAC", () => {
   test("shows only the operational sections granted to a finance officer", async ({
     page,
@@ -202,25 +244,21 @@ test.describe("Core Identity authentication and RBAC", () => {
     await ensureOperationalUser(username, "finance-officer", "Finance");
 
     await page.goto("/operations");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(/\/operations$/, { timeout: 15_000 });
-    await expect(
-      page.getByRole("button", { name: "Finance", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Admissions", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Core and Identity", exact: true }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: "Academic Setup", exact: true }),
-    ).toHaveCount(0);
+    if (testInfo.project.name.includes("mobile")) {
+      await page.getByRole("button", { name: "Open sidebar" }).first().click();
+    }
+    await expect(page.getByRole("button", { name: "Finance", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Admissions", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Core and Identity", exact: true })).toHaveCount(
+      0,
+    );
+    await expect(page.getByRole("button", { name: "Academic Setup", exact: true })).toHaveCount(0);
     await expect(
       page.getByRole("button", {
         name: "Teaching and Assessment",
@@ -243,24 +281,19 @@ test.describe("Core Identity authentication and RBAC", () => {
     });
 
     await page.goto("/operations/core");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(
-      new RegExp(
-        `^${applicantPortalUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/?`,
-      ),
+      new RegExp(`^${applicantPortalUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/?`),
       { timeout: 15_000 },
     );
     expect(coreUsersRequests).toHaveLength(0);
   });
 
-  test("loads only the selected Core workspace dataset", async ({
-    page,
-  }, testInfo) => {
+  test("loads only the selected Core workspace dataset", async ({ page }, testInfo) => {
     const username = `codex.lazy-core.${testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}@example.test`;
     await ensureSystemAdminUser(username);
 
@@ -268,39 +301,30 @@ test.describe("Core Identity authentication and RBAC", () => {
     const coreRolesRequests: string[] = [];
     const coreStatisticsRequests: string[] = [];
     page.on("request", (request) => {
-      if (request.url().endsWith("/api/core/users"))
-        coreUsersRequests.push(request.url());
-      if (request.url().endsWith("/api/core/roles"))
-        coreRolesRequests.push(request.url());
+      if (request.url().endsWith("/api/core/users")) coreUsersRequests.push(request.url());
+      if (request.url().endsWith("/api/core/roles")) coreRolesRequests.push(request.url());
       if (request.url().endsWith("/api/core/statistics"))
         coreStatisticsRequests.push(request.url());
     });
 
     await page.goto("/operations/core");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
 
-    await expect(
-      page.getByRole("heading", { name: "Institution profile" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Institution profile" })).toBeVisible();
     await expect.poll(() => coreStatisticsRequests.length).toBe(1);
     expect(coreUsersRequests).toHaveLength(0);
     expect(coreRolesRequests).toHaveLength(0);
-    await expect(
-      page.getByTestId("core-stat-users").locator("p").nth(1),
-    ).toHaveText(/^[1-9]\d*$/);
-    await expect(
-      page.getByTestId("core-stat-roles").locator("p").nth(1),
-    ).toHaveText(/^[1-9]\d*$/);
-    await expect(
-      page.getByTestId("core-stat-permissions").locator("p").nth(1),
-    ).toHaveText(/^[1-9]\d*$/);
-    await expect(
-      page.getByTestId("core-stat-lookup-sets").locator("p").nth(1),
-    ).toHaveText(/^[1-9]\d*$/);
+    await expect(page.getByTestId("core-stat-users").locator("p").nth(1)).toHaveText(/^[1-9]\d*$/);
+    await expect(page.getByTestId("core-stat-roles").locator("p").nth(1)).toHaveText(/^[1-9]\d*$/);
+    await expect(page.getByTestId("core-stat-permissions").locator("p").nth(1)).toHaveText(
+      /^[1-9]\d*$/,
+    );
+    await expect(page.getByTestId("core-stat-lookup-sets").locator("p").nth(1)).toHaveText(
+      /^[1-9]\d*$/,
+    );
 
     await page.getByRole("button", { name: "Users" }).click();
     await expect.poll(() => coreUsersRequests.length).toBe(1);
@@ -315,9 +339,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     page,
   }, testInfo) => {
     test.setTimeout(60_000);
-    const projectSuffix = testInfo.project.name
-      .replace(/[^a-z0-9]+/gi, "-")
-      .toLowerCase();
+    const projectSuffix = testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
     const administratorUsername = `codex.provisioning-admin.${projectSuffix}@example.test`;
     const uniqueSuffix = `${projectSuffix}-${Date.now()}`;
     const provisionedUsername = `codex.provisioned.${uniqueSuffix}`;
@@ -330,10 +352,9 @@ test.describe("Core Identity authentication and RBAC", () => {
 
     try {
       await page.goto("/operations/core");
-      await expect(page).toHaveURL(
-        /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-        { timeout: 15_000 },
-      );
+      await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+        timeout: 15_000,
+      });
       await loginWithKeycloak(page, administratorUsername);
       await expect(page).toHaveURL(/\/operations\/core$/, {
         timeout: 15_000,
@@ -343,17 +364,13 @@ test.describe("Core Identity authentication and RBAC", () => {
 
       await page.getByRole("button", { name: "Users" }).click();
       await page.getByRole("button", { name: "Create user" }).click();
-      const userDrawer = page.getByRole("dialog", {
+      const userDrawer = page.getByRole("region", {
         name: "Provision user access",
       });
       await userDrawer.getByLabel("Username").fill(provisionedUsername);
       await userDrawer.getByLabel("Email").fill(provisionedEmail);
-      await userDrawer
-        .getByLabel("Display name")
-        .fill("Provisioning Contract Test");
-      await userDrawer
-        .getByRole("button", { name: "Continue to access" })
-        .click();
+      await userDrawer.getByLabel("Display name").fill("Provisioning Contract Test");
+      await userDrawer.getByRole("button", { name: "Continue to access" }).click();
       await userDrawer.getByLabel("Role").click();
       await page.getByRole("option", { name: "System Admin" }).click();
       await expect(userDrawer.getByText("CORE").first()).toBeVisible();
@@ -365,13 +382,10 @@ test.describe("Core Identity authentication and RBAC", () => {
           response.request().method() === "POST" &&
           response.url().endsWith("/api/core/users/provisioned-access"),
       );
-      await userDrawer
-        .getByRole("button", { name: "Create and activate user" })
-        .click();
+      await userDrawer.getByRole("button", { name: "Create and activate user" }).click();
       const provisioningResponse = await provisioningResponsePromise;
       expect(provisioningResponse.ok()).toBeTruthy();
-      provisionedAccess =
-        (await provisioningResponse.json()) as ProvisionedUserAccess;
+      provisionedAccess = (await provisioningResponse.json()) as ProvisionedUserAccess;
 
       expect(provisionedAccess.keycloakIdentityCreated).toBe(true);
       expect(provisionedAccess.temporaryPassword).toHaveLength(20);
@@ -379,9 +393,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       expect(provisionedAccess.user.username).toBe(provisionedUsername);
       expect(provisionedAccess.user.email).toBe(provisionedEmail);
 
-      await expect(
-        page.getByRole("heading", { name: "User provisioned" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "User provisioned" })).toBeVisible();
       await expect(page.locator(".swal2-html-container")).toContainText(
         provisionedAccess.temporaryPassword!,
       );
@@ -402,21 +414,14 @@ test.describe("Core Identity authentication and RBAC", () => {
       try {
         const firstLoginPage = await firstLoginContext.newPage();
         await firstLoginPage.goto("http://localhost:3000/operations");
-        await firstLoginPage
-          .getByLabel(/email|username/i)
-          .fill(provisionedEmail);
+        await firstLoginPage.getByLabel(/email|username/i).fill(provisionedEmail);
         await firstLoginPage
           .getByRole("textbox", { name: "Password" })
           .fill(provisionedAccess.temporaryPassword!);
-        await firstLoginPage
-          .getByRole("button", { name: /sign in|log in/i })
-          .click();
-        await expect(firstLoginPage).toHaveURL(
-          /\/login-actions\/required-action/,
-          {
-            timeout: 15_000,
-          },
-        );
+        await firstLoginPage.getByRole("button", { name: /sign in|log in/i }).click();
+        await expect(firstLoginPage).toHaveURL(/\/login-actions\/required-action/, {
+          timeout: 15_000,
+        });
         await expect(
           firstLoginPage.getByRole("heading", { name: /update password/i }),
         ).toBeVisible();
@@ -446,9 +451,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     }
   });
 
-  test("configures and activates a governed admission route", async ({
-    page,
-  }, testInfo) => {
+  test("configures and activates a governed admission route", async ({ page }, testInfo) => {
     test.setTimeout(60_000);
     const username = `codex.admissions-route.${testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}@example.test`;
     const applicationTypeId = "11111111-1111-4111-8111-111111111111";
@@ -531,10 +534,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       `**/api/admissions/application-types/${applicationTypeId}/route-configuration`,
       async (route) => {
         if (route.request().method() === "PUT") {
-          configuredRouteRequest = route.request().postDataJSON() as Record<
-            string,
-            unknown
-          >;
+          configuredRouteRequest = route.request().postDataJSON() as Record<string, unknown>;
           applicationType.active = true;
           applicationType.version = 1;
           await route.fulfill({
@@ -586,14 +586,13 @@ test.describe("Core Identity authentication and RBAC", () => {
     );
 
     await page.goto("/operations/application-types");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
-    await expect(
-      page.getByRole("heading", { name: "Application types" }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Application types" })).toBeVisible({
+      timeout: 15_000,
+    });
 
     const postgraduateRow = page
       .locator("[data-emhare-paginated-table]")
@@ -602,46 +601,28 @@ test.describe("Core Identity authentication and RBAC", () => {
     const routeConfigurationDrawer = page.getByRole("region", {
       name: "Configure Postgraduate",
     });
-    await expect(routeConfigurationDrawer).toHaveAttribute(
-      "data-emhare-form-presentation",
-      "page",
-    );
-    await expect(page.locator("#emhare-route-content")).toHaveAttribute(
-      "aria-hidden",
-      "true",
-    );
+    await expect(routeConfigurationDrawer).toHaveAttribute("data-emhare-form-presentation", "page");
+    await expect(page.locator("#emhare-route-content")).toHaveAttribute("aria-hidden", "true");
     await expect(page.getByRole("button", { name: "Search" })).toBeVisible();
     if ((page.viewportSize()?.width ?? 0) >= 1024) {
-      await expect(
-        page.getByRole("link", { name: "Applicant register" }),
-      ).toBeVisible();
+      await expect(page.getByRole("link", { name: "Applicant register" })).toBeVisible();
     } else {
-      await expect(
-        page.getByRole("button", { name: "Open sidebar" }),
-      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Open sidebar" })).toBeVisible();
     }
     await expect(routeConfigurationDrawer).toContainText(
       "at least one active programme mapping is required",
     );
-    const programmeMappings =
-      routeConfigurationDrawer.getByLabel("Programme mappings");
+    const programmeMappings = routeConfigurationDrawer.getByLabel("Programme mappings");
     await programmeMappings.click();
-    await page
-      .getByRole("option", { name: /MSCDA · Master of Data Analytics/ })
-      .click();
+    await page.getByRole("option", { name: /MSCDA · Master of Data Analytics/ }).click();
     await programmeMappings.click();
     await expect(page.getByRole("listbox")).not.toBeVisible();
-    await expect(
-      routeConfigurationDrawer.getByLabel("Document code").first(),
-    ).toHaveValue("IDENTITY_DOCUMENT");
-    await routeConfigurationDrawer
-      .getByLabel("Activate application route")
-      .click();
-    const routeChangeReason =
-      routeConfigurationDrawer.getByLabel("Change reason");
-    await routeChangeReason.fill(
-      "Activate the configured postgraduate admissions route.",
+    await expect(routeConfigurationDrawer.getByLabel("Document code").first()).toHaveValue(
+      "IDENTITY_DOCUMENT",
     );
+    await routeConfigurationDrawer.getByLabel("Activate application route").click();
+    const routeChangeReason = routeConfigurationDrawer.getByLabel("Change reason");
+    await routeChangeReason.fill("Activate the configured postgraduate admissions route.");
     await routeConfigurationDrawer
       .getByRole("button", { name: "Save route configuration" })
       .click();
@@ -665,14 +646,13 @@ test.describe("Core Identity authentication and RBAC", () => {
         .filter((document) => document.required)
         .map((document) => document.code),
     ).toEqual(["IDENTITY_DOCUMENT", "ACADEMIC_QUALIFICATIONS"]);
-    await expect(
-      postgraduateRow.getByText("Active", { exact: true }),
-    ).toBeVisible();
+    await expect(postgraduateRow.getByText("Active", { exact: true })).toBeVisible();
   });
 
   test("redirects unauthenticated admin users to Keycloak and loads Core data after login", async ({
     page,
   }, testInfo) => {
+    test.setTimeout(60_000);
     const username = `codex.admin.${testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}@example.test`;
     await ensureSystemAdminUser(username);
 
@@ -687,33 +667,22 @@ test.describe("Core Identity authentication and RBAC", () => {
     page.on("pageerror", (error) => pageErrors.push(error.message));
 
     await page.goto("/operations/core");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
-    await expect(
-      page.getByRole("heading", { name: /sign in to your account/i }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
+    await expect(page.getByRole("heading", { name: /sign in to your account/i })).toBeVisible();
 
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(/\/operations\/core$/, { timeout: 15_000 });
-    await expect(
-      page.getByRole("heading", { name: "Core Identity" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Institution profile" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Core Identity" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Institution profile" })).toBeVisible();
     const profileRegion = page.getByRole("region", {
       name: "Institution profile",
     });
-    const institutionLogo = profileRegion.locator(
-      "[data-emhare-institution-logo]",
-    );
+    const institutionLogo = profileRegion.locator("[data-emhare-institution-logo]");
     await expect(institutionLogo).toBeVisible();
-    await expect(
-      institutionLogo.locator("img, [data-emhare-logo-fallback]"),
-    ).toHaveCount(1);
+    await expect(institutionLogo.locator("img, [data-emhare-logo-fallback]")).toHaveCount(1);
 
     await page.getByRole("button", { name: "Edit profile" }).click();
     const profileDrawer = page.getByRole("region", {
@@ -727,22 +696,18 @@ test.describe("Core Identity authentication and RBAC", () => {
         name: "Brand and official documents",
       }),
     ).toBeVisible();
-    await expect(
-      profileDrawer.getByRole("heading", { name: "Bank details" }),
-    ).toBeVisible();
+    await expect(profileDrawer.getByRole("heading", { name: "Bank details" })).toBeVisible();
     await expect(profileDrawer.getByLabel("Registrar name")).toHaveValue(/\S+/);
     await expect(profileDrawer.getByLabel("Bank name")).toHaveCount(4);
     await expect(profileDrawer.getByLabel("Account number")).toHaveCount(4);
     await expect(profileDrawer.getByText("USD account", { exact: true })).toHaveCount(2);
     await expect(profileDrawer.getByText("ZWG account", { exact: true })).toHaveCount(2);
     await expect(profileDrawer.getByLabel("Email address")).toHaveValue(/@/);
-    await expect(profileDrawer.locator('input[type="file"]')).toHaveAttribute(
+    await expect(profileDrawer.getByLabel("Choose logo")).toHaveAttribute(
       "accept",
       "image/png,image/jpeg",
     );
-    await profileDrawer
-      .getByRole("textbox", { name: /Institution code/ })
-      .fill("TEMP");
+    await profileDrawer.getByRole("textbox", { name: /Institution code/ }).fill("TEMP");
     await profileDrawer.getByRole("button", { name: "Cancel" }).click();
     await expect(profileDrawer).not.toBeVisible();
     await expect(profileRegion.getByText("UZ", { exact: true }).first()).toBeVisible();
@@ -753,31 +718,23 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(usersTable.locator("[data-emhare-pagination]")).toContainText(
       /\d+ total · Page 1 of \d+/,
     );
-    await expect(usersTable.getByLabel("Rows per page")).toContainText(
-      "10 per page",
-    );
+    await expect(usersTable.getByLabel("Rows per page")).toContainText("10 per page");
     await page.getByPlaceholder("Search").fill(username);
     await expect(page.getByText(username).first()).toBeVisible();
     await page.getByRole("button", { name: "Create user" }).click();
-    const userDrawer = page.getByRole("dialog");
+    const userDrawer = page.getByRole("region", {
+      name: "Provision user access",
+    });
     await expect(userDrawer).toBeVisible();
     if (testInfo.project.name === "chromium-mobile") {
-      await expect
-        .poll(async () => (await userDrawer.boundingBox())?.x)
-        .toBeLessThanOrEqual(1);
+      await expect.poll(async () => (await userDrawer.boundingBox())?.x).toBeLessThanOrEqual(1);
       const settledDrawerBounds = await userDrawer.boundingBox();
-      expect(settledDrawerBounds?.width).toBeLessThanOrEqual(
-        page.viewportSize()!.width,
-      );
+      expect(settledDrawerBounds?.width).toBeLessThanOrEqual(page.viewportSize()!.width);
     }
-    await expect(
-      page.getByRole("heading", { name: "Provision user access" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Provision user access" })).toBeVisible();
     const usernameInput = userDrawer.getByLabel("Username");
     await expect(usernameInput).toBeVisible();
-    await expect(
-      userDrawer.getByText("Keycloak account included"),
-    ).toBeVisible();
+    await expect(userDrawer.getByText("Keycloak account included")).toBeVisible();
 
     const drawerBounds = await userDrawer.boundingBox();
     const usernameBounds = await usernameInput.boundingBox();
@@ -786,16 +743,10 @@ test.describe("Core Identity authentication and RBAC", () => {
     expect(usernameBounds!.width).toBeGreaterThan(drawerBounds!.width * 0.35);
 
     await usernameInput.fill("access.workflow.test");
-    await userDrawer
-      .getByLabel("Email")
-      .fill("access.workflow.test@example.test");
+    await userDrawer.getByLabel("Email").fill("access.workflow.test@example.test");
     await userDrawer.getByLabel("Display name").fill("Access Workflow Test");
-    await userDrawer
-      .getByRole("button", { name: "Continue to access" })
-      .click();
-    await expect(
-      userDrawer.getByText("Assign the user's working access"),
-    ).toBeVisible();
+    await userDrawer.getByRole("button", { name: "Continue to access" }).click();
+    await expect(userDrawer.getByText("Assign the user's working access")).toBeVisible();
     await userDrawer.getByLabel("Role").click();
     await page.getByRole("option", { name: "System Admin" }).click();
     await expect(userDrawer.getByText("CORE").first()).toBeVisible();
@@ -806,12 +757,10 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(
       userDrawer.getByRole("button", { name: "Create and activate user" }),
     ).toBeVisible();
-    await userDrawer.getByRole("button", { name: "Back" }).click();
-    await expect(
-      userDrawer.getByText("Assign the user's working access"),
-    ).toBeVisible();
+    await userDrawer.getByRole("button", { name: "Back" }).last().click();
+    await expect(userDrawer.getByText("Assign the user's working access")).toBeVisible();
     await userDrawer.getByRole("button", { name: "Cancel" }).click();
-    await expect(page.getByRole("dialog")).not.toBeVisible();
+    await expect(userDrawer).not.toBeVisible();
 
     await page.getByRole("button", { name: "RBAC" }).click();
     await expect(page.getByText("System Admin").first()).toBeVisible();
@@ -822,13 +771,9 @@ test.describe("Core Identity authentication and RBAC", () => {
     const roleDrawer = page.getByRole("dialog");
     await expect(roleDrawer).toBeVisible();
     if (testInfo.project.name === "chromium-mobile") {
-      await expect
-        .poll(async () => (await roleDrawer.boundingBox())?.x)
-        .toBeLessThanOrEqual(1);
+      await expect.poll(async () => (await roleDrawer.boundingBox())?.x).toBeLessThanOrEqual(1);
     }
-    await expect(
-      page.getByRole("heading", { name: "Create role" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Create role" })).toBeVisible();
     await roleDrawer.getByRole("button", { name: "Cancel" }).click();
 
     await page.getByRole("tab", { name: /User assignments/ }).click();
@@ -838,9 +783,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     const academicUnit = assignmentDrawer.getByLabel("Academic unit");
     await expect(assignmentRole).toBeVisible();
     await expect(assignmentRole).toContainText("Select role");
-    expect((await assignmentRole.boundingBox())?.height).toBeGreaterThanOrEqual(
-      32,
-    );
+    expect((await assignmentRole.boundingBox())?.height).toBeGreaterThanOrEqual(32);
     await expect(academicUnit).toBeVisible();
     await expect(academicUnit).toContainText("Search by unit code or name");
     await expect(academicUnit).toBeEnabled();
@@ -856,29 +799,19 @@ test.describe("Core Identity authentication and RBAC", () => {
     await assignmentDrawer.getByRole("button", { name: "Cancel" }).click();
 
     await page.getByRole("button", { name: "Workflow Tasks" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Workflow tasks" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Workflow tasks" })).toBeVisible();
     await expect(page.getByText("Governed operational queue")).toBeVisible();
 
     await page.getByRole("button", { name: "Reference Data" }).click();
     await expect(page.getByRole("tab", { name: /Countries/ })).toHaveCount(0);
-    await expect(
-      page.getByRole("tab", { name: /Lookup values/ }),
-    ).toBeVisible();
+    await expect(page.getByRole("tab", { name: /Lookup values/ })).toBeVisible();
     const countryLookupValues = page.getByRole("region", {
       name: "Lookup values · Countries",
     });
     await expect(countryLookupValues).toBeVisible();
-    await expect(countryLookupValues.getByLabel("Lookup set")).toContainText(
-      "Countries",
-    );
-    await expect(
-      countryLookupValues.getByText("Zimbabwe", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      countryLookupValues.getByRole("button", { name: "Create country" }),
-    ).toBeVisible();
+    await expect(countryLookupValues.getByLabel("Lookup set")).toContainText("Countries");
+    await expect(countryLookupValues.getByText("Zimbabwe", { exact: true })).toBeVisible();
+    await expect(countryLookupValues.getByRole("button", { name: "Create country" })).toBeVisible();
 
     await page.getByRole("button", { name: "Audit & Reports" }).click();
     await expect(page.getByText("Audit activity · 24h", { exact: true })).toBeVisible();
@@ -944,28 +877,18 @@ test.describe("Core Identity authentication and RBAC", () => {
         });
         return;
       }
-      createdApplicationTypeRequest = route.request().postDataJSON() as Record<
-        string,
-        unknown
-      >;
+      createdApplicationTypeRequest = route.request().postDataJSON() as Record<string, unknown>;
       applicationTypeFixtures.push({
         id: "99999999-9999-4999-8999-999999999999",
         code: String(createdApplicationTypeRequest.code),
         name: String(createdApplicationTypeRequest.name),
-        requiresEmploymentHistory: Boolean(
-          createdApplicationTypeRequest.requiresEmploymentHistory,
-        ),
-        requiresReferees: Boolean(
-          createdApplicationTypeRequest.requiresReferees,
-        ),
-        financeFeeStructureId:
-          createdApplicationTypeRequest.financeFeeStructureId as string | null,
-        financeFeeStructureCode:
-          createdApplicationTypeRequest.financeFeeStructureCode as
-            string | null,
-        financeFeeStructureName:
-          createdApplicationTypeRequest.financeFeeStructureName as
-            string | null,
+        requiresEmploymentHistory: Boolean(createdApplicationTypeRequest.requiresEmploymentHistory),
+        requiresReferees: Boolean(createdApplicationTypeRequest.requiresReferees),
+        financeFeeStructureId: createdApplicationTypeRequest.financeFeeStructureId as string | null,
+        financeFeeStructureCode: createdApplicationTypeRequest.financeFeeStructureCode as
+          string | null,
+        financeFeeStructureName: createdApplicationTypeRequest.financeFeeStructureName as
+          string | null,
         active: Boolean(createdApplicationTypeRequest.active),
         version: 0,
       });
@@ -977,36 +900,28 @@ test.describe("Core Identity authentication and RBAC", () => {
     });
 
     await page.goto("/operations/application-types");
-    await expect(
-      page.getByRole("heading", { name: "Application types" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Application types" })).toBeVisible();
     if (testInfo.project.name === "chromium-mobile") {
-      await page.getByRole("button", { name: "Open sidebar" }).click();
+      await page.getByRole("banner").getByRole("button", { name: "Open sidebar" }).click();
     }
     await expect(
-      page
-        .getByRole("link", { name: "Application types", exact: true })
-        .first(),
+      page.getByRole("link", { name: "Application types", exact: true }).first(),
     ).toBeVisible();
     if (testInfo.project.name === "chromium-mobile") {
       await page.keyboard.press("Escape");
     }
     const applicationTypeTable = page.locator("[data-emhare-paginated-table]");
-    await expect(
-      applicationTypeTable.locator("[data-emhare-pagination]"),
-    ).toContainText("1 of 1 records · Page 1 of 1");
-    await expect(
-      applicationTypeTable.getByText("POSTGRAD", { exact: true }),
-    ).toBeVisible();
+    await expect(applicationTypeTable.locator("[data-emhare-pagination]")).toContainText(
+      "1 of 1 records · Page 1 of 1",
+    );
+    await expect(applicationTypeTable.getByText("POSTGRAD", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "New application type" }).click();
-    const applicationTypeDrawer = page.getByRole("dialog", {
+    const applicationTypeDrawer = page.getByRole("region", {
       name: "Create application type",
     });
     await applicationTypeDrawer.getByLabel("Code").fill("UNDERGRAD");
     await applicationTypeDrawer.getByLabel("Name").fill("Undergraduate");
-    await applicationTypeDrawer
-      .getByRole("button", { name: "Create application type" })
-      .click();
+    await applicationTypeDrawer.getByRole("button", { name: "Create application type" }).click();
     await expect(applicationTypeDrawer).not.toBeVisible();
     expect(createdApplicationTypeRequest).toEqual(
       expect.objectContaining({
@@ -1020,9 +935,7 @@ test.describe("Core Identity authentication and RBAC", () => {
         active: false,
       }),
     );
-    await expect(
-      applicationTypeTable.getByText("UNDERGRAD", { exact: true }),
-    ).toBeVisible();
+    await expect(applicationTypeTable.getByText("UNDERGRAD", { exact: true })).toBeVisible();
     const academicYearId = "22222222-2222-4222-8222-222222222222";
     const intakeId = "33333333-3333-4333-8333-333333333333";
     const academicUnitId = "55555555-5555-4555-8555-555555555555";
@@ -1046,9 +959,7 @@ test.describe("Core Identity authentication and RBAC", () => {
               version: 0,
             },
           ],
-          academicYears: [
-            { id: academicYearId, name: "2026 - 2027 Academic Year" },
-          ],
+          academicYears: [{ id: academicYearId, name: "2026 - 2027 Academic Year" }],
           academicPeriodTypes: [],
           academicPeriods: [],
           intakes: [
@@ -1066,15 +977,11 @@ test.describe("Core Identity authentication and RBAC", () => {
         }),
       }),
     );
-    await expect(
-      page.getByRole("link", { name: "Admission cycles", exact: true }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Admission cycles", exact: true })).toHaveCount(0);
     if (testInfo.project.name === "chromium-mobile") {
-      await page.getByRole("button", { name: "Open sidebar" }).click();
+      await page.getByRole("banner").getByRole("button", { name: "Open sidebar" }).click();
     }
-    await expect(
-      page.getByRole("link", { name: "Academic calendar", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Academic calendar", exact: true })).toBeVisible();
     if (testInfo.project.name === "chromium-mobile") {
       await page.keyboard.press("Escape");
     }
@@ -1134,13 +1041,9 @@ test.describe("Core Identity authentication and RBAC", () => {
       .first()
       .click();
 
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/);
     await expect(page).toHaveURL(/[?&]prompt=create(?:&|$)/);
-    await expect(
-      page.getByRole("heading", { name: "Register", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Register", exact: true })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
   });
 
@@ -1175,21 +1078,51 @@ test.describe("Core Identity authentication and RBAC", () => {
     await page.route("**/api/academic/overview", (route) =>
       route.fulfill({
         json: {
-          academicUnitTypes: [], academicUnits: [], academicYears: [], academicPeriodTypes: [], academicPeriods: [],
-          intakes: [{
-            id: "b535c76e-a477-43bb-880a-1843c0e66e3c", academicYearId: "year-1", academicYearName: "2027",
-            code: "AUG-2027", name: "August 2027", startsOn: "2027-01-01", endsOn: "2027-07-31", status: "OPEN",
-            maximumProgrammeChoices: 3, changeReason: "Playwright fixture", programmeLevels: [], specificProgrammes: [],
-            allProgrammesInSelectedLevels: true, version: 1,
-          }],
-          programmeLevels: [], programmeTypes: [],
-          programmes: [{
-            id: "2f5f3b35-524f-4490-a07d-bd1825535027", code: "BACC", name: "Bachelor of Accountancy",
-            awardName: "Bachelor of Accountancy", owningAcademicUnitId: "unit-1", owningAcademicUnitName: "Business School",
-            programmeTypeId: "type-1", programmeTypeName: "Degree", programmeLevelId: "level-1",
-            programmeLevelName: "Undergraduate", minimumDurationPeriods: 8, maximumDurationPeriods: 12,
-            status: "ACTIVE", legacyProgrammeCode: null, changeReason: "Playwright fixture", version: 1,
-          }],
+          academicUnitTypes: [],
+          academicUnits: [],
+          academicYears: [],
+          academicPeriodTypes: [],
+          academicPeriods: [],
+          intakes: [
+            {
+              id: "b535c76e-a477-43bb-880a-1843c0e66e3c",
+              academicYearId: "year-1",
+              academicYearName: "2027",
+              code: "AUG-2027",
+              name: "August 2027",
+              startsOn: "2027-01-01",
+              endsOn: "2027-07-31",
+              status: "OPEN",
+              maximumProgrammeChoices: 3,
+              changeReason: "Playwright fixture",
+              programmeLevels: [],
+              specificProgrammes: [],
+              allProgrammesInSelectedLevels: true,
+              version: 1,
+            },
+          ],
+          programmeLevels: [],
+          programmeTypes: [],
+          programmes: [
+            {
+              id: "2f5f3b35-524f-4490-a07d-bd1825535027",
+              code: "BACC",
+              name: "Bachelor of Accountancy",
+              awardName: "Bachelor of Accountancy",
+              owningAcademicUnitId: "unit-1",
+              owningAcademicUnitName: "Business School",
+              programmeTypeId: "type-1",
+              programmeTypeName: "Degree",
+              programmeLevelId: "level-1",
+              programmeLevelName: "Undergraduate",
+              minimumDurationPeriods: 8,
+              maximumDurationPeriods: 12,
+              status: "ACTIVE",
+              legacyProgrammeCode: null,
+              changeReason: "Playwright fixture",
+              version: 1,
+            },
+          ],
           modules: [],
         },
       }),
@@ -1220,21 +1153,16 @@ test.describe("Core Identity authentication and RBAC", () => {
     );
 
     await page.goto("/operations/programme-requirements");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(/\/operations\/programme-requirements$/);
-    await expect(
-      page.getByRole("heading", { name: "Requirement-set versions" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Requirement-set versions" })).toBeVisible();
     await expect(page.getByText("BACC-2027.1")).toBeVisible();
     await expect(page.getByText("BACC · Bachelor of Accountancy")).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "New requirement set" }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "New requirement set" })).toBeVisible();
     await page.getByRole("button", { name: "New requirement set" }).click();
     await expect(page.getByLabel("Programme", { exact: true })).toBeVisible();
     await expect(page.getByLabel(/Application type/)).toBeVisible();
@@ -1301,8 +1229,7 @@ test.describe("Core Identity authentication and RBAC", () => {
             programmeEnrolmentStatus: "PROVISIONING",
             requestedAt: "2027-01-08T10:18:30Z",
             completedAt: null,
-            failureReason:
-              "Portal provisioning failed: Keycloak user is missing",
+            failureReason: "Portal provisioning failed: Keycloak user is missing",
             retryCount: 0,
             lastRetryAt: null,
             lastRetryByUserId: null,
@@ -1311,53 +1238,44 @@ test.describe("Core Identity authentication and RBAC", () => {
         ]),
       });
     });
-    await page.route(
-      "**/api/student-records/conversions/*/retry",
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            id: "2aa0bc99-d9c7-4557-abf1-c63bd4d5078c",
-            status: "PROVISIONING",
-            financeProvisioningStatus: "COMPLETED",
-            portalProvisioningStatus: "PENDING",
-            sourceApplicationId: "993954ff-f78b-4f96-914e-2d44447c92aa",
-            sourceOfferId: "d676d377-1d8b-48cc-b91d-1c9d7dd3ebd4",
-            studentId: "189e35bf-8fc5-4887-a81f-0bf18f8bf71a",
-            studentNumber: "STU-2027-0000143",
-            studentStatus: "PROVISIONING",
-            programmeEnrolmentId: "0017a106-1355-4d62-b95f-c351583e755a",
-            programmeCode: "BCOM",
-            programmeName: "Bachelor of Commerce",
-            programmeEnrolmentStatus: "PROVISIONING",
-            requestedAt: "2027-01-08T10:18:30Z",
-            completedAt: null,
-            failureReason: null,
-            retryCount: 1,
-            lastRetryAt: "2027-01-08T10:25:00Z",
-            lastRetryByUserId: "1d48dcc1-c07a-4d02-b7a1-492ea3529191",
-            lastRetryReason:
-              "Core Identity user was synchronised from Keycloak.",
-          }),
-        });
-      },
-    );
+    await page.route("**/api/student-records/conversions/*/retry", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "2aa0bc99-d9c7-4557-abf1-c63bd4d5078c",
+          status: "PROVISIONING",
+          financeProvisioningStatus: "COMPLETED",
+          portalProvisioningStatus: "PENDING",
+          sourceApplicationId: "993954ff-f78b-4f96-914e-2d44447c92aa",
+          sourceOfferId: "d676d377-1d8b-48cc-b91d-1c9d7dd3ebd4",
+          studentId: "189e35bf-8fc5-4887-a81f-0bf18f8bf71a",
+          studentNumber: "STU-2027-0000143",
+          studentStatus: "PROVISIONING",
+          programmeEnrolmentId: "0017a106-1355-4d62-b95f-c351583e755a",
+          programmeCode: "BCOM",
+          programmeName: "Bachelor of Commerce",
+          programmeEnrolmentStatus: "PROVISIONING",
+          requestedAt: "2027-01-08T10:18:30Z",
+          completedAt: null,
+          failureReason: null,
+          retryCount: 1,
+          lastRetryAt: "2027-01-08T10:25:00Z",
+          lastRetryByUserId: "1d48dcc1-c07a-4d02-b7a1-492ea3529191",
+          lastRetryReason: "Core Identity user was synchronised from Keycloak.",
+        }),
+      });
+    });
 
     await page.goto("/operations/student-conversions");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
-    await expect(
-      page.getByRole("heading", { name: /sign in to your account/i }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
+    await expect(page.getByRole("heading", { name: /sign in to your account/i })).toBeVisible();
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(/\/operations\/student-conversions$/);
-    await expect(
-      page.getByRole("heading", { name: "Accepted-offer conversions" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Accepted-offer conversions" })).toBeVisible();
     await expect(page.getByText("STU-2027-0000142")).toBeVisible();
     await expect(page.getByText("USD base ledger").first()).toBeVisible();
     await expect(page.getByText("STUDENT role").first()).toBeVisible();
@@ -1368,16 +1286,9 @@ test.describe("Core Identity authentication and RBAC", () => {
     await page
       .getByLabel("Retry reason")
       .fill("Core Identity user was synchronised from Keycloak.");
-    await page
-      .getByRole("button", { name: "Retry provisioning" })
-      .last()
-      .click();
-    await expect(
-      page.getByText("Provisioning retry queued", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.locator("p").filter({ hasText: "1 recorded retry" }),
-    ).toBeVisible();
+    await page.getByRole("button", { name: "Retry provisioning" }).last().click();
+    await expect(page.getByText("Provisioning retry queued", { exact: true })).toBeVisible();
+    await expect(page.locator("p").filter({ hasText: "1 recorded retry" })).toBeVisible();
 
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
@@ -1456,22 +1367,19 @@ test.describe("Core Identity authentication and RBAC", () => {
       }
       await route.fallback();
     });
-    await page.route(
-      "**/api/student-records/registrations/*/academic-approve",
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            ...submittedRegistration,
-            status: "ACADEMIC_APPROVED",
-            statusReason: "Academic unit approved the Module load.",
-            academicApprovedAt: "2027-07-01T08:10:00Z",
-            version: 2,
-          }),
-        });
-      },
-    );
+    await page.route("**/api/student-records/registrations/*/academic-approve", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...submittedRegistration,
+          status: "ACADEMIC_APPROVED",
+          statusReason: "Academic unit approved the Module load.",
+          academicApprovedAt: "2027-07-01T08:10:00Z",
+          version: 2,
+        }),
+      });
+    });
     await page.route("**/api/student-records/conversions", async (route) => {
       await route.fulfill({
         status: 200,
@@ -1499,37 +1407,24 @@ test.describe("Core Identity authentication and RBAC", () => {
     });
 
     await page.goto("/operations/student-registrations");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(/\/operations\/student-registrations$/);
-    await expect(
-      page.getByRole("heading", { name: "Registration decisions" }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Authoritative Module registration"),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Registration decisions" })).toBeVisible();
+    await expect(page.getByText("Authoritative Module registration")).toBeVisible();
     await expect(page.getByText("STU-2027-0000191")).toBeVisible();
     await expect(page.getByText("ACC101 · 12 credits")).toBeVisible();
     await expect(page.getByText("ECO101 · 12 credits")).toBeVisible();
     await expect(page.getByText("Academic review").first()).toBeVisible();
 
     await page.getByRole("button", { name: "Academic approve" }).click();
-    await page
-      .getByLabel("Decision reason")
-      .fill("Academic unit approved the Module load.");
-    await page
-      .getByRole("button", { name: "Record academic approval" })
-      .click();
-    await expect(
-      page.getByText("Registration academic approved", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Registry confirm" }),
-    ).toBeVisible();
+    await page.getByLabel("Decision reason").fill("Academic unit approved the Module load.");
+    await page.getByRole("button", { name: "Record academic approval" }).click();
+    await expect(page.getByText("Registration academic approved", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Registry confirm" })).toBeVisible();
 
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
@@ -1592,6 +1487,7 @@ test.describe("Core Identity authentication and RBAC", () => {
         },
       ],
     };
+    await useFixtureAcademicPeriod(page, offering.academicPeriodId);
     await page.route("**/api/assessment-results/offerings", (route) =>
       route.fulfill({
         status: 200,
@@ -1599,62 +1495,36 @@ test.describe("Core Identity authentication and RBAC", () => {
         body: JSON.stringify([offering]),
       }),
     );
-    await page.route(
-      `**/api/assessment-results/components/${componentId}/roster`,
-      (route) =>
-        route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify([
-            {
-              rosterEntryId,
-              studentId: "54dc989b-fe73-4db5-abeb-532648eb2687",
-              studentNumber: "STU-2027-0000214",
-              studentName: "Tariro Moyo",
-              componentId,
-              componentCode: "CWK",
-              markId: markStatus ? markId : null,
-              revisionNumber: markStatus ? 1 : null,
-              score,
-              status: markStatus,
-              markVersion,
-            },
-          ]),
-        }),
+    await page.route(`**/api/assessment-results/components/${componentId}/roster`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            rosterEntryId,
+            studentId: "54dc989b-fe73-4db5-abeb-532648eb2687",
+            studentNumber: "STU-2027-0000214",
+            studentName: "Tariro Moyo",
+            componentId,
+            componentCode: "CWK",
+            markId: markStatus ? markId : null,
+            revisionNumber: markStatus ? 1 : null,
+            score,
+            status: markStatus,
+            markVersion,
+          },
+        ]),
+      }),
     );
-    await page.route(
-      `**/api/assessment-results/components/${componentId}/marks`,
-      async (route) => {
-        score = (await route.request().postDataJSON()).marks[0].score;
-        markStatus = "CAPTURED";
-        markVersion = 0;
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify([
-            {
-              id: markId,
-              componentId,
-              rosterEntryId,
-              revisionNumber: 1,
-              score,
-              status: markStatus,
-              captureMethod: "MANUAL",
-              version: markVersion,
-            },
-          ]),
-        });
-      },
-    );
-    await page.route(
-      `**/api/assessment-results/marks/${markId}/submit*`,
-      (route) => {
-        markStatus = "SUBMITTED";
-        markVersion = 1;
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
+    await page.route(`**/api/assessment-results/components/${componentId}/marks`, async (route) => {
+      score = (await route.request().postDataJSON()).marks[0].score;
+      markStatus = "CAPTURED";
+      markVersion = 0;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
             id: markId,
             componentId,
             rosterEntryId,
@@ -1663,69 +1533,74 @@ test.describe("Core Identity authentication and RBAC", () => {
             status: markStatus,
             captureMethod: "MANUAL",
             version: markVersion,
-          }),
-        });
-      },
-    );
-    await page.route(
-      `**/api/assessment-results/offerings/${offeringId}/calculations`,
-      (route) =>
-        route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            id: "f58d3518-0d6c-42d4-b865-4cb839059ef8",
-            offeringId,
-            schemeId: offering.schemes[0].id,
-            rosterCount: 1,
-            completeResultCount: 1,
-            incompleteResultCount: 0,
-            status: "COMPLETED",
-            initiatedAt: "2027-08-20T10:00:00Z",
-            outcomes: [
-              {
-                rosterEntryId,
-                studentNumber: "STU-2027-0000214",
-                weightedTotal: 74,
-                complete: true,
-                missingComponentCodes: null,
-              },
-            ],
-          }),
+          },
+        ]),
+      });
+    });
+    await page.route(`**/api/assessment-results/marks/${markId}/submit*`, (route) => {
+      markStatus = "SUBMITTED";
+      markVersion = 1;
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: markId,
+          componentId,
+          rosterEntryId,
+          revisionNumber: 1,
+          score,
+          status: markStatus,
+          captureMethod: "MANUAL",
+          version: markVersion,
         }),
+      });
+    });
+    await page.route(`**/api/assessment-results/offerings/${offeringId}/calculations`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "f58d3518-0d6c-42d4-b865-4cb839059ef8",
+          offeringId,
+          schemeId: offering.schemes[0].id,
+          rosterCount: 1,
+          completeResultCount: 1,
+          incompleteResultCount: 0,
+          status: "COMPLETED",
+          initiatedAt: "2027-08-20T10:00:00Z",
+          outcomes: [
+            {
+              rosterEntryId,
+              studentNumber: "STU-2027-0000214",
+              weightedTotal: 74,
+              complete: true,
+              missingComponentCodes: null,
+            },
+          ],
+        }),
+      }),
     );
 
     await page.goto("/operations/assessment-capture");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
     await expect(page).toHaveURL(/\/operations\/assessment-capture$/);
     await expect(page.getByText("Controlled capture workspace")).toBeVisible();
     await page.getByLabel("Module offering").click();
-    await page
-      .getByRole("option", { name: /ACC101.*Financial Accounting I.*2027-S1/ })
-      .click();
+    await page.getByRole("option", { name: /ACC101.*Financial Accounting I.*2027-S1/ }).click();
     await page.getByLabel("Assessment component").click();
     await page.getByRole("option", { name: /CWK.*Coursework.*100%/ }).click();
     await expect(page.getByText("STU-2027-0000214")).toBeVisible();
     await page.getByRole("spinbutton").fill("74");
     await page.getByRole("button", { name: "Save captured marks" }).click();
-    await expect(
-      page.getByText("Marks saved as captured", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("Marks saved as captured", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Submit" }).click();
     await page.getByRole("button", { name: "Submit mark" }).click();
-    await expect(
-      page.getByText("Mark submitted", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Request amendment" }),
-    ).toBeVisible();
-    await page
-      .getByRole("button", { name: "Run aggregate calculation" })
-      .click();
+    await expect(page.getByText("Mark submitted", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Request amendment" })).toBeVisible();
+    await page.getByRole("button", { name: "Run aggregate calculation" }).click();
     await expect(page.getByText("74%")).toBeVisible();
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
@@ -1848,6 +1723,8 @@ test.describe("Core Identity authentication and RBAC", () => {
       ],
     });
 
+    await useFixtureAcademicPeriod(page, offerings[0]!.academicPeriodId);
+
     await page.route("**/api/assessment-results/calculations", (route) =>
       route.fulfill({
         status: 200,
@@ -1894,9 +1771,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       }
       if (request.url().endsWith("/submit")) {
         const decision = await request.postDataJSON();
-        expect(decision.reason).toBe(
-          "Department board verified the calculation evidence.",
-        );
+        expect(decision.reason).toBe("Department board verified the calculation evidence.");
         expect(decision.expectedVersion).toBe(0);
         batchStatus = "SUBMITTED";
         await route.fulfill({
@@ -1910,10 +1785,9 @@ test.describe("Core Identity authentication and RBAC", () => {
     });
 
     await page.goto("/operations/result-batches");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(/\/operations\/result-batches$/);
@@ -1921,9 +1795,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(page.getByText("No result batches")).toBeVisible();
     await page.getByRole("button", { name: "Create result batch" }).click();
     await page.getByLabel("Completed calculation").click();
-    await page
-      .getByRole("option", { name: /ACC101.*2027-S1.*1 complete/ })
-      .click();
+    await page.getByRole("option", { name: /ACC101.*2027-S1.*1 complete/ }).click();
     await page.getByLabel("Approved grading scheme").click();
     await page
       .getByRole("option", {
@@ -1932,30 +1804,19 @@ test.describe("Core Identity authentication and RBAC", () => {
       .click();
     await page.getByRole("button", { name: "Create draft batch" }).click();
 
-    await expect(
-      page.getByText("Draft result batch created", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("Draft result batch created", { exact: true })).toBeVisible();
     await expect(page.getByText("RES-2027-S1-ACC101-001")).toBeVisible();
     await expect(page.getByText("STU-2027-0000214")).toBeVisible();
-    await expect(
-      page.getByRole("cell", { name: "74", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole("cell", { name: "74", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Submit for moderation" }).click();
     await page
       .getByLabel("Decision reason")
       .fill("Department board verified the calculation evidence.");
-    await page
-      .getByRole("button", { name: "Submit for moderation" })
-      .last()
-      .click();
+    await page.getByRole("button", { name: "Submit for moderation" }).last().click();
 
-    await expect(
-      page.getByText("Result batch submitted", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("Result batch submitted", { exact: true })).toBeVisible();
     await expect(page.getByText("SUBMITTED", { exact: true })).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Record moderation" }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Record moderation" })).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("result-board-submitted.png"),
       fullPage: true,
@@ -2029,8 +1890,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       proposedFinalMark: 72,
       proposedGrade: "D",
       proposedRemark: "Distinction",
-      requestReason:
-        "Approved mark amendment and recalculation changed the final result.",
+      requestReason: "Approved mark amendment and recalculation changed the final result.",
       status: "REQUESTED",
       version: 0,
       requestedByUserId: currentOperatorUserId,
@@ -2047,6 +1907,8 @@ test.describe("Core Identity authentication and RBAC", () => {
       rejectedAt: null,
       rejectionReason: null,
     });
+
+    await useFixtureAcademicPeriod(page, publishedResult.academicPeriodId);
 
     await page.route("**/api/results/published-results?**", (route) =>
       route.fulfill({
@@ -2070,39 +1932,32 @@ test.describe("Core Identity authentication and RBAC", () => {
           body: JSON.stringify([correctionSource]),
         }),
     );
-    await page.route(
-      "**/api/results/published-result-amendments",
-      async (route) => {
-        if (route.request().method() === "GET") {
-          await route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify(
-              amendmentRequested ? [requestedAmendment()] : [],
-            ),
-          });
-          return;
-        }
-        expect(await route.request().postDataJSON()).toEqual({
-          originalPublishedResultId: publishedResultId,
-          replacementModuleResultId,
-          reason:
-            "Approved mark amendment and recalculation changed the final result.",
-        });
-        amendmentRequested = true;
+    await page.route("**/api/results/published-result-amendments", async (route) => {
+      if (route.request().method() === "GET") {
         await route.fulfill({
-          status: 201,
+          status: 200,
           contentType: "application/json",
-          body: JSON.stringify(requestedAmendment()),
+          body: JSON.stringify(amendmentRequested ? [requestedAmendment()] : []),
         });
-      },
-    );
+        return;
+      }
+      expect(await route.request().postDataJSON()).toEqual({
+        originalPublishedResultId: publishedResultId,
+        replacementModuleResultId,
+        reason: "Approved mark amendment and recalculation changed the final result.",
+      });
+      amendmentRequested = true;
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify(requestedAmendment()),
+      });
+    });
 
     await page.goto("/operations/result-corrections");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     const currentUserResponse = page.waitForResponse(
       (response) => response.url().includes("/api/core/me") && response.ok(),
     );
@@ -2110,15 +1965,11 @@ test.describe("Core Identity authentication and RBAC", () => {
     currentOperatorUserId = (await (await currentUserResponse).json()).user.id;
 
     await expect(page).toHaveURL(/\/operations\/result-corrections$/);
-    await expect(
-      page.getByText("Append-only correction control"),
-    ).toBeVisible();
+    await expect(page.getByText("Append-only correction control")).toBeVisible();
     await expect(page.getByText("STU-2027-0000214")).toBeVisible();
     await expect(page.getByText("68% · C · Credit")).toBeVisible();
     await page.getByRole("button", { name: "Request correction" }).click();
-    await expect(
-      page.getByText("The published result will not be edited"),
-    ).toBeVisible();
+    await expect(page.getByText("The published result will not be edited")).toBeVisible();
     await page.getByLabel("Approved replacement result batch").click();
     await page
       .getByRole("option", {
@@ -2127,30 +1978,18 @@ test.describe("Core Identity authentication and RBAC", () => {
       .click();
     await page
       .getByLabel("Correction reason")
-      .fill(
-        "Approved mark amendment and recalculation changed the final result.",
-      );
-    await page
-      .getByRole("button", { name: "Submit correction request" })
-      .click();
+      .fill("Approved mark amendment and recalculation changed the final result.");
+    await page.getByRole("button", { name: "Submit correction request" }).click();
 
-    await expect(
-      page.getByText("Result correction requested", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("Result correction requested", { exact: true })).toBeVisible();
     await expect(page.getByText("AMEND-2027-000001")).toBeVisible();
     await expect(page.getByText("Permanent original")).toBeVisible();
-    await expect(
-      page.getByText("Approved replacement evidence", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("Approved replacement evidence", { exact: true })).toBeVisible();
     await expect(page.getByText("72% · D", { exact: true })).toBeVisible();
     await expect(
-      page.getByText(
-        "Handoff required: the requester cannot review this correction.",
-      ),
+      page.getByText("Handoff required: the requester cannot review this correction."),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Record independent review" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Record independent review" })).toHaveCount(0);
     await page.screenshot({
       path: testInfo.outputPath("published-result-correction-request.png"),
       fullPage: true,
@@ -2185,6 +2024,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       studentNumber: "STU-2027-0000214",
       programmeId,
       programmeVersionId,
+      academicPeriodId: "4b93d72f-593e-4aa8-8648-54361c57d05f",
       academicPeriodCode: "2027-S1",
       programmePeriodNumber: 1,
       eligibleModules: 2,
@@ -2256,8 +2096,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       failedCompulsoryModules: 0,
       weightedAverage: 72,
       status: "CALCULATED",
-      statusReason:
-        "Calculated from complete current published Module results.",
+      statusReason: "Calculated from complete current published Module results.",
       version: 0,
       calculatedByUserId: currentOperatorUserId,
       calculatedAt: "2027-08-25T10:00:00Z",
@@ -2295,6 +2134,8 @@ test.describe("Core Identity authentication and RBAC", () => {
       ],
     });
 
+    await useFixtureAcademicPeriod(page, roster.academicPeriodId);
+
     await page.route("**/api/results/progression/rosters", (route) =>
       route.fulfill({
         status: 200,
@@ -2331,10 +2172,9 @@ test.describe("Core Identity authentication and RBAC", () => {
     });
 
     await page.goto("/operations/progression-decisions");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     const currentUserResponse = page.waitForResponse(
       (response) => response.url().includes("/api/core/me") && response.ok(),
     );
@@ -2342,9 +2182,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     currentOperatorUserId = (await (await currentUserResponse).json()).user.id;
 
     await expect(page).toHaveURL(/\/operations\/progression-decisions$/);
-    await expect(
-      page.getByText("Evidence-bound academic standing"),
-    ).toBeVisible();
+    await expect(page.getByText("Evidence-bound academic standing")).toBeVisible();
     await page.getByLabel("Complete published result set").click();
     await page
       .getByRole("option", {
@@ -2352,52 +2190,31 @@ test.describe("Core Identity authentication and RBAC", () => {
       })
       .click();
     await page.getByLabel("Applicable approved rule").click();
-    await page
-      .getByRole("option", { name: /BACC-P1 v3.*Bachelor of Accountancy/ })
-      .click();
+    await page.getByRole("option", { name: /BACC-P1 v3.*Bachelor of Accountancy/ }).click();
     await page.getByRole("button", { name: "Calculate decision" }).click();
-    await page
-      .getByRole("button", { name: "Calculate decision" })
-      .last()
-      .click();
+    await page.getByRole("button", { name: "Calculate decision" }).last().click();
 
-    await expect(
-      page.getByText("Progression decision calculated", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("PRG-2027-S1-STU-2027-0000214-V1-001"),
-    ).toBeVisible();
-    await expect(
-      page.getByText("STU-2027-0000214 · Proceed to programme period 2"),
-    ).toBeVisible();
+    await expect(page.getByText("Progression decision calculated", { exact: true })).toBeVisible();
+    await expect(page.getByText("PRG-2027-S1-STU-2027-0000214-V1-001")).toBeVisible();
+    await expect(page.getByText("STU-2027-0000214 · Proceed to programme period 2")).toBeVisible();
     await expect(page.getByText("72%", { exact: true })).toBeVisible();
     await expect(page.getByText("ACC101", { exact: true })).toBeVisible();
     await expect(page.getByText("ACC102", { exact: true })).toBeVisible();
     await expect(
-      page.getByText(
-        "Handoff required: the calculator cannot review this decision.",
-      ),
+      page.getByText("Handoff required: the calculator cannot review this decision."),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Record independent review" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Record independent review" })).toHaveCount(0);
     await page.screenshot({
       path: testInfo.outputPath("progression-decision-calculated.png"),
       fullPage: true,
     });
 
     await page.goto("/operations/progression-rules");
-    await expect(
-      page.getByText("Versioned, programme-owned progression policy"),
-    ).toBeVisible();
+    await expect(page.getByText("Versioned, programme-owned progression policy")).toBeVisible();
     await expect(page.getByText("BACC-P1 · version 3")).toBeVisible();
+    await expect(page.getByText("1. Proceed to programme period 2", { exact: true })).toBeVisible();
     await expect(
-      page.getByText("1. Proceed to programme period 2", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText(
-        /average ≥ 50%.*failed credits ≤ 0.*all compulsory Modules passed/,
-      ),
+      page.getByText(/average ≥ 50%.*failed credits ≤ 0.*all compulsory Modules passed/),
     ).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("progression-rules-approved.png"),
@@ -2422,20 +2239,22 @@ test.describe("Core Identity authentication and RBAC", () => {
     page.on("pageerror", (error) => pageErrors.push(error.message));
 
     let failedDocumentStatus = "FAILED";
+    const academicPeriodId = "449749eb-6451-40ec-973e-0608ee6e76bf";
+    await useFixtureAcademicPeriod(page, academicPeriodId);
     const documents = () => [
       {
         id: "c17cac20-89d0-4bc6-b515-d527532182f2",
         documentNumber: "RSLIP-PRG-2027-S1-STU-2027-0000214-V1",
         documentType: "RESULT_SLIP",
         studentNumber: "STU-2027-0000214",
+        academicPeriodId,
         academicPeriodCode: "2027-S1",
         decisionCode: "PROCEED",
         decisionLabel: "Proceed to programme period 2",
         status: "STORED",
         templateCode: "OFFICIAL-RESULT-SLIP",
         templateVersion: 1,
-        checksumSha256:
-          "2c1803537a0fa5aee7838c03fc04c26ba79f141cd21948fe533b6a53cf9bb7f2",
+        checksumSha256: "2c1803537a0fa5aee7838c03fc04c26ba79f141cd21948fe533b6a53cf9bb7f2",
         sizeBytes: 28142,
         pageCount: 2,
         requestedAt: "2027-12-20T10:00:00Z",
@@ -2450,6 +2269,7 @@ test.describe("Core Identity authentication and RBAC", () => {
         documentNumber: "RSLIP-PRG-2027-S1-STU-2027-0000215-V1",
         documentType: "RESULT_SLIP",
         studentNumber: "STU-2027-0000215",
+        academicPeriodId,
         academicPeriodCode: "2027-S1",
         decisionCode: "PROCEED_WITH_CARRY",
         decisionLabel: "Proceed carrying one Module",
@@ -2464,9 +2284,7 @@ test.describe("Core Identity authentication and RBAC", () => {
         generationAttemptCount: 2,
         retryAvailable: failedDocumentStatus === "FAILED",
         lastFailureReason:
-          failedDocumentStatus === "FAILED"
-            ? "Object storage was unavailable."
-            : null,
+          failedDocumentStatus === "FAILED" ? "Object storage was unavailable." : null,
         version: failedDocumentStatus === "FAILED" ? 2 : 3,
       },
     ];
@@ -2494,40 +2312,31 @@ test.describe("Core Identity authentication and RBAC", () => {
     );
 
     await page.goto("/operations/documents");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(/\/operations\/documents$/);
-    await expect(
-      page.getByText("Stored, verifiable academic records"),
-    ).toBeVisible();
-    await expect(
-      page.getByText("RSLIP-PRG-2027-S1-STU-2027-0000214-V1"),
-    ).toBeVisible();
-    await expect(
-      page.getByText(
-        "SHA-256 2c1803537a0fa5aee7838c03fc04c26ba79f141cd21948fe533b6a53cf9bb7f2",
-      ),
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Open PDF" })).toBeVisible();
-    await expect(
-      page.getByText("Object storage was unavailable."),
-    ).toBeVisible();
-
-    await page.getByRole("button", { name: "Retry generation" }).click();
-    await expect(
-      page.getByText("The same immutable progression evidence"),
-    ).toBeVisible();
+    await expect(page.getByText("Documents and records")).toBeVisible();
+    await page.getByRole("tab", { name: /Official records/ }).click();
+    const storedDocumentRow = page
+      .getByRole("row")
+      .filter({ hasText: "RSLIP-PRG-2027-S1-STU-2027-0000214-V1" });
+    await expect(storedDocumentRow).toBeVisible();
+    await storedDocumentRow.getByRole("button", { name: "Open row actions" }).click();
+    await expect(page.getByRole("menuitem", { name: "Open PDF" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    const failedDocumentRow = page
+      .getByRole("row")
+      .filter({ hasText: "RSLIP-PRG-2027-S1-STU-2027-0000215-V1" });
+    await expect(failedDocumentRow.getByText("FAILED", { exact: true })).toBeVisible();
+    await failedDocumentRow.getByRole("button", { name: "Open row actions" }).click();
+    await page.getByRole("menuitem", { name: "Retry generation" }).click();
+    await expect(page.getByText("The same immutable progression evidence")).toBeVisible();
     await page.getByRole("button", { name: "Queue retry" }).click();
-    await expect(
-      page.getByText("Document retry queued", { exact: true }),
-    ).toBeVisible();
-    await expect(page.getByText("Object storage was unavailable.")).toHaveCount(
-      0,
-    );
+    await expect(page.getByText("Document retry queued", { exact: true })).toBeVisible();
+    await expect(failedDocumentRow.getByText("REQUESTED", { exact: true })).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("official-document-register.png"),
       fullPage: true,
@@ -2550,32 +2359,31 @@ test.describe("Core Identity authentication and RBAC", () => {
     });
     page.on("pageerror", (error) => pageErrors.push(error.message));
 
-    await page.route("**/api/admissions/verification-queue", (route) =>
+    await page.route("**/api/admissions/work-items?*", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          applicationSections: [],
-          qualifications: [],
-          documents: [],
+          content: [],
+          page: 0,
+          size: 25,
+          totalElements: 0,
+          totalPages: 0,
         }),
       }),
     );
 
     await page.goto("/operations/admissions-verification");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
 
-    await expect(page).toHaveURL(/\/operations\/admissions-verification$/);
-    await expect(
-      page.getByText("Independent verification workspace", { exact: true }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/operations\/admissions\?stage=VERIFICATION$/);
+    await expect(page.getByRole("heading", { name: "Admissions" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Refresh" })).toBeVisible();
     await expect(
-      page.getByText("No application sections awaiting review", {
+      page.getByText("No applicant cases match these filters.", {
         exact: true,
       }),
     ).toBeVisible();
@@ -2668,10 +2476,9 @@ test.describe("Core Identity authentication and RBAC", () => {
     });
 
     await page.goto("/operations/admissions-reports");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(/\/operations\/admissions-reports$/);
@@ -2679,32 +2486,40 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(page.getByText("Report catalogue", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2 })).toHaveCount(8);
 
-    const reportsContentWidth = await page.getByTestId("admissions-reports-content").evaluate((element) => {
-      const parent = element.parentElement;
-      if (!parent) {
-        return { difference: Number.POSITIVE_INFINITY, maximumWidth: "" };
-      }
+    const reportsContentWidth = await page
+      .getByTestId("admissions-reports-content")
+      .evaluate((element) => {
+        const parent = element.parentElement;
+        if (!parent) {
+          return { difference: Number.POSITIVE_INFINITY, maximumWidth: "" };
+        }
 
-      const parentStyle = window.getComputedStyle(parent);
-      const availableWidth = parent.getBoundingClientRect().width
-        - Number.parseFloat(parentStyle.paddingLeft)
-        - Number.parseFloat(parentStyle.paddingRight);
+        const parentStyle = window.getComputedStyle(parent);
+        const availableWidth =
+          parent.getBoundingClientRect().width -
+          Number.parseFloat(parentStyle.paddingLeft) -
+          Number.parseFloat(parentStyle.paddingRight);
 
-      return {
-        difference: Math.abs(availableWidth - element.getBoundingClientRect().width),
-        maximumWidth: window.getComputedStyle(element).maxWidth,
-      };
-    });
+        return {
+          difference: Math.abs(availableWidth - element.getBoundingClientRect().width),
+          maximumWidth: window.getComputedStyle(element).maxWidth,
+        };
+      });
     expect(reportsContentWidth.maximumWidth).toBe("none");
     expect(reportsContentWidth.difference).toBeLessThanOrEqual(1);
 
-    const demandCard = page.getByLabel("Admissions report families").locator(":scope > *").filter({
-      has: page.getByRole("heading", { name: "Application demand", exact: true }),
-    });
+    const demandCard = page
+      .getByLabel("Admissions report families")
+      .locator(":scope > *")
+      .filter({
+        has: page.getByRole("heading", { name: "Application demand", exact: true }),
+      });
     await demandCard.getByRole("link", { name: "Open report" }).click();
 
     await expect(page).toHaveURL(/\/operations\/admissions-reports\/application-demand$/);
-    await expect(page.getByRole("heading", { name: "Application demand", exact: true }).last()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Application demand", exact: true }).last(),
+    ).toBeVisible();
     await expect(page.getByText("HCS · BSc Computer Science")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Visual summary" })).toBeVisible();
     const excelDownloadPromise = page.waitForEvent("download");
@@ -2716,10 +2531,12 @@ test.describe("Core Identity authentication and RBAC", () => {
     await page.getByRole("button", { name: "Export PDF" }).click();
     const pdfDownload = await pdfDownloadPromise;
     expect(pdfDownload.suggestedFilename()).toMatch(/^application-demand-.*\.pdf$/);
-    expect(exportRequestUrls).toEqual(expect.arrayContaining([
-      expect.stringContaining("format=xlsx"),
-      expect.stringContaining("format=pdf"),
-    ]));
+    expect(exportRequestUrls).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("format=xlsx"),
+        expect.stringContaining("format=pdf"),
+      ]),
+    );
   });
 
   test("opens an admissions application as a full page with an inline document preview", async ({
@@ -2783,8 +2600,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       documentId,
       fileName: "national-id.pdf",
       mimeType: "application/pdf",
-      checksumSha256:
-        "5ed7c46ae7d12e2c019a1aadcad8e3114518c0b88a0bf6a2de003aee82ebdd13",
+      checksumSha256: "5ed7c46ae7d12e2c019a1aadcad8e3114518c0b88a0bf6a2de003aee82ebdd13",
       linkedAt: "2027-06-09T14:00:00Z",
       verifiedByUserId: null,
       verifiedAt: null,
@@ -2892,7 +2708,12 @@ test.describe("Core Identity authentication and RBAC", () => {
               {
                 id: qualificationId,
                 level: "A_LEVEL",
-                examBody: { id: "exam-body-1", code: "ZIMSEC", name: "ZIMSEC", scienceSubject: null },
+                examBody: {
+                  id: "exam-body-1",
+                  code: "ZIMSEC",
+                  name: "ZIMSEC",
+                  scienceSubject: null,
+                },
                 institutionName: "Harare High School",
                 centreNumber: "H001",
                 candidateNumber: "000142",
@@ -2904,10 +2725,19 @@ test.describe("Core Identity authentication and RBAC", () => {
                 verifiedAt: null,
                 rejectionReason: null,
                 version: 3,
-                results: [{
-                  id: "qualification-result-1", subject: null, subjectNameSnapshot: "Mathematics", grade: "B",
-                  mark: null, points: 4, principalSubject: true, resultStatus: "CAPTURED", version: 1,
-                }],
+                results: [
+                  {
+                    id: "qualification-result-1",
+                    subject: null,
+                    subjectNameSnapshot: "Mathematics",
+                    grade: "B",
+                    mark: null,
+                    points: 4,
+                    principalSubject: true,
+                    resultStatus: "CAPTURED",
+                    version: 1,
+                  },
+                ],
               },
             ],
             documents: {
@@ -2997,8 +2827,7 @@ test.describe("Core Identity authentication and RBAC", () => {
             applicantName: application.applicantName,
             programmeChoiceId: application.programmeChoices[0].id,
             programmeId: application.programmeChoices[0].programmeId,
-            programmeVersionId:
-              application.programmeChoices[0].programmeVersionId,
+            programmeVersionId: application.programmeChoices[0].programmeVersionId,
             programmeCode: application.programmeChoices[0].programmeCode,
             programmeName: application.programmeChoices[0].programmeName,
             intakeId: application.intakeId,
@@ -3041,11 +2870,7 @@ test.describe("Core Identity authentication and RBAC", () => {
           publications: [],
           auditHistory: [],
           blockers: [],
-          availableActions: [
-            "RETURN_ACADEMIC_RECOMMENDATION",
-            "UPDATE_OFFER",
-            "PUBLISH_AND_SEND",
-          ],
+          availableActions: ["RETURN_ACADEMIC_RECOMMENDATION", "UPDATE_OFFER", "PUBLISH_AND_SEND"],
         }),
       }),
     );
@@ -3064,54 +2889,45 @@ test.describe("Core Identity authentication and RBAC", () => {
         await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
       },
     );
-    await page.route(
-      `**/api/documents/uploads/${documentId}/download**`,
-      (route) => {
-        requestedDocumentDispositions.push(
-          new URL(route.request().url()).searchParams.get("disposition") ??
-            "attachment",
-        );
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            documentId,
-            originalFileName: "national-id.pdf",
-            mimeType: "application/pdf",
-            checksumSha256: documentRequirement.checksumSha256,
-            downloadUrl: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0YK",
-            expiresAt: "2027-06-10T09:30:00Z",
-          }),
-        });
-      },
-    );
-    await page.route(
-      `**/api/documents/${offerGeneratedDocumentId}/download**`,
-      (route) => {
-        requestedOfferDocumentDispositions.push(
-          new URL(route.request().url()).searchParams.get("disposition") ??
-            "inline",
-        );
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            documentId: offerGeneratedDocumentId,
-            documentNumber: "OFR-AUG2027-00000142-V1",
-            contentType: "application/pdf",
-            checksumSha256: "offer-letter-checksum",
-            downloadUrl: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0YK",
-            expiresAt: "2027-06-10T09:30:00Z",
-          }),
-        });
-      },
-    );
+    await page.route(`**/api/documents/uploads/${documentId}/download**`, (route) => {
+      requestedDocumentDispositions.push(
+        new URL(route.request().url()).searchParams.get("disposition") ?? "attachment",
+      );
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          documentId,
+          originalFileName: "national-id.pdf",
+          mimeType: "application/pdf",
+          checksumSha256: documentRequirement.checksumSha256,
+          downloadUrl: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0YK",
+          expiresAt: "2027-06-10T09:30:00Z",
+        }),
+      });
+    });
+    await page.route(`**/api/documents/${offerGeneratedDocumentId}/download**`, (route) => {
+      requestedOfferDocumentDispositions.push(
+        new URL(route.request().url()).searchParams.get("disposition") ?? "inline",
+      );
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          documentId: offerGeneratedDocumentId,
+          documentNumber: "OFR-AUG2027-00000142-V1",
+          contentType: "application/pdf",
+          checksumSha256: "offer-letter-checksum",
+          downloadUrl: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0YK",
+          expiresAt: "2027-06-10T09:30:00Z",
+        }),
+      });
+    });
 
     await page.goto("/operations/admissions");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(/\/operations\/admissions$/, {
@@ -3119,49 +2935,40 @@ test.describe("Core Identity authentication and RBAC", () => {
     });
     await page.goto(`/operations/admissions/${applicationId}`);
 
-    await expect(page).toHaveURL(
-      new RegExp(`/operations/admissions/${applicationId}$`),
-    );
-    await expect(
-      page.getByRole("heading", { name: "Ruvimbo Moyo" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Personal and contact details" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Programme choices" }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/operations/admissions/${applicationId}$`));
+    await expect(page.getByRole("heading", { name: "Ruvimbo Moyo" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Personal and contact details" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Programme choices" })).toBeVisible();
     await expect(page.getByText("Step 5 of 6", { exact: true })).toBeVisible();
     await expect(page.getByText("Verify 1 qualification sitting", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Verify qualification" }).click();
     const qualificationDialog = page.getByRole("dialog");
-    await qualificationDialog.locator("textarea.swal2-textarea").fill("Matched the certificate and captured A Level results.");
+    await qualificationDialog
+      .locator("textarea.swal2-textarea")
+      .fill("Matched the certificate and captured A Level results.");
     await qualificationDialog.getByRole("button", { name: "Verify qualification" }).click();
-    await expect.poll(() => recordedQualificationDecision).toEqual({
-      decision: "VERIFIED",
-      reason: "Matched the certificate and captured A Level results.",
-      expectedVersion: 3,
-    });
-    await page.getByRole("dialog", { name: "Qualification verified" })
+    await expect
+      .poll(() => recordedQualificationDecision)
+      .toEqual({
+        decision: "VERIFIED",
+        reason: "Matched the certificate and captured A Level results.",
+        expectedVersion: 3,
+      });
+    await page
+      .getByRole("dialog", { name: "Qualification verified" })
       .getByRole("button", { name: "OK" })
       .click();
-    await expect(
-      page.getByText("Reference received", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Invitation sent", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("Reference received", { exact: true })).toBeVisible();
+    await expect(page.getByText("Invitation sent", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Return to academic reviewer" }).click();
-    await page.locator("textarea.swal2-textarea").fill(
-      "Please reconsider the recommendation against the verified qualification evidence.",
-    );
+    await page
+      .locator("textarea.swal2-textarea")
+      .fill("Please reconsider the recommendation against the verified qualification evidence.");
     await page.getByRole("button", { name: "Return to reviewer" }).click();
-    await expect.poll(() => returnedRecommendationReason).toContain(
-      "verified qualification evidence",
-    );
-    const confidentialReference = page.getByTestId(
-      "confidential-reference-response",
-    );
+    await expect
+      .poll(() => returnedRecommendationReason)
+      .toContain("verified qualification evidence");
+    const confidentialReference = page.getByTestId("confidential-reference-response");
     await expect(confidentialReference).toHaveCount(1);
     await expect(confidentialReference).toContainText("Strongly Recommend");
     await expect(confidentialReference).toContainText(
@@ -3174,56 +2981,36 @@ test.describe("Core Identity authentication and RBAC", () => {
     await offerLetterPanel
       .getByRole("button", { name: "Preview offer letter", exact: true })
       .click();
-    await expect
-      .poll(() => requestedOfferDocumentDispositions)
-      .toContain("inline");
+    await expect.poll(() => requestedOfferDocumentDispositions).toContain("inline");
     await offerLetterPanel
       .getByRole("button", { name: "Download offer letter", exact: true })
       .click();
-    await expect
-      .poll(() => requestedOfferDocumentDispositions)
-      .toContain("attachment");
+    await expect.poll(() => requestedOfferDocumentDispositions).toContain("attachment");
     const documentsPanel = page.getByTestId("application-documents-panel");
-    await expect(
-      documentsPanel.getByText("national-id.pdf").first(),
-    ).toBeVisible();
-    await expect(
-      documentsPanel.getByRole("button", { name: "Verify" }),
-    ).toBeVisible();
+    await expect(documentsPanel.getByText("national-id.pdf").first()).toBeVisible();
+    await expect(documentsPanel.getByRole("button", { name: "Verify" })).toBeVisible();
     await expect(page.getByTestId("document-preview-frame")).toHaveAttribute(
       "src",
       /^data:application\/pdf/,
     );
-    await expect(page.getByTestId("document-preview-frame")).toHaveCSS(
-      "height",
-      "256px",
-    );
+    await expect(page.getByTestId("document-preview-frame")).toHaveCSS("height", "256px");
 
-    await documentsPanel
-      .getByRole("button", { name: "Expand preview" })
-      .click();
+    await documentsPanel.getByRole("button", { name: "Expand preview" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "national-id.pdf" }),
-    ).toBeVisible();
-    await expect(
-      page.getByTestId("expanded-document-preview-frame"),
-    ).toHaveAttribute("src", /^data:application\/pdf/);
+    await expect(page.getByRole("heading", { name: "national-id.pdf" })).toBeVisible();
+    await expect(page.getByTestId("expanded-document-preview-frame")).toHaveAttribute(
+      "src",
+      /^data:application\/pdf/,
+    );
     await page.waitForTimeout(300);
     await page.screenshot({
       path: testInfo.outputPath("expanded-document-preview.png"),
       fullPage: true,
     });
-    await page
-      .getByRole("button", { name: "Close expanded document preview" })
-      .click();
+    await page.getByRole("button", { name: "Close expanded document preview" }).click();
     await expect(page.getByRole("dialog")).toBeHidden();
-    await documentsPanel
-      .getByRole("button", { name: "Download selected document" })
-      .click();
-    await expect
-      .poll(() => requestedDocumentDispositions)
-      .toContain("attachment");
+    await documentsPanel.getByRole("button", { name: "Download selected document" }).click();
+    await expect.poll(() => requestedDocumentDispositions).toContain("attachment");
     expect(requestedDocumentDispositions[0]).toBe("inline");
     await page.screenshot({
       path: testInfo.outputPath("inline-document-preview.png"),
@@ -3233,9 +3020,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     expect(pageErrors).toEqual([]);
   });
 
-  test.skip("legacy batch workflow is retired by ADR-0014", async ({
-    page,
-  }, testInfo) => {
+  test.skip("legacy batch workflow is retired by ADR-0014", async ({ page }, testInfo) => {
     const username = `codex.admissions-recommendation.${testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}@example.test`;
     await ensureSystemAdminUser(username);
     const selectionRoundId = "1b000000-0000-0000-0000-000000000001";
@@ -3263,8 +3048,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       releasedByUserId: "7b000000-0000-0000-0000-000000000007",
       releasedAt: "2028-01-10T08:00:00Z",
       dueAt: "2028-01-12T16:00:00Z",
-      claimedByUserId:
-        status === "OPEN" ? null : "8b000000-0000-0000-0000-000000000008",
+      claimedByUserId: status === "OPEN" ? null : "8b000000-0000-0000-0000-000000000008",
       claimedAt: status === "OPEN" ? null : "2028-01-10T09:00:00Z",
       version: status === "OPEN" ? 0 : 1,
       latestRecommendation:
@@ -3337,26 +3121,23 @@ test.describe("Core Identity authentication and RBAC", () => {
             ],
           },
         });
-      if (pathname.endsWith("/releases"))
-        return route.fulfill({ json: [assignment("OPEN")] });
+      if (pathname.endsWith("/releases")) return route.fulfill({ json: [assignment("OPEN")] });
       if (pathname.endsWith("/recommendations"))
         return route.fulfill({ json: assignment("RECOMMENDED") });
       if (pathname.endsWith("/review"))
         return route.fulfill({
           json: { ...assignment("RECOMMENDED"), status: "COMPLETED" },
         });
-      if (pathname.endsWith("/mine"))
-        return route.fulfill({ json: [assignment("CLAIMED")] });
+      if (pathname.endsWith("/mine")) return route.fulfill({ json: [assignment("CLAIMED")] });
       return route.fulfill({
         json: [assignment(operation === "decision" ? "RECOMMENDED" : "OPEN")],
       });
     });
 
     await page.goto("/operations/admissions-academic-release");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
     await expect(
       page.getByRole("navigation", { name: "Admissions workflow stages" }),
@@ -3364,42 +3145,28 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(page.getByText("Batch applicants in two steps")).toBeVisible();
     await expect(page.getByText("1 applicant ready to release")).toBeVisible();
     await expect(page.getByText("1 applicant in this batch")).toBeVisible();
-    await expect(
-      page.getByText("School of Computing → College of Science"),
-    ).toBeVisible();
+    await expect(page.getByText("School of Computing → College of Science")).toBeVisible();
     await page.getByRole("button", { name: "Release 1 applicant" }).click();
     await page.getByRole("button", { name: "Release batch" }).click();
     await expect
       .poll(() => recordedRequests)
-      .toContain(
-        `/api/admissions/academic-reviews/selection-rounds/${selectionRoundId}/releases`,
-      );
+      .toContain(`/api/admissions/academic-reviews/selection-rounds/${selectionRoundId}/releases`);
 
     operation = "recommendation";
     await page.goto("/operations/admissions-recommendations");
     await expect(page.getByText("Advisory authority")).toBeVisible();
-    await page
-      .getByRole("button", { name: "View applicants", exact: true })
-      .click();
+    await page.getByRole("button", { name: "View applicants", exact: true }).click();
     await page.getByRole("button", { name: "Recommend", exact: true }).click();
-    await page
-      .locator("#reason")
-      .fill("Meets the academic requirements and merit threshold.");
+    await page.locator("#reason").fill("Meets the academic requirements and merit threshold.");
     await page.getByRole("button", { name: "Record recommendation" }).click();
     await expect
       .poll(() => recordedRequests)
-      .toContain(
-        `/api/admissions/academic-reviews/${assignmentId}/recommendations`,
-      );
+      .toContain(`/api/admissions/academic-reviews/${assignmentId}/recommendations`);
 
     operation = "decision";
     await page.goto("/operations/admissions-decisions");
-    await expect(
-      page.getByText("Admissions retains final authority"),
-    ).toBeVisible();
-    await page
-      .getByRole("button", { name: "View applicants", exact: true })
-      .click();
+    await expect(page.getByText("Admissions retains final authority")).toBeVisible();
+    await page.getByRole("button", { name: "View applicants", exact: true }).click();
     await page.getByRole("button", { name: "Approve", exact: true }).click();
     await page
       .locator("textarea.swal2-textarea")
@@ -3410,9 +3177,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       .toContain(`/api/admissions/academic-reviews/${assignmentId}/review`);
   });
 
-  test.skip("legacy offer batches are retired by ADR-0014", async ({
-    page,
-  }, testInfo) => {
+  test.skip("legacy offer batches are retired by ADR-0014", async ({ page }, testInfo) => {
     const username = `codex.admissions-offer-candidate.${testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}@example.test`;
     await ensureSystemAdminUser(username);
     const intakeId = "1c000000-0000-0000-0000-000000000001";
@@ -3569,42 +3334,37 @@ test.describe("Core Identity authentication and RBAC", () => {
       }
       return route.fulfill({ json: [] });
     });
-    await page.route(
-      `**/api/admissions/selection-rounds/${selectionRoundId}/decisions`,
-      (route) =>
-        route.fulfill({
-          json: [
-            {
-              id: "bc000000-0000-0000-0000-000000000011",
-              selectionRoundId,
-              programmeChoiceId,
-              applicationNumber: "EMH-FEB2027-00000762",
-              programmeCode: "HSC",
-              programmeName: "Bachelor of Science Computer Science",
-              decision: "SELECT",
-              rankPosition: 1,
-              quotaTypeCode: "MERIT",
-              reason: "Approved on merit.",
-              decidedByUserId: "9c000000-0000-0000-0000-000000000009",
-              decidedAt: "2027-01-12T08:00:00Z",
-            },
-          ],
-        }),
+    await page.route(`**/api/admissions/selection-rounds/${selectionRoundId}/decisions`, (route) =>
+      route.fulfill({
+        json: [
+          {
+            id: "bc000000-0000-0000-0000-000000000011",
+            selectionRoundId,
+            programmeChoiceId,
+            applicationNumber: "EMH-FEB2027-00000762",
+            programmeCode: "HSC",
+            programmeName: "Bachelor of Science Computer Science",
+            decision: "SELECT",
+            rankPosition: 1,
+            quotaTypeCode: "MERIT",
+            reason: "Approved on merit.",
+            decidedByUserId: "9c000000-0000-0000-0000-000000000009",
+            decidedAt: "2027-01-12T08:00:00Z",
+          },
+        ],
+      }),
     );
 
     await page.goto("/operations/admissions-offers");
-    await expect(page).toHaveURL(
-      /\/realms\/emhare\/protocol\/openid-connect\/auth/,
-      { timeout: 15_000 },
-    );
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
     await loginWithKeycloak(page, username);
     const admissionsWorkflowStages = page.getByRole("navigation", {
       name: "Admissions workflow stages",
     });
     await expect(admissionsWorkflowStages.getByRole("link")).toHaveCount(5);
-    await expect(
-      page.getByRole("button", { name: "Admissions tools" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Admissions tools" })).toHaveCount(0);
     if (testInfo.project.name === "chromium-mobile") {
       await page.getByRole("button", { name: "Open sidebar" }).click();
     }
@@ -3631,25 +3391,16 @@ test.describe("Core Identity authentication and RBAC", () => {
       await page.keyboard.press("Escape");
     }
     await expect(page.getByText("1 ready · 0 generated")).toBeVisible();
-    await page
-      .getByRole("button", { name: "View applicants", exact: true })
-      .click();
-    await expect(
-      page.getByText("Jemima Megan Lindsey Stevens", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Applicant APP-00000762", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText("Ready for offer", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "View full profile" }),
-    ).toHaveAttribute("href", `/operations/admissions/${applicationId}`);
+    await page.getByRole("button", { name: "View applicants", exact: true }).click();
+    await expect(page.getByText("Jemima Megan Lindsey Stevens", { exact: true })).toBeVisible();
+    await expect(page.getByText("Applicant APP-00000762", { exact: true })).toBeVisible();
+    await expect(page.getByText("Ready for offer", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "View full profile" })).toHaveAttribute(
+      "href",
+      `/operations/admissions/${applicationId}`,
+    );
     await page.getByRole("button", { name: "Generate offer" }).last().click();
-    await expect(
-      page.getByRole("heading", { name: "Generate offer draft" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Generate offer draft" })).toBeVisible();
     await expect(
       page.getByText(
         "EMH-FEB2027-00000762 · Jemima Megan Lindsey Stevens · HSC · Bachelor of Science Computer Science",
@@ -3685,8 +3436,6 @@ test.describe("Core Identity authentication and RBAC", () => {
         { exact: true },
       ),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Refresh offer status" }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Refresh offer status" })).toBeVisible();
   });
 });

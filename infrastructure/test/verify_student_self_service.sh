@@ -13,7 +13,7 @@ trap report_failure ERR
 
 gateway_base_url="${GATEWAY_BASE_URL:-http://localhost:8080}"
 keycloak_base_url="${KEYCLOAK_BASE_URL:-http://localhost:8099}"
-postgres_container="${POSTGRES_CONTAINER:-emhare-flyway-postgres}"
+postgres_container="${POSTGRES_CONTAINER:-emhare-postgres}"
 test_password="${TEST_PASSWORD:-Temporary-Student-Self-Service-42}"
 run_identifier="$(uuidgen | tr '[:upper:]' '[:lower:]')"
 short_identifier="${run_identifier%%-*}"
@@ -101,10 +101,12 @@ academic_unit_id="$(database_value emhare_academic_setup "SELECT id FROM academi
 [[ -n "${academic_unit_id}" ]] || { echo 'An active leaf academic unit is required.' >&2; exit 1; }
 
 academic_year_id="$(database_value emhare_academic_setup "SELECT id FROM academic_years WHERE status = 'OPEN' AND deleted_at IS NULL ORDER BY start_date LIMIT 1;")"
+academic_year_start="$(database_value emhare_academic_setup "SELECT start_date FROM academic_years WHERE id = '${academic_year_id}';")"
+academic_year_end="$(database_value emhare_academic_setup "SELECT end_date FROM academic_years WHERE id = '${academic_year_id}';")"
 academic_period_type_id="$(uuid)"
 academic_period_id="$(uuid)"
 intake_id="$(uuid)"
-programme_level_id="$(uuid)"
+programme_level_id="$(database_value emhare_academic_setup "SELECT id FROM programme_levels WHERE code = 'UG' AND status = 'ACTIVE' AND deleted_at IS NULL ORDER BY created_at LIMIT 1;")"
 programme_type_id="$(uuid)"
 programme_id="$(uuid)"
 programme_version_id="$(uuid)"
@@ -130,15 +132,11 @@ VALUES
 INSERT INTO academic_periods
   (id, academic_year_id, academic_period_type_id, code, name, start_date, end_date, status, change_reason, created_at, updated_at, created_by_user_id, version)
 VALUES
-  ('${academic_period_id}', '${academic_year_id}', '${academic_period_type_id}', '2027-S2-${code_identifier}', 'Semester 2', DATE '2027-01-01', DATE '2027-08-07', 'OPEN', 'Student self-service verification.', now(), now(), '${primary_local_user_id}', 0);
+  ('${academic_period_id}', '${academic_year_id}', '${academic_period_type_id}', 'SELF-S2-${code_identifier}', 'Semester 2', DATE '${academic_year_start}', DATE '${academic_year_end}', 'OPEN', 'Student self-service verification.', now(), now(), '${primary_local_user_id}', 0);
 INSERT INTO intakes
   (id, academic_year_id, code, name, starts_on, ends_on, status, change_reason, created_at, updated_at, created_by_user_id, version)
 VALUES
-  ('${intake_id}', '${academic_year_id}', 'SELF-${code_identifier}', 'Self-service intake', DATE '2026-08-08', DATE '2026-08-31', 'OPEN', 'Student self-service verification.', now(), now(), '${primary_local_user_id}', 0);
-INSERT INTO programme_levels
-  (id, code, name, sort_order, status, created_at, updated_at, created_by_user_id, version)
-VALUES
-  ('${programme_level_id}', 'SELF_${code_identifier}', 'Self-service level', (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM programme_levels), 'ACTIVE', now(), now(), '${primary_local_user_id}', 0);
+  ('${intake_id}', '${academic_year_id}', 'SELF-${code_identifier}', 'Self-service intake', DATE '${academic_year_start}', DATE '${academic_year_end}', 'OPEN', 'Student self-service verification.', now(), now(), '${primary_local_user_id}', 0);
 INSERT INTO programme_types
   (id, code, name, status, created_at, updated_at, created_by_user_id, version)
 VALUES

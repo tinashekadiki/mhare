@@ -1,100 +1,107 @@
 <script setup lang="ts">
-const props = withDefaults(defineProps<{
-  open: boolean
-  title: string
-  description?: string
-  submitLabel?: string
-  submitIcon?: string
-  busy?: boolean
-  submitDisabled?: boolean
-  submitDisabledReason?: string
-  showBack?: boolean
-  backLabel?: string
-  width?: 'md' | 'lg' | 'xl' | 'wide'
-  presentation?: 'sidepanel' | 'page'
-}>(), {
-  description: undefined,
-  submitLabel: 'Save',
-  submitIcon: 'i-lucide-save',
-  busy: false,
-  submitDisabled: false,
-  submitDisabledReason: 'Complete all required fields before continuing.',
-  showBack: false,
-  backLabel: 'Back',
-  width: 'lg',
-  presentation: 'sidepanel'
-})
+const props = withDefaults(
+  defineProps<{
+    open: boolean;
+    title: string;
+    description?: string;
+    submitLabel?: string;
+    submitIcon?: string;
+    busy?: boolean;
+    submitDisabled?: boolean;
+    submitDisabledReason?: string;
+    showBack?: boolean;
+    backLabel?: string;
+    width?: "md" | "lg" | "xl" | "wide";
+    presentation?: "sidepanel" | "page";
+  }>(),
+  {
+    description: undefined,
+    submitLabel: "Save",
+    submitIcon: "i-lucide-save",
+    busy: false,
+    submitDisabled: false,
+    submitDisabledReason: "Complete all required fields before continuing.",
+    showBack: false,
+    backLabel: "Back",
+    width: "lg",
+    presentation: "sidepanel",
+  },
+);
 
 const emit = defineEmits<{
-  'update:open': [open: boolean]
-  submit: []
-  back: []
-  close: []
-}>()
+  "update:open": [open: boolean];
+  submit: [];
+  back: [];
+  close: [];
+}>();
 
 const drawerUi = computed(() => ({
   content: {
-    md: 'w-screen max-w-full sm:w-[30rem] sm:max-w-[calc(100vw-2rem)]',
-    lg: 'w-screen max-w-full sm:w-[38rem] sm:max-w-[calc(100vw-2rem)]',
-    xl: 'w-screen max-w-full sm:w-[52rem] sm:max-w-[calc(100vw-2rem)]',
-    wide: 'w-screen max-w-full sm:w-[56rem] lg:w-[64rem] sm:max-w-[calc(100vw-2rem)]'
+    md: "w-screen max-w-full sm:w-[30rem] sm:max-w-[calc(100vw-2rem)]",
+    lg: "w-screen max-w-full sm:w-[38rem] sm:max-w-[calc(100vw-2rem)]",
+    xl: "w-screen max-w-full sm:w-[52rem] sm:max-w-[calc(100vw-2rem)]",
+    wide: "w-screen max-w-full sm:w-[56rem] lg:w-[64rem] sm:max-w-[calc(100vw-2rem)]",
   }[props.width],
-  header: 'border-b border-muted bg-elevated/60 px-5 py-4 sm:px-6',
-  body: 'flex-1 min-w-0 overflow-y-auto px-5 py-5 sm:px-6',
-  footer: 'border-t border-muted bg-default px-5 py-4 sm:px-6'
-}))
+  header: "border-b border-muted bg-elevated/60 px-5 py-4 sm:px-6",
+  body: "flex-1 min-w-0 overflow-y-auto px-5 py-5 sm:px-6",
+  footer: "border-t border-muted bg-default px-5 py-4 sm:px-6",
+}));
 
-const workspaceTitleId = useId()
-const workspaceDescriptionId = useId()
-const workspaceElement = ref<HTMLElement | null>(null)
-let elementFocusedBeforeWorkspace: HTMLElement | null = null
+const workspaceTitleId = useId();
+const workspaceDescriptionId = useId();
+const workspaceElement = ref<HTMLElement | null>(null);
+let elementFocusedBeforeWorkspace: HTMLElement | null = null;
 
 function setRouteContentInactive(inactive: boolean) {
-  const routeContent = document.getElementById('emhare-route-content')
-  if (!routeContent) return
+  const routeContent = document.getElementById("emhare-route-content");
+  if (!routeContent) return;
 
   if (inactive) {
-    routeContent.classList.add('invisible')
-    routeContent.setAttribute('aria-hidden', 'true')
+    routeContent.classList.add("invisible");
+    routeContent.setAttribute("aria-hidden", "true");
   } else {
-    routeContent.classList.remove('invisible')
-    routeContent.removeAttribute('aria-hidden')
+    routeContent.classList.remove("invisible");
+    routeContent.removeAttribute("aria-hidden");
   }
 }
 
 watch(
   () => props.open,
   async (open) => {
-    if (props.presentation !== 'page') return
-
     if (open) {
-      setRouteContentInactive(true)
-      elementFocusedBeforeWorkspace = document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null
-      await nextTick()
-      workspaceElement.value?.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')?.focus()
-      return
+      if (props.presentation !== "page") return;
+      setRouteContentInactive(true);
+      elementFocusedBeforeWorkspace =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      await nextTick();
+      workspaceElement.value
+        ?.querySelector<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        )
+        ?.focus();
+      return;
     }
 
-    setRouteContentInactive(false)
+    // Always restore route content when closing. A parent may clear the drawer
+    // kind synchronously, changing `presentation` before this watcher runs.
+    setRouteContentInactive(false);
     if (elementFocusedBeforeWorkspace?.isConnected) {
-      elementFocusedBeforeWorkspace.focus()
+      elementFocusedBeforeWorkspace.focus();
     }
-    elementFocusedBeforeWorkspace = null
-  }
-)
+    elementFocusedBeforeWorkspace = null;
+  },
+);
 
 onBeforeUnmount(() => {
-  if (props.presentation === 'page' && props.open) {
-    setRouteContentInactive(false)
+  if (props.presentation === "page" && props.open) {
+    setRouteContentInactive(false);
   }
-})
+});
 
 function updateOpen(open: boolean) {
-  emit('update:open', open)
+  emit("update:open", open);
   if (!open) {
-    emit('close')
+    emit("close");
   }
 }
 </script>
@@ -156,11 +163,7 @@ function updateOpen(open: boolean) {
     </template>
   </USlideover>
 
-  <Teleport
-    v-else-if="open"
-    defer
-    to="#emhare-main-workspace"
-  >
+  <Teleport v-else-if="open" defer to="#emhare-main-workspace">
     <section
       ref="workspaceElement"
       data-emhare-form-presentation="page"
@@ -184,10 +187,17 @@ function updateOpen(open: boolean) {
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
               Form workspace
             </p>
-            <h1 :id="workspaceTitleId" class="mt-1 text-xl font-semibold text-highlighted sm:text-2xl">
+            <h1
+              :id="workspaceTitleId"
+              class="mt-1 text-xl font-semibold text-highlighted sm:text-2xl"
+            >
               {{ title }}
             </h1>
-            <p v-if="description" :id="workspaceDescriptionId" class="mt-1 max-w-3xl text-sm text-muted">
+            <p
+              v-if="description"
+              :id="workspaceDescriptionId"
+              class="mt-1 max-w-3xl text-sm text-muted"
+            >
               {{ description }}
             </p>
           </div>
@@ -207,7 +217,9 @@ function updateOpen(open: boolean) {
       <footer class="shrink-0 border-t border-muted bg-default">
         <UContainer class="w-full max-w-6xl py-4">
           <slot name="footer">
-            <div class="flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div
+              class="flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
               <UButton
                 v-if="showBack"
                 :label="backLabel"

@@ -8,7 +8,7 @@ set -euo pipefail
 
 gateway_base_url="${GATEWAY_BASE_URL:-http://localhost:8080}"
 keycloak_base_url="${KEYCLOAK_BASE_URL:-http://localhost:8099}"
-postgres_container="${POSTGRES_CONTAINER:-emhare-flyway-postgres}"
+postgres_container="${POSTGRES_CONTAINER:-emhare-postgres}"
 rabbitmq_management_url="${RABBITMQ_MANAGEMENT_URL:-http://localhost:15672}"
 
 run_id=$(uuidgen | tr '[:upper:]' '[:lower:]')

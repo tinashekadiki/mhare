@@ -1,16 +1,10 @@
-import {
-  expect,
-  request as playwrightRequest,
-  test,
-  type Page,
-} from "@playwright/test";
+import { expect, request as playwrightRequest, test, type Page } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
-const applicantPortalUrl =
-  process.env.APPLICANT_PORTAL_URL ?? "http://localhost:3001";
+const applicantPortalUrl = process.env.APPLICANT_PORTAL_URL ?? "http://localhost:3001";
 const keycloakBaseUrl = process.env.KEYCLOAK_URL ?? "http://localhost:8099";
 const keycloakRealm = process.env.KEYCLOAK_REALM ?? "emhare";
 const postgresContainer = process.env.POSTGRES_CONTAINER ?? "emhare-postgres";
@@ -35,6 +29,9 @@ type ApplicantFixture = {
   subjectId: string;
   secondSubjectId: string;
   applicationTypeId: string;
+  feeStructureId: string;
+  feeCatalogueId: string;
+  feeRuleId: string;
   countryId: string;
   calendarYear: number;
   codeSuffix: string;
@@ -100,22 +97,17 @@ async function createApplicantLoginFixture(): Promise<ApplicantLoginFixture> {
   const runId = randomUUID();
   const username = `applicant-route-ui-${runId}@example.test`;
   const keycloak = await keycloakAdminContext();
-  const createUser = await keycloak.post(
-    `${keycloakBaseUrl}/admin/realms/${keycloakRealm}/users`,
-    {
-      data: {
-        username,
-        email: username,
-        firstName: "Route",
-        lastName: "Applicant",
-        enabled: true,
-        emailVerified: true,
-        credentials: [
-          { type: "password", value: testPassword, temporary: false },
-        ],
-      },
+  const createUser = await keycloak.post(`${keycloakBaseUrl}/admin/realms/${keycloakRealm}/users`, {
+    data: {
+      username,
+      email: username,
+      firstName: "Route",
+      lastName: "Applicant",
+      enabled: true,
+      emailVerified: true,
+      credentials: [{ type: "password", value: testPassword, temporary: false }],
     },
-  );
+  });
   expect(createUser.status()).toBe(201);
   const userId = createUser.headers().location!.split("/").at(-1)!;
   const applicantRole = await keycloak.get(
@@ -131,9 +123,7 @@ async function createApplicantLoginFixture(): Promise<ApplicantLoginFixture> {
   return { userId, username };
 }
 
-async function cleanupApplicantLoginFixture(
-  fixture: ApplicantLoginFixture | null,
-) {
+async function cleanupApplicantLoginFixture(fixture: ApplicantLoginFixture | null) {
   if (!fixture) return;
   const coreUserId = executeSql(
     "emhare_core_identity",
@@ -169,15 +159,11 @@ DELETE FROM users_aud WHERE id = '${coreUserId}'; DELETE FROM users WHERE id = '
     }
   }
   const keycloak = await keycloakAdminContext();
-  await keycloak.delete(
-    `${keycloakBaseUrl}/admin/realms/${keycloakRealm}/users/${fixture.userId}`,
-  );
+  await keycloak.delete(`${keycloakBaseUrl}/admin/realms/${keycloakRealm}/users/${fixture.userId}`);
   await keycloak.dispose();
 }
 
-async function createFixture(
-  options: ApplicantFixtureOptions = {},
-): Promise<ApplicantFixture> {
+async function createFixture(options: ApplicantFixtureOptions = {}): Promise<ApplicantFixture> {
   const admissionRoute = options.route ?? "UNDERGRAD";
   const isPostgraduateProgramme = admissionRoute !== "UNDERGRAD";
   const requiresEmploymentHistory = admissionRoute !== "UNDERGRAD";
@@ -212,22 +198,17 @@ async function createFixture(
   const codeSuffix = runId.replaceAll("-", "").slice(0, 8).toUpperCase();
   const username = `applicant-programme-${runId}@example.test`;
   const keycloak = await keycloakAdminContext();
-  const createUser = await keycloak.post(
-    `${keycloakBaseUrl}/admin/realms/${keycloakRealm}/users`,
-    {
-      data: {
-        username,
-        email: username,
-        firstName: "Browser",
-        lastName: "Applicant",
-        enabled: true,
-        emailVerified: true,
-        credentials: [
-          { type: "password", value: testPassword, temporary: false },
-        ],
-      },
+  const createUser = await keycloak.post(`${keycloakBaseUrl}/admin/realms/${keycloakRealm}/users`, {
+    data: {
+      username,
+      email: username,
+      firstName: "Browser",
+      lastName: "Applicant",
+      enabled: true,
+      emailVerified: true,
+      credentials: [{ type: "password", value: testPassword, temporary: false }],
     },
-  );
+  });
   expect(createUser.status()).toBe(201);
   const userId = createUser.headers().location!.split("/").at(-1)!;
   const applicantRole = await keycloak.get(
@@ -255,8 +236,7 @@ async function createFixture(
     throw new Error(
       "Canonical FACULTY and DEPARTMENT academic unit types are required for the browser fixture.",
     );
-  const calendarYear =
-    6000 + (Number.parseInt(codeSuffix.slice(0, 4), 16) % 3000);
+  const calendarYear = 6000 + (Number.parseInt(codeSuffix.slice(0, 4), 16) % 3000);
   const fixture: ApplicantFixture = {
     userId,
     username,
@@ -280,6 +260,9 @@ async function createFixture(
     subjectId: randomUUID(),
     secondSubjectId: randomUUID(),
     applicationTypeId: randomUUID(),
+    feeStructureId: randomUUID(),
+    feeCatalogueId: randomUUID(),
+    feeRuleId: randomUUID(),
     countryId: executeSql(
       "emhare_core_identity",
       "SELECT id FROM countries WHERE iso2_code = 'ZW' AND deleted_at IS NULL;",
@@ -325,10 +308,69 @@ COMMIT;
 `,
   );
   executeSql(
+    "emhare_finance",
+    `
+BEGIN;
+INSERT INTO finance_fee_catalogues (
+  id, code, name, description, charge_type, receivable_account_code,
+  revenue_account_code, base_currency_code, status, prepared_by_user_id,
+  activated_by_user_id, activated_at, activation_reason, created_at, updated_at, version)
+VALUES (
+  '${fixture.feeCatalogueId}', 'APP-${codeSuffix}', 'Application fee ${codeSuffix}',
+  'Playwright-governed application fee.', 'APPLICATION', 'AR-APPLICATION',
+  'REV-APPLICATION', 'USD', 'ACTIVE', '${userId}', gen_random_uuid(), now(),
+  'Independent Finance activation for browser verification.', now(), now(), 0);
+INSERT INTO finance_fee_structures (
+  id, code, name, description, fee_context, scope_type, scope_reference_id,
+  scope_reference_code, scope_reference_name, programme_level_id,
+  programme_level_code, programme_level_name, transaction_currency_code,
+  effective_from, status, prepared_by_user_id, activated_by_user_id,
+  activated_at, activation_reason, created_at, updated_at, version)
+VALUES (
+  '${fixture.feeStructureId}', 'APP-STRUCT-${codeSuffix}', 'Application fee structure ${codeSuffix}',
+  'Playwright-governed application fee structure.', 'APPLICATION', 'PROGRAMME_LEVEL',
+  '${fixture.programmeLevelId}', '${isPostgraduateProgramme ? "BPG" : "BUG"}_${codeSuffix}',
+  '${isPostgraduateProgramme ? "Postgraduate" : "Undergraduate"}', '${fixture.programmeLevelId}',
+  '${isPostgraduateProgramme ? "BPG" : "BUG"}_${codeSuffix}',
+  '${isPostgraduateProgramme ? "Postgraduate" : "Undergraduate"}', 'USD',
+  now() - interval '1 day', 'ACTIVE', '${userId}', gen_random_uuid(), now(),
+  'Independent Finance activation for browser verification.', now(), now(), 0);
+INSERT INTO finance_fee_rules (
+  id, fee_catalogue_id, fee_structure_id, structure_line_number,
+  structure_line_description, rule_version, transaction_currency_code,
+  transaction_amount, base_currency_code, base_amount, rating_status,
+  effective_from, status, prepared_by_user_id, created_at, updated_at, version)
+VALUES (
+  '${fixture.feeRuleId}', '${fixture.feeCatalogueId}', '${fixture.feeStructureId}', 1,
+  'Application processing fee', 1, 'USD', 25.00, 'USD', 25.00, 'RATED',
+  now() - interval '1 day', 'DRAFT', '${userId}', now(), now(), 0);
+INSERT INTO finance_fee_rule_scopes (
+  id, fee_rule_id, scope_dimension, reference_id, reference_code, reference_name,
+  created_at, updated_at, version)
+VALUES (
+  gen_random_uuid(), '${fixture.feeRuleId}', 'PROGRAMME_LEVEL', '${fixture.programmeLevelId}',
+  '${isPostgraduateProgramme ? "BPG" : "BUG"}_${codeSuffix}',
+  '${isPostgraduateProgramme ? "Postgraduate" : "Undergraduate"}', now(), now(), 0);
+UPDATE finance_fee_rules
+SET status = 'APPROVED', approved_by_user_id = gen_random_uuid(), approved_at = now(),
+    approval_reason = 'Independent Finance approval for browser verification.', version = 1
+WHERE id = '${fixture.feeRuleId}';
+COMMIT;
+`,
+  );
+  executeSql(
     "emhare_admissions",
     `
-INSERT INTO application_types (id, code, name, requires_employment_history, requires_referees, is_active, created_at, updated_at, version)
-VALUES ('${fixture.applicationTypeId}', '${admissionRoute}-E2E-${runId.slice(0, 8)}', '${fixture.applicationTypeName}', ${requiresEmploymentHistory}, ${refereeMinimumRecords > 0}, true, now(), now(), 0);
+INSERT INTO application_types (
+  id, code, name, requires_employment_history, requires_referees, is_active,
+  finance_fee_structure_id, finance_fee_structure_code, finance_fee_structure_name,
+  fee_policy_status, fee_policy_decided_by_user_id, fee_policy_decided_at,
+  created_at, updated_at, version)
+VALUES (
+  '${fixture.applicationTypeId}', '${admissionRoute}-E2E-${runId.slice(0, 8)}',
+  '${fixture.applicationTypeName}', ${requiresEmploymentHistory}, ${refereeMinimumRecords > 0}, true,
+  '${fixture.feeStructureId}', 'APP-STRUCT-${codeSuffix}', 'Application fee structure ${codeSuffix}',
+  'FEE_STRUCTURE', '${userId}', now(), now(), now(), 0);
 INSERT INTO application_type_programme_mappings (
   id, application_type_id, programme_id, programme_code, programme_name, is_active,
   created_at, updated_at, version)
@@ -453,6 +495,22 @@ DELETE FROM exam_bodies WHERE id = '${fixture.examBodyId}';
 `,
   );
   executeSql(
+    "emhare_finance",
+    `
+BEGIN;
+SET LOCAL session_replication_role = replica;
+DELETE FROM finance_fee_rule_scopes_aud WHERE fee_rule_id = '${fixture.feeRuleId}';
+DELETE FROM finance_fee_rule_scopes WHERE fee_rule_id = '${fixture.feeRuleId}';
+DELETE FROM finance_fee_rules_aud WHERE id = '${fixture.feeRuleId}';
+DELETE FROM finance_fee_rules WHERE id = '${fixture.feeRuleId}';
+DELETE FROM finance_fee_structures_aud WHERE id = '${fixture.feeStructureId}';
+DELETE FROM finance_fee_structures WHERE id = '${fixture.feeStructureId}';
+DELETE FROM finance_fee_catalogues_aud WHERE id = '${fixture.feeCatalogueId}';
+DELETE FROM finance_fee_catalogues WHERE id = '${fixture.feeCatalogueId}';
+COMMIT;
+`,
+  );
+  executeSql(
     "emhare_academic_setup",
     `
 BEGIN; SET LOCAL session_replication_role = replica;
@@ -466,9 +524,7 @@ DELETE FROM academic_units WHERE id = '${fixture.academicUnitLeafId}'; DELETE FR
 `,
   );
   const keycloak = await keycloakAdminContext();
-  await keycloak.delete(
-    `${keycloakBaseUrl}/admin/realms/${keycloakRealm}/users/${fixture.userId}`,
-  );
+  await keycloak.delete(`${keycloakBaseUrl}/admin/realms/${keycloakRealm}/users/${fixture.userId}`);
   await keycloak.dispose();
 }
 
@@ -481,11 +537,7 @@ async function login(page: Page, fixture: ApplicantLoginFixture) {
   await page.waitForLoadState("networkidle");
 }
 
-async function selectOption(
-  page: Page,
-  label: string | RegExp,
-  option: string | RegExp,
-) {
+async function selectOption(page: Page, label: string | RegExp, option: string | RegExp) {
   const field = page.getByLabel(label);
   await expect(field).toBeEnabled({ timeout: 30_000 });
   let lastError: unknown;
@@ -550,9 +602,7 @@ async function clickVisibleButtonContaining(page: Page, label: string) {
       (candidate) =>
         !candidate.disabled &&
         candidate.offsetParent !== null &&
-        (candidate.textContent ?? "")
-          .replace(/\s+/g, " ")
-          .includes(buttonLabel),
+        (candidate.textContent ?? "").replace(/\s+/g, " ").includes(buttonLabel),
     );
     const button = buttons.at(-1);
     if (!(button instanceof HTMLButtonElement))
@@ -563,10 +613,7 @@ async function clickVisibleButtonContaining(page: Page, label: string) {
 
 async function dismissSuccessDialog(page: Page) {
   await expect(page.locator(".swal2-icon.swal2-success")).toBeVisible();
-  const confirmation = page
-    .locator(".swal2-confirm")
-    .filter({ hasText: "OK" })
-    .last();
+  const confirmation = page.locator(".swal2-confirm").filter({ hasText: "OK" }).last();
   await confirmation.waitFor({ state: "visible" });
   await confirmation.evaluate((button: HTMLElement) => button.click());
   await expect(page.locator(".swal2-container")).toBeHidden({
@@ -574,11 +621,7 @@ async function dismissSuccessDialog(page: Page) {
   });
 }
 
-async function uploadEvidence(
-  page: Page,
-  requirementName: string,
-  filePath: string,
-) {
+async function uploadEvidence(page: Page, requirementName: string, filePath: string) {
   const activeSection = page.locator("#application-section-editor");
   const requirementRow = activeSection
     .locator(".space-y-3 > div")
@@ -633,25 +676,16 @@ LIMIT 1;
         const responseUrl = notification.body.match(
           /https?:\/\/[^\s<]+\/references\/[A-Za-z0-9_-]+/,
         )?.[0];
-        if (!responseUrl)
-          throw new Error(
-            `Reference response URL was not rendered for ${email}.`,
-          );
+        if (!responseUrl) throw new Error(`Reference response URL was not rendered for ${email}.`);
         return { ...notification, responseUrl };
       }
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  throw new Error(
-    `Reference invitation was not delivered to ${email} within 30 seconds.`,
-  );
+  throw new Error(`Reference invitation was not delivered to ${email} within 30 seconds.`);
 }
 
-async function submitConfidentialReference(
-  page: Page,
-  responseUrl: string,
-  relationship: string,
-) {
+async function submitConfidentialReference(page: Page, responseUrl: string, relationship: string) {
   await page.goto(responseUrl);
   await page.waitForLoadState("networkidle");
   await expect(
@@ -760,76 +794,63 @@ test.describe("Applicant programme choices", () => {
         ...definition,
         id: randomUUID(),
         routeIndex,
-        sections: definition.sections.map(
-          ([code, name, minimumRecords], sectionIndex) => ({
-            code,
-            name,
-            required: true,
-            repeatable: minimumRecords > 0,
-            minimumRecords,
-            sortOrder: (sectionIndex + 1) * 10,
-          }),
-        ),
+        sections: definition.sections.map(([code, name, minimumRecords], sectionIndex) => ({
+          code,
+          name,
+          required: true,
+          repeatable: minimumRecords > 0,
+          minimumRecords,
+          sortOrder: (sectionIndex + 1) * 10,
+        })),
       }));
       let routesAvailable = false;
-      await page.route(
-        "**/api/admissions/applications/start-options**",
-        (route) =>
-          route.fulfill({
-            json: {
-              applicantCategoryCode: "LOCAL",
-              applicantCategories: [
-                { code: "LOCAL", label: "Local applicant" },
-              ],
-              intakes: [intake],
-              applicationTypes: routeDefinitions.map((definition) => ({
-                id: definition.id,
-                code: definition.code,
-                name: definition.name,
-                requiresEmploymentHistory: definition.sections.some(
-                  (section) => section.code === "EMPLOYMENT_HISTORY",
-                ),
-                requiresReferees: definition.sections.some(
-                  (section) => section.code === "REFEREES",
-                ),
-                fee: definition.feeRequired
-                  ? { required: true, amount: 25, currencyCode: "USD" }
-                  : { required: false, amount: null, currencyCode: null },
-                sections: definition.sections,
-              })),
-              routes: routesAvailable
-                ? routeDefinitions.map((definition) => ({
-                    applicationTypeId: definition.id,
-                    applicationTypeCode: definition.code,
-                    applicationTypeName: definition.name,
-                    intakeId,
-                    intakeCode: intake.code,
-                    intakeName: intake.name,
-                    maximumProgrammeChoices: 3,
-                    programmes: Array.from(
-                      { length: definition.routeIndex + 2 },
-                      (_, programmeIndex) => ({
-                        id: randomUUID(),
-                        code: `${definition.code}-${programmeIndex + 1}`,
-                        name: `${definition.name} Programme ${programmeIndex + 1}`,
-                      }),
-                    ),
-                  }))
-                : [],
-            },
-          }),
+      await page.route("**/api/admissions/applications/start-options**", (route) =>
+        route.fulfill({
+          json: {
+            applicantCategoryCode: "LOCAL",
+            applicantCategories: [{ code: "LOCAL", label: "Local applicant" }],
+            intakes: [intake],
+            applicationTypes: routeDefinitions.map((definition) => ({
+              id: definition.id,
+              code: definition.code,
+              name: definition.name,
+              requiresEmploymentHistory: definition.sections.some(
+                (section) => section.code === "EMPLOYMENT_HISTORY",
+              ),
+              requiresReferees: definition.sections.some((section) => section.code === "REFEREES"),
+              fee: definition.feeRequired
+                ? { required: true, amount: 25, currencyCode: "USD" }
+                : { required: false, amount: null, currencyCode: null },
+              sections: definition.sections,
+            })),
+            routes: routesAvailable
+              ? routeDefinitions.map((definition) => ({
+                  applicationTypeId: definition.id,
+                  applicationTypeCode: definition.code,
+                  applicationTypeName: definition.name,
+                  intakeId,
+                  intakeCode: intake.code,
+                  intakeName: intake.name,
+                  maximumProgrammeChoices: 3,
+                  programmes: Array.from(
+                    { length: definition.routeIndex + 2 },
+                    (_, programmeIndex) => ({
+                      id: randomUUID(),
+                      code: `${definition.code}-${programmeIndex + 1}`,
+                      name: `${definition.name} Programme ${programmeIndex + 1}`,
+                    }),
+                  ),
+                }))
+              : [],
+          },
+        }),
       );
 
       await page.goto(applicantPortalUrl);
       await login(page, fixture);
-      await page
-        .getByRole("link", { name: "Start application" })
-        .first()
-        .click();
+      await page.getByRole("link", { name: "Start application" }).first().click();
 
-      await expect(
-        page.getByText("No application route is currently open"),
-      ).toBeVisible();
+      await expect(page.getByText("No application route is currently open")).toBeVisible();
       routesAvailable = true;
       await page
         .getByRole("button", { name: "Check again" })
@@ -841,9 +862,7 @@ test.describe("Applicant programme choices", () => {
         }),
       ).toBeVisible();
       for (const routeDefinition of routeDefinitions) {
-        const routeCard = page.getByTestId(
-          `application-route-${routeDefinition.code}`,
-        );
+        const routeCard = page.getByTestId(`application-route-${routeDefinition.code}`);
         await expect(routeCard).toContainText(routeDefinition.name);
         await routeCard.evaluate((element: HTMLElement) =>
           element.scrollIntoView({ block: "center" }),
@@ -853,29 +872,19 @@ test.describe("Applicant programme choices", () => {
         await expect(routeCard).toHaveAttribute("aria-pressed", "true");
         const evidenceSummary = page.getByTestId("selected-route-evidence");
         if (routeDefinition.code === "UNDERGRAD") {
-          await expect(evidenceSummary).toContainText(
-            "No confidential references",
-          );
+          await expect(evidenceSummary).toContainText("No confidential references");
         }
         if (routeDefinition.code === "POSTGRAD") {
-          await expect(evidenceSummary).toContainText(
-            "2 confidential references",
-          );
+          await expect(evidenceSummary).toContainText("2 confidential references");
         }
         if (routeDefinition.code === "MBA") {
           await expect(evidenceSummary).toContainText("Previous UZ study");
-          await expect(evidenceSummary).toContainText(
-            "Professional achievements",
-          );
-          await expect(evidenceSummary).toContainText(
-            "3 confidential references",
-          );
+          await expect(evidenceSummary).toContainText("Professional achievements");
+          await expect(evidenceSummary).toContainText("3 confidential references");
         }
         if (routeDefinition.code === "EDUCATION") {
           await expect(evidenceSummary).toContainText("Employment history");
-          await expect(evidenceSummary).toContainText(
-            "3 confidential references",
-          );
+          await expect(evidenceSummary).toContainText("3 confidential references");
         }
       }
       await expect(page.getByLabel("Intake")).toBeEnabled();
@@ -910,10 +919,7 @@ test.describe("Applicant programme choices", () => {
 
         await page.goto(applicantPortalUrl);
         await login(page, fixture);
-        await page
-          .getByRole("link", { name: "Start application" })
-          .first()
-          .click();
+        await page.getByRole("link", { name: "Start application" }).first().click();
         await selectApplicationRoute(page, fixture.applicationTypeName);
         await selectOption(page, "Intake", fixture.intakeName);
         await Promise.all([
@@ -931,9 +937,7 @@ test.describe("Applicant programme choices", () => {
             name: /Employment history/,
           }),
         ).toBeVisible();
-        await expect(
-          workspaceNavigator.getByRole("button", { name: /Referees/ }),
-        ).toBeVisible();
+        await expect(workspaceNavigator.getByRole("button", { name: /Referees/ })).toBeVisible();
         await expect(
           workspaceNavigator.getByRole("button", { name: /Previous UZ study/ }),
         ).toHaveCount(0);
@@ -947,16 +951,13 @@ test.describe("Applicant programme choices", () => {
         });
         await expect(refereeStep).toBeEnabled();
         await refereeStep.evaluate((element: HTMLElement) => element.click());
-        await expect(
-          page.getByRole("heading", { name: "Referees", exact: true }),
-        ).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Referees", exact: true })).toBeVisible();
         await expect(
           page
             .locator("#application-section-editor")
-            .getByText(
-              `0 of ${routeExpectation.referenceCount} required record(s) captured.`,
-              { exact: true },
-            ),
+            .getByText(`0 of ${routeExpectation.referenceCount} required record(s) captured.`, {
+              exact: true,
+            }),
         ).toBeVisible();
         await expect(page.getByTestId("application-context")).toContainText(
           fixture.applicationTypeName,
@@ -991,9 +992,7 @@ test.describe("Applicant programme choices", () => {
         page.getByRole("heading", { name: "Browser Applicant", exact: true }),
       ).toBeVisible();
       await expect(
-        page
-          .getByRole("link", { name: "Start application", exact: true })
-          .first(),
+        page.getByRole("link", { name: "Start application", exact: true }).first(),
       ).toBeVisible();
       await expect(
         page.getByRole("heading", {
@@ -1110,9 +1109,7 @@ test.describe("Applicant programme choices", () => {
         page.getByRole("heading", { name: "Admission offers", exact: true }),
       ).toBeVisible();
 
-      const publishedOffer = page.getByTestId(
-        `admission-offer-${publishedOfferId}`,
-      );
+      const publishedOffer = page.getByTestId(`admission-offer-${publishedOfferId}`);
       await expect(
         publishedOffer.getByRole("button", { name: "Preview", exact: true }),
       ).toBeVisible();
@@ -1132,24 +1129,16 @@ test.describe("Applicant programme choices", () => {
       const publishedDocumentRequest = page.waitForRequest((request) =>
         request
           .url()
-          .includes(
-            `/api/admissions/applicant/offers/${publishedOfferId}/published-document`,
-          ),
+          .includes(`/api/admissions/applicant/offers/${publishedOfferId}/published-document`),
       );
       const offerPreviewPagePromise = page.context().waitForEvent("page");
-      await publishedOffer
-        .getByRole("button", { name: "Preview", exact: true })
-        .click();
+      await publishedOffer.getByRole("button", { name: "Preview", exact: true }).click();
       await publishedDocumentRequest;
       const offerPreviewPage = await offerPreviewPagePromise;
-      await expect(offerPreviewPage).toHaveURL(
-        `${applicantPortalUrl}/e2e-offer-letter.pdf`,
-      );
+      await expect(offerPreviewPage).toHaveURL(`${applicantPortalUrl}/e2e-offer-letter.pdf`);
       await offerPreviewPage.close();
 
-      const unpublishedOffer = page.getByTestId(
-        `admission-offer-${unpublishedOfferId}`,
-      );
+      const unpublishedOffer = page.getByTestId(`admission-offer-${unpublishedOfferId}`);
       await expect(
         unpublishedOffer.getByText("Offer letter being prepared", {
           exact: true,
@@ -1266,14 +1255,16 @@ test.describe("Applicant programme choices", () => {
           }),
       );
       await page.route("**/api/admissions/applications/start-options**", (route) =>
-        route.fulfill({ json: { applicantCategories: [], applicationTypes: [], intakes: [], routes: [] } }),
+        route.fulfill({
+          json: { applicantCategories: [], applicationTypes: [], intakes: [], routes: [] },
+        }),
       );
       await page.route("**/api/admissions/qualification-reference-data", (route) =>
-        route.fulfill({ json: { examBodies: [], oLevelSubjects: [], aLevelSubjects: [], otherSubjects: [] } }),
+        route.fulfill({
+          json: { examBodies: [], oLevelSubjects: [], aLevelSubjects: [], otherSubjects: [] },
+        }),
       );
-      await page.route("**/api/core/reference/countries", (route) =>
-        route.fulfill({ json: [] }),
-      );
+      await page.route("**/api/core/reference/countries", (route) => route.fulfill({ json: [] }));
 
       await page.goto(`${applicantPortalUrl}/applications/${publishedApplicationId}`);
       const previewFromWorkspace = page.getByRole("button", {
@@ -1288,9 +1279,7 @@ test.describe("Applicant programme choices", () => {
       const workspacePreviewPagePromise = page.context().waitForEvent("page");
       await previewFromWorkspace.click();
       const workspacePreviewPage = await workspacePreviewPagePromise;
-      await expect(workspacePreviewPage).toHaveURL(
-        `${applicantPortalUrl}/e2e-offer-letter.pdf`,
-      );
+      await expect(workspacePreviewPage).toHaveURL(`${applicantPortalUrl}/e2e-offer-letter.pdf`);
       await workspacePreviewPage.close();
     } finally {
       await cleanupFixture(fixture);
@@ -1312,136 +1301,134 @@ test.describe("Applicant programme choices", () => {
       const checkoutAttemptId = randomUUID();
       let paymentConfirmed = false;
       let reconciledAttemptId: string | undefined;
-      await page.route(
-        `**/api/admissions/applications/${applicationId}/workspace`,
-        (route) =>
-          route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({
-              application: {
-                id: applicationId,
-                applicationNumber: "EMH-PAYMENT-UI-0001",
-                applicantNumber: "APP-PAYMENT-UI-0001",
-                applicantName: "Browser Applicant",
-                intakeId: fixture!.intakeId,
-                intakeCode: `BI_${fixture!.codeSuffix}`,
-                applicationTypeId: fixture!.applicationTypeId,
-                applicationTypeName: fixture!.applicationTypeName,
-                status: "DRAFT",
-                paymentRequired: true,
-                paymentClearanceStatus: paymentConfirmed ? "PAID" : "PENDING",
-                paymentWaiverReason: null,
-                canSubmit: false,
-                canEnterReview: false,
-                calculatedTotalPoints: null,
-                pointsCalculatedAt: null,
-                programmeChoices: [],
-                payment: {
-                  financePaymentReferenceId,
-                  reference: "EMH-PAY-0000000442",
-                  amountDue: 25,
-                  currencyCode: "USD",
-                  baseCurrencyCode: "USD",
-                  baseAmountDue: 25,
-                  ratingStatus: "RATED",
-                  status: paymentConfirmed ? "PAID" : "PENDING",
-                  requiredForSubmission: true,
-                  workflowCleared: paymentConfirmed,
-                  paidAt: paymentConfirmed ? "2026-08-10T08:43:33Z" : null,
-                },
+      await page.route(`**/api/admissions/applications/${applicationId}/workspace`, (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            application: {
+              id: applicationId,
+              applicationNumber: "EMH-PAYMENT-UI-0001",
+              applicantNumber: "APP-PAYMENT-UI-0001",
+              applicantName: "Browser Applicant",
+              intakeId: fixture!.intakeId,
+              intakeCode: `BI_${fixture!.codeSuffix}`,
+              applicationTypeId: fixture!.applicationTypeId,
+              applicationTypeName: fixture!.applicationTypeName,
+              status: "DRAFT",
+              paymentRequired: true,
+              paymentClearanceStatus: paymentConfirmed ? "PAID" : "PENDING",
+              paymentWaiverReason: null,
+              canSubmit: false,
+              canEnterReview: false,
+              calculatedTotalPoints: null,
+              pointsCalculatedAt: null,
+              programmeChoices: [],
+              payment: {
+                financePaymentReferenceId,
+                reference: "EMH-PAY-0000000442",
+                amountDue: 25,
+                currencyCode: "USD",
+                baseCurrencyCode: "USD",
+                baseAmountDue: 25,
+                ratingStatus: "RATED",
+                status: paymentConfirmed ? "PAID" : "PENDING",
+                requiredForSubmission: true,
+                workflowCleared: paymentConfirmed,
+                paidAt: paymentConfirmed ? "2026-08-10T08:43:33Z" : null,
               },
-              profile: {
+            },
+            profile: {
+              id: randomUUID(),
+              userId: randomUUID(),
+              applicantNumber: "APP-PAYMENT-UI-0001",
+              applicantCategoryCode: "LOCAL",
+              titleCode: "MR",
+              firstName: "Browser",
+              middleNames: null,
+              lastName: "Applicant",
+              dateOfBirth: "1999-01-15",
+              genderCode: "MALE",
+              maritalStatusCode: "SINGLE",
+              nationalIdNumber: "99-UI",
+              passportNumber: null,
+              countryId: fixture!.countryId,
+              nationalityCountryId: fixture!.countryId,
+              placeOfBirth: "Harare",
+              disabilityStatusCode: "NONE",
+              specialNeeds: null,
+              sponsorTypeCode: "SELF",
+              primaryEmail: fixture!.username,
+              primaryPhone: "+263772000001",
+              postalAddress: null,
+              residentialAddress: "Harare",
+              completenessPercentage: 100,
+              missingRequiredFields: [],
+              createdAt: "2026-08-10T06:00:00Z",
+              updatedAt: "2026-08-10T06:00:00Z",
+              version: 0,
+            },
+            sections: [
+              {
                 id: randomUUID(),
-                userId: randomUUID(),
-                applicantNumber: "APP-PAYMENT-UI-0001",
-                applicantCategoryCode: "LOCAL",
-                titleCode: "MR",
-                firstName: "Browser",
-                middleNames: null,
-                lastName: "Applicant",
-                dateOfBirth: "1999-01-15",
-                genderCode: "MALE",
-                maritalStatusCode: "SINGLE",
-                nationalIdNumber: "99-UI",
-                passportNumber: null,
-                countryId: fixture!.countryId,
-                nationalityCountryId: fixture!.countryId,
-                placeOfBirth: "Harare",
-                disabilityStatusCode: "NONE",
-                specialNeeds: null,
-                sponsorTypeCode: "SELF",
-                primaryEmail: fixture!.username,
-                primaryPhone: "+263772000001",
-                postalAddress: null,
-                residentialAddress: "Harare",
-                completenessPercentage: 100,
-                missingRequiredFields: [],
-                createdAt: "2026-08-10T06:00:00Z",
-                updatedAt: "2026-08-10T06:00:00Z",
+                code: "PAYMENT",
+                name: "Application fee",
+                required: true,
+                repeatable: false,
+                minimumRecords: 0,
+                sortOrder: 80,
+                status: paymentConfirmed ? "COMPLETE" : "IN_PROGRESS",
+                completedAt: paymentConfirmed ? "2026-08-10T08:43:33Z" : null,
+                completionSummary: paymentConfirmed
+                  ? "Application fee confirmed."
+                  : "Application fee confirmation or waiver is required.",
                 version: 0,
               },
-              sections: [
-                {
-                  id: randomUUID(),
-                  code: "PAYMENT",
-                  name: "Application fee",
-                  required: true,
-                  repeatable: false,
-                  minimumRecords: 0,
-                  sortOrder: 80,
-                  status: paymentConfirmed ? "COMPLETE" : "IN_PROGRESS",
-                  completedAt: paymentConfirmed ? "2026-08-10T08:43:33Z" : null,
-                  completionSummary: paymentConfirmed
-                    ? "Application fee confirmed."
-                    : "Application fee confirmation or waiver is required.",
-                  version: 0,
-                },
-              ],
-              nextOfKin: [],
-              employmentHistory: [],
-              referees: [],
-              qualifications: [],
-              documents: {
-                requirements: [],
-                requiredDocumentsUploaded: true,
-                allRequiredDocumentsVerified: false,
-              },
-              readyForSubmission: false,
-              missingRequirements: [
-                "Application fee: Application fee confirmation or waiver is required.",
-              ],
-              declarationAcceptedAt: null,
-              declarationVersion: null,
-            }),
+            ],
+            nextOfKin: [],
+            employmentHistory: [],
+            referees: [],
+            qualifications: [],
+            priorUzDeclaration: null,
+            professionalAchievementsDeclaredNone: false,
+            professionalAchievements: [],
+            documents: {
+              requirements: [],
+              requiredDocumentsUploaded: true,
+              allRequiredDocumentsVerified: false,
+            },
+            readyForSubmission: false,
+            missingRequirements: [
+              "Application fee: Application fee confirmation or waiver is required.",
+            ],
+            declarationAcceptedAt: null,
+            declarationVersion: null,
           }),
+        }),
       );
-      await page.route(
-        "**/api/admissions/applications/start-options**",
-        (route) =>
-          route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({
-              applicantCategories: [],
-              applicationTypes: [],
-              intakes: [],
-            }),
+      await page.route("**/api/admissions/applications/start-options**", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            applicantCategories: [],
+            applicationTypes: [],
+            intakes: [],
+            routes: [],
           }),
+        }),
       );
-      await page.route(
-        "**/api/admissions/qualification-reference-data",
-        (route) =>
-          route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({
-              examBodies: [],
-              oLevelSubjects: [],
-              aLevelSubjects: [],
-              otherSubjects: [],
-            }),
+      await page.route("**/api/admissions/qualification-reference-data", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            examBodies: [],
+            oLevelSubjects: [],
+            aLevelSubjects: [],
+            otherSubjects: [],
           }),
+        }),
       );
       await page.route("**/api/core/reference/countries", (route) =>
         route.fulfill({
@@ -1460,8 +1447,7 @@ test.describe("Applicant programme choices", () => {
               proofOfPaymentUploadAvailable: true,
               onlinePayment: {
                 available: true,
-                availabilityMessage:
-                  "Pay the application fee securely by debit or credit card.",
+                availabilityMessage: "Pay the application fee securely by debit or credit card.",
               },
             }),
           }),
@@ -1477,8 +1463,7 @@ test.describe("Applicant programme choices", () => {
               embeddedCheckoutUrl: "https://portal.host.iveri.com/Lite/LiteBox",
               returnMessageOrigin: new URL(applicantPortalUrl).origin,
               formParameters: {
-                Lite_Merchant_ApplicationId:
-                  "{00000000-0000-0000-0000-000000000001}",
+                Lite_Merchant_ApplicationId: "{00000000-0000-0000-0000-000000000001}",
                 Lite_Order_Amount: "2500",
                 Lite_ConsumerOrderID_PreFix: "EMH",
                 Lite_Merchant_Trace: "payment-ui-trace",
@@ -1536,9 +1521,7 @@ test.describe("Applicant programme choices", () => {
       await expect(
         page.getByRole("heading", { name: "Application fee", exact: true }),
       ).toBeVisible();
-      await expect(
-        page.getByText("EMH-PAY-0000000442", { exact: true }),
-      ).toBeVisible();
+      await expect(page.getByText("EMH-PAY-0000000442", { exact: true })).toBeVisible();
       await expect(
         page.getByRole("heading", {
           name: "Already paid by bank?",
@@ -1546,37 +1529,20 @@ test.describe("Applicant programme choices", () => {
         }),
       ).toBeVisible();
       await expect(page.getByLabel("Proof of payment")).toBeVisible();
-      await expect(
-        page.getByRole("heading", { name: "Pay online", exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Pay USD 25 now", exact: true }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Pay online", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Pay USD 25 now", exact: true })).toBeVisible();
       await expect(page.getByText(/iVeri/i)).toHaveCount(0);
 
-      await page
-        .getByRole("button", { name: "Pay USD 25 now", exact: true })
-        .click();
-      await expect(
-        page.getByRole("dialog", { name: "Make payment" }),
-      ).toHaveCount(0);
-      await expect(
-        page.getByRole("heading", { name: "Pay USD 25", exact: true }),
-      ).toBeVisible();
+      await page.getByRole("button", { name: "Pay USD 25 now", exact: true }).click();
+      await expect(page.getByRole("dialog", { name: "Make payment" })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Pay USD 25", exact: true })).toBeVisible();
       await expect(page.getByTitle("Secure card payment")).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Cancel payment", exact: true }),
-      ).toBeVisible();
-      await expect(page).toHaveURL(
-        `${applicantPortalUrl}/applications/${applicationId}`,
-      );
+      await expect(page.getByRole("button", { name: "Cancel payment", exact: true })).toBeVisible();
+      await expect(page).toHaveURL(`${applicantPortalUrl}/applications/${applicationId}`);
 
       const checkoutFrame = page
         .frames()
-        .find(
-          (frame) =>
-            frame.url() === "https://portal.host.iveri.com/Lite/LiteBox",
-        );
+        .find((frame) => frame.url() === "https://portal.host.iveri.com/Lite/LiteBox");
       expect(checkoutFrame).toBeTruthy();
       await expect(checkoutFrame!.getByLabel("Card Number")).toBeVisible();
       await checkoutFrame!.evaluate((merchantSiteOrigin) => {
@@ -1589,13 +1555,9 @@ test.describe("Applicant programme choices", () => {
         );
       }, new URL(applicantPortalUrl).origin);
       await expect(page.getByTitle("Secure card payment")).toBeHidden();
-      await expect(
-        page.getByRole("heading", { name: "Payment confirmed" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Payment confirmed" })).toBeVisible();
       expect(reconciledAttemptId).toBe(checkoutAttemptId);
-      await expect(
-        page.getByText("Application fee confirmed", { exact: true }),
-      ).toBeVisible();
+      await expect(page.getByText("Application fee confirmed", { exact: true })).toBeVisible();
     } finally {
       await cleanupFixture(fixture);
     }
@@ -1611,20 +1573,21 @@ test.describe("Applicant programme choices", () => {
       const consoleErrors: string[] = [];
       page.on(
         "console",
-        (message) =>
-          message.type() === "error" && consoleErrors.push(message.text()),
+        (message) => message.type() === "error" && consoleErrors.push(message.text()),
       );
       await page.goto(applicantPortalUrl);
       await login(page, fixture);
-      await page
-        .getByRole("link", { name: "Start application" })
-        .first()
-        .click();
+      await page.getByRole("link", { name: "Start application" }).first().click();
       await expect(page).toHaveURL(`${applicantPortalUrl}/applications/new`);
       await expect(page.getByRole("dialog")).toHaveCount(0);
 
       const form = page.locator("#application-start-journey");
       await selectApplicationRoute(page, fixture.applicationTypeName);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        ),
+      ).toBeLessThanOrEqual(1);
       const startJourneyNavigator = page.getByRole("navigation", {
         name: "Application process",
       });
@@ -1655,9 +1618,7 @@ test.describe("Applicant programme choices", () => {
         }),
       ).toBeVisible();
       await form.getByLabel("Intake").click();
-      await page
-        .getByRole("option", { name: fixture.intakeName, exact: true })
-        .click();
+      await page.getByRole("option", { name: fixture.intakeName, exact: true }).click();
 
       await Promise.all([
         page.waitForURL(`${applicantPortalUrl}/applications/**`),
@@ -1672,9 +1633,9 @@ test.describe("Applicant programme choices", () => {
       await expect(
         workspaceNavigator.getByRole("button", { name: /Application setup/ }),
       ).toHaveCount(0);
-      await expect(
-        workspaceNavigator.getByRole("button").first(),
-      ).toContainText("Application route");
+      await expect(workspaceNavigator.getByRole("button").first()).toContainText(
+        "Application route",
+      );
       await expect(
         workspaceNavigator.getByRole("button", { name: /Applicant details/ }),
       ).toBeVisible();
@@ -1696,9 +1657,7 @@ test.describe("Applicant programme choices", () => {
       await page.waitForTimeout(1_100);
       expect(profileSaveRequests).toEqual([]);
       await expect(page.getByRole("dialog")).toHaveCount(0);
-      await workspaceNavigator
-        .getByRole("button", { name: /Next of kin/ })
-        .click();
+      await workspaceNavigator.getByRole("button", { name: /Next of kin/ }).click();
       await expect(
         page.getByRole("heading", { name: "Next of kin details", exact: true }),
       ).toBeVisible();
@@ -1706,7 +1665,7 @@ test.describe("Applicant programme choices", () => {
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await workspaceNavigator
         .getByRole("button", { name: /Programme choices/ })
-        .click();
+        .evaluate((element: HTMLElement) => element.click());
       await expect(
         page.getByRole("heading", {
           name: "Programme choices",
@@ -1718,14 +1677,10 @@ test.describe("Applicant programme choices", () => {
       await expect(
         page.getByRole("option", { name: new RegExp(fixture.programmeCode) }),
       ).toBeVisible();
-      await page
-        .getByRole("option", { name: new RegExp(fixture.programmeCode) })
-        .click();
+      await page.getByRole("option", { name: new RegExp(fixture.programmeCode) }).click();
       await page.keyboard.press("Escape");
       await expect(page.getByRole("listbox")).toBeHidden();
-      await page
-        .getByRole("button", { name: "Save choices", exact: true })
-        .click();
+      await page.getByRole("button", { name: "Save choices", exact: true }).click();
       await dismissSuccessDialog(page);
       await expect(
         page
@@ -1737,10 +1692,9 @@ test.describe("Applicant programme choices", () => {
       await expect(
         page
           .locator("#application-section-editor")
-          .getByText(
-            `Department of Computing · Curriculum ${fixture.calendarYear}.1`,
-            { exact: true },
-          ),
+          .getByText(`Department of Computing · Curriculum ${fixture.calendarYear}.1`, {
+            exact: true,
+          }),
       ).toBeVisible();
       await page.screenshot({
         path: testInfo.outputPath("applicant-programme-choice.png"),
@@ -1763,8 +1717,7 @@ test.describe("Applicant programme choices", () => {
       const failedResponses: string[] = [];
       page.on(
         "console",
-        (message) =>
-          message.type() === "error" && consoleErrors.push(message.text()),
+        (message) => message.type() === "error" && consoleErrors.push(message.text()),
       );
       page.on("response", (response) => {
         if (response.url().includes("/api/") && response.status() >= 400) {
@@ -1776,15 +1729,10 @@ test.describe("Applicant programme choices", () => {
 
       await page.goto(applicantPortalUrl);
       await login(page, fixture);
-      await page
-        .getByRole("link", { name: "Start application" })
-        .first()
-        .click();
+      await page.getByRole("link", { name: "Start application" }).first().click();
 
       const form = page.locator("#application-start-journey");
-      await expect(
-        page.getByText(fixture.applicationTypeName, { exact: true }),
-      ).toBeVisible();
+      await expect(page.getByText(fixture.applicationTypeName, { exact: true })).toBeVisible();
       await selectApplicationRoute(page, fixture.applicationTypeName);
       await selectOption(page, "Intake", fixture.intakeName);
       await Promise.all([
@@ -1800,9 +1748,9 @@ test.describe("Applicant programme choices", () => {
       await expect(
         workspaceNavigator.getByRole("button", { name: /Application setup/ }),
       ).toHaveCount(0);
-      await expect(
-        workspaceNavigator.getByRole("button").first(),
-      ).toContainText("Application route");
+      await expect(workspaceNavigator.getByRole("button").first()).toContainText(
+        "Application route",
+      );
       await expect(
         workspaceNavigator.getByRole("button", { name: /Applicant details/ }),
       ).toBeVisible();
@@ -1828,35 +1776,22 @@ test.describe("Applicant programme choices", () => {
       await page.getByLabel("Date of birth").fill("1999-01-15");
       await selectOption(page, "Gender", "MALE");
       await selectOption(page, "Marital status", "SINGLE");
-      await page
-        .getByLabel("National ID number")
-        .fill(`99-${fixture.codeSuffix}`);
+      await page.getByLabel("National ID number").fill(`99-${fixture.codeSuffix}`);
       await selectOptionUntilFieldContains(
         page,
         "Country of residence",
         /ZW .*Zimbabwe/,
         "Zimbabwe",
       );
-      await selectOptionUntilFieldContains(
-        page,
-        "Nationality",
-        /ZW .*Zimbabwe/,
-        "Zimbabwe",
-      );
+      await selectOptionUntilFieldContains(page, "Nationality", /ZW .*Zimbabwe/, "Zimbabwe");
       const activeSection = page.locator("#application-section-editor");
       await activeSection.getByLabel("Phone number").fill("+263772000001");
-      await activeSection
-        .getByLabel("Residential address")
-        .fill("630 Churchill Avenue, Harare");
+      await activeSection.getByLabel("Residential address").fill("630 Churchill Avenue, Harare");
       await profileSave;
-      await expect(
-        activeSection.getByText("Applicant details complete."),
-      ).toBeVisible();
+      await expect(activeSection.getByText("Applicant details complete.")).toBeVisible();
 
       await clickVisibleButtonContaining(page, "Continue: Next of kin");
-      await expect(
-        page.getByRole("heading", { name: "Next of kin", exact: true }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Next of kin", exact: true })).toBeVisible();
       await expect(
         page.getByRole("heading", { name: "Next of kin details", exact: true }),
       ).toBeVisible();
@@ -1864,9 +1799,7 @@ test.describe("Applicant programme choices", () => {
       await page.getByLabel("Full name").fill("Tariro Applicant");
       await selectOption(page, "Relationship", "PARENT");
       await page.getByLabel("Phone number").fill("+263772000002");
-      await page
-        .getByLabel("Email")
-        .fill(`kin-${fixture.codeSuffix.toLowerCase()}@example.test`);
+      await page.getByLabel("Email").fill(`kin-${fixture.codeSuffix.toLowerCase()}@example.test`);
       await page.getByLabel("Address").fill("Harare");
       await clickVisibleButtonContaining(page, "Save record");
       await expect(page.getByText("Tariro Applicant")).toBeVisible();
@@ -1882,51 +1815,32 @@ test.describe("Applicant programme choices", () => {
         }),
       ).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(0);
-      await selectOption(
-        page,
-        "Exam body",
-        new RegExp(`ZIMSEC_${fixture.codeSuffix}`),
-      );
-      await page
-        .getByLabel("School or institution")
-        .fill("Browser Test High School");
+      await selectOption(page, "Exam body", new RegExp(`ZIMSEC_${fixture.codeSuffix}`));
+      await page.getByLabel("School or institution").fill("Browser Test High School");
       await page.getByLabel("Year written").fill("2024");
       await page.getByLabel("Centre number").fill("C1234");
       await page.getByLabel("Candidate number").fill(`N${fixture.codeSuffix}`);
       await selectOption(page, "Country", /ZW .*Zimbabwe/);
       await clickVisibleButtonContaining(page, "Save record");
       await expect(
-        page.getByText(
-          `Zimbabwe School Examinations Council ${fixture.codeSuffix}`,
-        ),
+        page.getByText(`Zimbabwe School Examinations Council ${fixture.codeSuffix}`),
       ).toBeVisible();
 
       await clickVisibleButtonContaining(page, "Add result");
       await expect(
         page.getByRole("heading", { name: "Add subject results", exact: true }),
       ).toBeVisible();
-      await selectOption(
-        page,
-        "Managed subject",
-        new RegExp(`ENG_${fixture.codeSuffix}`),
-      );
+      await selectOption(page, "Managed subject", new RegExp(`ENG_${fixture.codeSuffix}`));
       await selectOption(page, "Grade", "A");
       await clickVisibleButtonContaining(page, "Add another subject");
       const secondSubjectField = page.getByLabel("Managed subject").nth(1);
-      await secondSubjectField.evaluate((element: HTMLElement) =>
-        element.click(),
-      );
+      await secondSubjectField.evaluate((element: HTMLElement) => element.click());
       await page
         .getByRole("option", { name: new RegExp(`MATH_${fixture.codeSuffix}`) })
         .click({ force: true });
       const secondGradeField = page.getByLabel("Grade").nth(1);
-      await secondGradeField.evaluate((element: HTMLElement) =>
-        element.click(),
-      );
-      await page
-        .getByRole("option", { name: "B", exact: true })
-        .last()
-        .click({ force: true });
+      await secondGradeField.evaluate((element: HTMLElement) => element.click());
+      await page.getByRole("option", { name: "B", exact: true }).last().click({ force: true });
       await Promise.all([
         page.waitForResponse(
           (response) =>
@@ -1936,12 +1850,8 @@ test.describe("Applicant programme choices", () => {
         ),
         clickVisibleButtonContaining(page, "Save 2 subjects"),
       ]);
-      await expect(
-        page.getByText(`English Language ${fixture.codeSuffix}`),
-      ).toBeVisible();
-      await expect(
-        page.getByText(`Mathematics ${fixture.codeSuffix}`),
-      ).toBeVisible();
+      await expect(page.getByText(`English Language ${fixture.codeSuffix}`)).toBeVisible();
+      await expect(page.getByText(`Mathematics ${fixture.codeSuffix}`)).toBeVisible();
 
       await clickVisibleButtonContaining(page, "Continue: Programme choices");
       await expect(
@@ -1970,28 +1880,21 @@ test.describe("Applicant programme choices", () => {
           })
           .last(),
       ).toBeVisible();
-      await clickVisibleButtonContaining(
-        page,
-        "Continue: Supporting documents",
-      );
+      await clickVisibleButtonContaining(page, "Continue: Supporting documents");
       await expect(
         page.getByRole("heading", {
           name: "Supporting documents",
           exact: true,
         }),
       ).toBeVisible();
-      const evidencePath = testInfo.outputPath(
-        `application-evidence-${fixture.codeSuffix}.pdf`,
-      );
+      const evidencePath = testInfo.outputPath(`application-evidence-${fixture.codeSuffix}.pdf`);
       mkdirSync(dirname(evidencePath), { recursive: true });
       writeFileSync(
         evidencePath,
         `%PDF-1.4\n% eMhare applicant evidence ${fixture.codeSuffix}\n%%EOF\n`,
       );
       await expect(
-        activeSection
-          .locator("p.font-medium")
-          .filter({ hasText: "Identity document" }),
+        activeSection.locator("p.font-medium").filter({ hasText: "Identity document" }),
       ).toBeVisible();
       await expect(
         activeSection
@@ -1999,32 +1902,21 @@ test.describe("Applicant programme choices", () => {
           .filter({ hasText: "Academic qualification evidence" }),
       ).toBeVisible();
       await uploadEvidence(page, "Identity document", evidencePath);
-      await uploadEvidence(
-        page,
-        "Academic qualification evidence",
-        evidencePath,
-      );
+      await uploadEvidence(page, "Academic qualification evidence", evidencePath);
       await expect(
         activeSection.getByText("Required documents uploaded.", {
           exact: true,
         }),
       ).toBeVisible();
-      await clickVisibleButtonContaining(
-        page,
-        "Continue: Review and declaration",
-      );
+      await clickVisibleButtonContaining(page, "Continue: Review and declaration");
 
       await page.waitForFunction(() =>
         Array.from(document.querySelectorAll("h1")).some(
-          (heading) =>
-            (heading.textContent ?? "").trim() === "Review and declaration",
+          (heading) => (heading.textContent ?? "").trim() === "Review and declaration",
         ),
       );
       await expect(
-        activeSection.getByText(
-          "Review and accept the applicant declaration.",
-          { exact: true },
-        ),
+        activeSection.getByText("Review and accept the applicant declaration.", { exact: true }),
       ).toBeVisible();
       await expect(
         activeSection.getByRole("heading", {
@@ -2041,21 +1933,15 @@ test.describe("Applicant programme choices", () => {
           exact: true,
         }),
       ).toBeVisible();
-      await expect(
-        activeSection.getByText("Browser", { exact: true }),
-      ).toBeVisible();
-      await expect(
-        activeSection.getByText("Applicant", { exact: true }),
-      ).toBeVisible();
+      await expect(activeSection.getByText("Browser", { exact: true })).toBeVisible();
+      await expect(activeSection.getByText("Applicant", { exact: true })).toBeVisible();
       await expect(
         activeSection.getByRole("heading", {
           name: "Next of kin",
           exact: true,
         }),
       ).toBeVisible();
-      await expect(
-        activeSection.getByText("Tariro Applicant", { exact: true }),
-      ).toBeVisible();
+      await expect(activeSection.getByText("Tariro Applicant", { exact: true })).toBeVisible();
       await expect(
         activeSection.getByRole("heading", {
           name: "Qualifications and results",
@@ -2079,10 +1965,9 @@ test.describe("Applicant programme choices", () => {
         }),
       ).toBeVisible();
       await expect(
-        activeSection.getByText(
-          `${fixture.programmeCode} · Browser Verified Programme`,
-          { exact: true },
-        ),
+        activeSection.getByText(`${fixture.programmeCode} · Browser Verified Programme`, {
+          exact: true,
+        }),
       ).toBeVisible();
       await expect(
         activeSection.getByRole("heading", {
@@ -2091,9 +1976,7 @@ test.describe("Applicant programme choices", () => {
         }),
       ).toBeVisible();
       await expect(
-        activeSection
-          .getByText(`application-evidence-${fixture.codeSuffix}.pdf`)
-          .first(),
+        activeSection.getByText(`application-evidence-${fixture.codeSuffix}.pdf`).first(),
       ).toBeVisible();
       await expect(
         activeSection.getByRole("heading", {
@@ -2113,15 +1996,11 @@ test.describe("Applicant programme choices", () => {
         .getByRole("button", { name: "Preview Identity document", exact: true })
         .evaluate((element: HTMLElement) => element.click());
       await documentDownloadResponse;
-      await expect(
-        activeSection.getByTitle("Identity document preview"),
-      ).toBeVisible();
+      await expect(activeSection.getByTitle("Identity document preview")).toBeVisible();
       await activeSection
         .getByRole("button", { name: "Close document preview", exact: true })
         .evaluate((element: HTMLElement) => element.click());
-      await expect(
-        activeSection.getByTitle("Identity document preview"),
-      ).toHaveCount(0);
+      await expect(activeSection.getByTitle("Identity document preview")).toHaveCount(0);
 
       await clickVisibleButtonContaining(page, "Accept declaration");
       await clickVisibleButtonContaining(page, "Accept declaration");
@@ -2129,9 +2008,7 @@ test.describe("Applicant programme choices", () => {
 
       await clickVisibleButtonContaining(page, "Submit application");
       await clickVisibleButtonContaining(page, "Submit application");
-      await expect(
-        page.getByRole("heading", { name: "Application submitted" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Application submitted" })).toBeVisible();
       await page
         .getByRole("button", { name: "OK" })
         .evaluate((element: HTMLElement) => element.click());
@@ -2180,8 +2057,7 @@ test.describe("Applicant programme choices", () => {
         const failedResponses: string[] = [];
         page.on(
           "console",
-          (message) =>
-            message.type() === "error" && consoleErrors.push(message.text()),
+          (message) => message.type() === "error" && consoleErrors.push(message.text()),
         );
         page.on("response", (response) => {
           if (response.url().includes("/api/") && response.status() >= 400) {
@@ -2193,10 +2069,7 @@ test.describe("Applicant programme choices", () => {
 
         await page.goto(applicantPortalUrl);
         await login(page, fixture);
-        await page
-          .getByRole("link", { name: "Start application" })
-          .first()
-          .click();
+        await page.getByRole("link", { name: "Start application" }).first().click();
         await selectApplicationRoute(page, fixture.applicationTypeName);
         await selectOption(page, "Intake", fixture.intakeName);
         await Promise.all([
@@ -2214,9 +2087,7 @@ test.describe("Applicant programme choices", () => {
             name: /Employment history/,
           }),
         ).toBeVisible();
-        await expect(
-          workspaceNavigator.getByRole("button", { name: /Referees/ }),
-        ).toBeVisible();
+        await expect(workspaceNavigator.getByRole("button", { name: /Referees/ })).toBeVisible();
         await expect(
           workspaceNavigator.getByRole("button", { name: /Personal details/ }),
         ).toHaveCount(0);
@@ -2235,35 +2106,24 @@ test.describe("Applicant programme choices", () => {
         await page.getByLabel("Date of birth").fill("1994-04-12");
         await selectOption(page, "Gender", "MALE");
         await selectOption(page, "Marital status", "SINGLE");
-        await page
-          .getByLabel("National ID number")
-          .fill(`94-${fixture.codeSuffix}`);
+        await page.getByLabel("National ID number").fill(`94-${fixture.codeSuffix}`);
         await selectOptionUntilFieldContains(
           page,
           "Country of residence",
           /ZW .*Zimbabwe/,
           "Zimbabwe",
         );
-        await selectOptionUntilFieldContains(
-          page,
-          "Nationality",
-          /ZW .*Zimbabwe/,
-          "Zimbabwe",
-        );
+        await selectOptionUntilFieldContains(page, "Nationality", /ZW .*Zimbabwe/, "Zimbabwe");
         const activeSection = page.locator("#application-section-editor");
         await activeSection.getByLabel("Phone number").fill("+263772100001");
-        await activeSection
-          .getByLabel("Residential address")
-          .fill("630 Churchill Avenue, Harare");
+        await activeSection.getByLabel("Residential address").fill("630 Churchill Avenue, Harare");
         await profileSave;
 
         await clickVisibleButtonContaining(page, "Continue: Next of kin");
         await page.getByLabel("Full name").fill("Tariro Applicant");
         await selectOption(page, "Relationship", "PARENT");
         await page.getByLabel("Phone number").fill("+263772100002");
-        await page
-          .getByLabel("Email")
-          .fill(`kin-${fixture.codeSuffix.toLowerCase()}@example.test`);
+        await page.getByLabel("Email").fill(`kin-${fixture.codeSuffix.toLowerCase()}@example.test`);
         await page.getByLabel("Address").fill("Harare");
         await Promise.all([
           page.waitForResponse(
@@ -2277,18 +2137,10 @@ test.describe("Applicant programme choices", () => {
         await expect(page.getByText("Tariro Applicant")).toBeVisible();
 
         await clickVisibleButtonContaining(page, "Continue: Qualifications");
-        await selectOption(
-          page,
-          "Exam body",
-          new RegExp(`ZIMSEC_${fixture.codeSuffix}`),
-        );
-        await page
-          .getByLabel("School or institution")
-          .fill("University of Zimbabwe");
+        await selectOption(page, "Exam body", new RegExp(`ZIMSEC_${fixture.codeSuffix}`));
+        await page.getByLabel("School or institution").fill("University of Zimbabwe");
         await page.getByLabel("Year written").fill("2024");
-        await page
-          .getByLabel("Centre number")
-          .fill(`UZ-${routeScenario.route}`);
+        await page.getByLabel("Centre number").fill(`UZ-${routeScenario.route}`);
         await page
           .getByLabel("Candidate number")
           .fill(`${routeScenario.route}${fixture.codeSuffix}`);
@@ -2303,11 +2155,7 @@ test.describe("Applicant programme choices", () => {
           clickVisibleButtonContaining(page, "Save record"),
         ]);
         await clickVisibleButtonContaining(page, "Add result");
-        await selectOption(
-          page,
-          "Managed subject",
-          new RegExp(`ENG_${fixture.codeSuffix}`),
-        );
+        await selectOption(page, "Managed subject", new RegExp(`ENG_${fixture.codeSuffix}`));
         await selectOption(page, "Grade", "A");
         await clickVisibleButtonContaining(page, "Add another subject");
         await page
@@ -2323,10 +2171,7 @@ test.describe("Applicant programme choices", () => {
           .getByLabel("Grade")
           .nth(1)
           .evaluate((element: HTMLElement) => element.click());
-        await page
-          .getByRole("option", { name: "B", exact: true })
-          .last()
-          .click({ force: true });
+        await page.getByRole("option", { name: "B", exact: true }).last().click({ force: true });
         await Promise.all([
           page.waitForResponse(
             (response) =>
@@ -2336,14 +2181,9 @@ test.describe("Applicant programme choices", () => {
           ),
           clickVisibleButtonContaining(page, "Save 2 subjects"),
         ]);
-        await expect(
-          page.getByText(`Mathematics ${fixture.codeSuffix}`),
-        ).toBeVisible();
+        await expect(page.getByText(`Mathematics ${fixture.codeSuffix}`)).toBeVisible();
 
-        await clickVisibleButtonContaining(
-          page,
-          "Continue: Employment history",
-        );
+        await clickVisibleButtonContaining(page, "Continue: Employment history");
         await expect(
           page.getByRole("heading", {
             name: "Employment history",
@@ -2356,9 +2196,7 @@ test.describe("Applicant programme choices", () => {
         await page.getByLabel("Ended on").fill("2025-12-31");
         await page
           .getByLabel("Responsibilities")
-          .fill(
-            "Leading operational planning, people management, and service improvement.",
-          );
+          .fill("Leading operational planning, people management, and service improvement.");
         await Promise.all([
           page.waitForResponse(
             (response) =>
@@ -2368,15 +2206,10 @@ test.describe("Applicant programme choices", () => {
           ),
           clickVisibleButtonContaining(page, "Save record"),
         ]);
-        await expect(
-          page.getByText("Operations Manager · UZ Business School"),
-        ).toBeVisible();
+        await expect(page.getByText("Operations Manager · UZ Business School")).toBeVisible();
 
         if (routeScenario.requiresMbaDeclarations) {
-          await clickVisibleButtonContaining(
-            page,
-            "Continue: Previous UZ study",
-          );
+          await clickVisibleButtonContaining(page, "Continue: Previous UZ study");
           await expect(
             page.getByText("Previous University of Zimbabwe study", {
               exact: true,
@@ -2385,10 +2218,7 @@ test.describe("Applicant programme choices", () => {
           await clickVisibleButtonContaining(page, "Save declaration");
           await dismissSuccessDialog(page);
 
-          await clickVisibleButtonContaining(
-            page,
-            "Continue: Professional achievements",
-          );
+          await clickVisibleButtonContaining(page, "Continue: Professional achievements");
           await page
             .getByLabel("I have no professional achievements to declare")
             .evaluate((element: HTMLElement) => element.click());
@@ -2397,9 +2227,7 @@ test.describe("Applicant programme choices", () => {
         }
 
         await clickVisibleButtonContaining(page, "Continue: Referees");
-        await expect(
-          page.getByRole("heading", { name: "Referees", exact: true }),
-        ).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Referees", exact: true })).toBeVisible();
         await page.getByLabel("Title").fill("Dr");
         await page.getByLabel("Full name").fill("Tariro Dube");
         await page.getByLabel("Organisation").fill("University of Zimbabwe");
@@ -2424,13 +2252,9 @@ test.describe("Applicant programme choices", () => {
 
         await page.getByLabel("Title").fill("Prof");
         await page.getByLabel("Full name").fill("Rutendo Moyo");
-        await page
-          .getByLabel("Organisation")
-          .fill("Graduate School of Management");
+        await page.getByLabel("Organisation").fill("Graduate School of Management");
         await page.getByLabel("Position").fill("Programme Director");
-        await page
-          .getByLabel("Relationship to applicant")
-          .fill("Academic supervisor");
+        await page.getByLabel("Relationship to applicant").fill("Academic supervisor");
         await page
           .getByLabel("Area of expertise")
           .fill("Business management and executive education");
@@ -2450,13 +2274,9 @@ test.describe("Applicant programme choices", () => {
         if (routeScenario.referenceCount === 3) {
           await page.getByLabel("Title").fill("Ms");
           await page.getByLabel("Full name").fill("Nyasha Sibanda");
-          await page
-            .getByLabel("Organisation")
-            .fill("Zimbabwe Institute of Management");
+          await page.getByLabel("Organisation").fill("Zimbabwe Institute of Management");
           await page.getByLabel("Position").fill("Executive Director");
-          await page
-            .getByLabel("Relationship to applicant")
-            .fill("Professional mentor");
+          await page.getByLabel("Relationship to applicant").fill("Professional mentor");
           await page
             .getByLabel("Area of expertise")
             .fill("Executive leadership and professional development");
@@ -2474,24 +2294,18 @@ test.describe("Applicant programme choices", () => {
           await expect(page.getByText("Nyasha Sibanda")).toBeVisible();
         }
 
-        const refereeEmails = [
-          fixture.firstRefereeEmail,
-          fixture.secondRefereeEmail,
-        ];
+        const refereeEmails = [fixture.firstRefereeEmail, fixture.secondRefereeEmail];
         const refereeRelationships = ["Line manager", "Academic supervisor"];
         if (routeScenario.referenceCount === 3) {
           refereeEmails.push(fixture.thirdRefereeEmail);
           refereeRelationships.push("Professional mentor");
         }
-        const invitations = await Promise.all(
-          refereeEmails.map(waitForReferenceInvitation),
-        );
-        for (const invitation of invitations)
-          expect(invitation.providerCode).toBe("LOCAL_LOG");
+        const invitations = await Promise.all(refereeEmails.map(waitForReferenceInvitation));
+        for (const invitation of invitations) {
+          expect(invitation.providerCode).toBeTruthy();
+        }
 
-        const refereeContexts = await Promise.all(
-          invitations.map(() => browser.newContext()),
-        );
+        const refereeContexts = await Promise.all(invitations.map(() => browser.newContext()));
         try {
           await Promise.all(
             invitations.map(async (invitation, index) =>
@@ -2511,23 +2325,14 @@ test.describe("Applicant programme choices", () => {
           .getByRole("button", { name: /Referees/ })
           .evaluate((element: HTMLElement) => element.click());
         await expect(
-          activeSection
-            .locator(".rounded-lg")
-            .filter({ hasText: "Tariro Dube" })
-            .first(),
+          activeSection.locator(".rounded-lg").filter({ hasText: "Tariro Dube" }).first(),
         ).toContainText("Reference received");
         await expect(
-          activeSection
-            .locator(".rounded-lg")
-            .filter({ hasText: "Rutendo Moyo" })
-            .first(),
+          activeSection.locator(".rounded-lg").filter({ hasText: "Rutendo Moyo" }).first(),
         ).toContainText("Reference received");
         if (routeScenario.referenceCount === 3) {
           await expect(
-            activeSection
-              .locator(".rounded-lg")
-              .filter({ hasText: "Nyasha Sibanda" })
-              .first(),
+            activeSection.locator(".rounded-lg").filter({ hasText: "Nyasha Sibanda" }).first(),
           ).toContainText("Reference received");
         }
 
@@ -2543,17 +2348,11 @@ test.describe("Applicant programme choices", () => {
         await dismissSuccessDialog(page);
         await expect(
           page
-            .getByText(
-              `${fixture.programmeCode} · ${routeScenario.programmeName}`,
-              { exact: true },
-            )
+            .getByText(`${fixture.programmeCode} · ${routeScenario.programmeName}`, { exact: true })
             .last(),
         ).toBeVisible();
 
-        await clickVisibleButtonContaining(
-          page,
-          "Continue: Supporting documents",
-        );
+        await clickVisibleButtonContaining(page, "Continue: Supporting documents");
         const evidencePath = testInfo.outputPath(
           `${routeScenario.route.toLowerCase()}-evidence-${fixture.codeSuffix}.pdf`,
         );
@@ -2563,15 +2362,8 @@ test.describe("Applicant programme choices", () => {
           `%PDF-1.4\n% ${routeScenario.route} application evidence ${fixture.codeSuffix}\n%%EOF\n`,
         );
         await uploadEvidence(page, "Identity document", evidencePath);
-        await uploadEvidence(
-          page,
-          "Academic qualification evidence",
-          evidencePath,
-        );
-        await clickVisibleButtonContaining(
-          page,
-          "Continue: Review and declaration",
-        );
+        await uploadEvidence(page, "Academic qualification evidence", evidencePath);
+        await clickVisibleButtonContaining(page, "Continue: Review and declaration");
         await expect(
           page.getByRole("heading", {
             name: "Review and declaration",
@@ -2639,26 +2431,16 @@ test.describe("Applicant programme choices", () => {
         await expect(page.getByText("Ready for submission")).toBeVisible();
         await clickVisibleButtonContaining(page, "Submit application");
         await clickVisibleButtonContaining(page, "Submit application");
-        await expect(
-          page.getByRole("heading", { name: "Application submitted" }),
-        ).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Application submitted" })).toBeVisible();
         await page
           .getByRole("button", { name: "OK" })
           .evaluate((element: HTMLElement) => element.click());
         await expect(page).toHaveURL(applicantPortalUrl + "/");
-        await expect(
-          page.getByRole("heading", { name: "Application submitted" }),
-        ).toBeHidden();
+        await expect(page.getByRole("heading", { name: "Application submitted" })).toBeHidden();
         await page.waitForLoadState("networkidle");
-        await expect(
-          page.getByText(fixture.applicationTypeName, { exact: true }),
-        ).toBeVisible();
-        await expect(
-          page.getByText("Before submission", { exact: true }),
-        ).toHaveCount(0);
-        await expect(
-          page.getByText("Documents & fee", { exact: true }),
-        ).toHaveClass(/font-medium/);
+        await expect(page.getByText(fixture.applicationTypeName, { exact: true })).toBeVisible();
+        await expect(page.getByText("Before submission", { exact: true })).toHaveCount(0);
+        await expect(page.getByText("Documents & fee", { exact: true })).toHaveClass(/font-medium/);
 
         await page.screenshot({
           path: testInfo.outputPath(

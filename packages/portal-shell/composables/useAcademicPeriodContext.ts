@@ -1,49 +1,64 @@
 export function useAcademicPeriodContext() {
-  const academicSetup = useAcademicSetup()
-  const selectedAcademicPeriodId = useCookie<string | null>('emhare-academic-period-id', {
+  const academicSetup = useAcademicSetup();
+  const selectedAcademicPeriodId = useCookie<string | null>("emhare-academic-period-id", {
     default: () => null,
     maxAge: 60 * 60 * 24 * 365,
-    sameSite: 'lax'
-  })
+    sameSite: "lax",
+  });
 
-  const selectedAcademicPeriod = computed(() => (
-    academicSetup.overview.value?.academicPeriods.find(period => period.id === selectedAcademicPeriodId.value) ?? null
-  ))
-  const selectedAcademicYearId = computed(() => selectedAcademicPeriod.value?.academicYearId ?? null)
-  const selectedAcademicPeriodCode = computed(() => selectedAcademicPeriod.value?.code ?? null)
+  const selectedAcademicPeriod = computed(
+    () =>
+      academicSetup.overview.value?.academicPeriods.find(
+        (period) => period.id === selectedAcademicPeriodId.value,
+      ) ?? null,
+  );
+  const selectedAcademicYearId = computed(
+    () => selectedAcademicPeriod.value?.academicYearId ?? null,
+  );
+  const selectedAcademicPeriodCode = computed(() => selectedAcademicPeriod.value?.code ?? null);
 
   function selectAcademicPeriod(academicPeriodId: string | null) {
-    selectedAcademicPeriodId.value = academicPeriodId
+    selectedAcademicPeriodId.value = academicPeriodId;
   }
 
   function matchesAcademicPeriod(record: {
-    academicPeriodId?: string | null
-    academicPeriodCode?: string | null
-    id?: string | null
-    code?: string | null
+    academicPeriodId?: string | null;
+    academicPeriodCode?: string | null;
+    id?: string | null;
+    code?: string | null;
   }) {
-    if (!selectedAcademicPeriodId.value) return true
-    const academicPeriodId = record.academicPeriodId ?? record.id
-    const academicPeriodCode = record.academicPeriodCode ?? record.code
-    if (academicPeriodId) return academicPeriodId === selectedAcademicPeriodId.value
-    if (academicPeriodCode) return Boolean(selectedAcademicPeriodCode.value)
-      && academicPeriodCode === selectedAcademicPeriodCode.value
-    return false
+    if (!selectedAcademicPeriodId.value) return true;
+    if (record.academicPeriodId) {
+      return record.academicPeriodId === selectedAcademicPeriodId.value;
+    }
+    if (record.academicPeriodCode) {
+      return (
+        Boolean(selectedAcademicPeriodCode.value) &&
+        record.academicPeriodCode === selectedAcademicPeriodCode.value
+      );
+    }
+    if (record.id) return record.id === selectedAcademicPeriodId.value;
+    if (record.code)
+      return (
+        Boolean(selectedAcademicPeriodCode.value) &&
+        record.code === selectedAcademicPeriodCode.value
+      );
+    return false;
   }
 
   function matchesIntake(intakeId: string | null | undefined) {
-    if (!selectedAcademicYearId.value) return true
-    return (academicSetup.overview.value?.intakes ?? []).some(intake => (
-      intake.id === intakeId && intake.academicYearId === selectedAcademicYearId.value
-    ))
+    if (!selectedAcademicYearId.value) return true;
+    return (academicSetup.overview.value?.intakes ?? []).some(
+      (intake) => intake.id === intakeId && intake.academicYearId === selectedAcademicYearId.value,
+    );
   }
 
   async function ensureIntakes() {
-    await ensureAcademicPeriods()
+    await ensureAcademicPeriods();
   }
 
   async function ensureAcademicPeriods() {
-    await academicSetup.ensureOverview()
+    await academicSetup.ensureOverview();
   }
 
   return {
@@ -55,6 +70,6 @@ export function useAcademicPeriodContext() {
     matchesAcademicPeriod,
     matchesIntake,
     ensureAcademicPeriods,
-    ensureIntakes
-  }
+    ensureIntakes,
+  };
 }

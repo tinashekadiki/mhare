@@ -135,7 +135,7 @@ infra-logs: ## Follow infrastructure logs; optionally set SERVICE=postgres
 # Builds and tests
 
 build-commons: ## Install the shared Java library into the local Maven repository
-	mvn -pl libraries/service-common,libraries/service-foundation,libraries/persistence-audit,libraries/integration-contracts,libraries/test-support -am install -DskipTests
+	mvn -pl libraries/service-foundation,libraries/persistence-audit,libraries/integration-contracts,libraries/test-support -am install -DskipTests
 
 build-all: ## Build installable modules and executable service jars without tests
 	mvn -DskipTests install

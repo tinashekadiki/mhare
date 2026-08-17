@@ -19,6 +19,8 @@
         <archunit.version>1.4.1</archunit.version>
         <jacoco.version>0.8.15</jacoco.version>
         <maven-enforcer.version>3.6.2</maven-enforcer.version>
+        <spotless.version>2.44.0</spotless.version>
+        <springdoc.version>3.0.3</springdoc.version>
         <mockito.version>5.23.0</mockito.version>
         <jacocoArgLine></jacocoArgLine>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -26,7 +28,6 @@
     </properties>
 
     <modules>
-        <module>libraries/service-common</module>
         <module>libraries/service-foundation</module>
         <module>libraries/persistence-audit</module>
         <module>libraries/integration-contracts</module>
@@ -112,6 +113,32 @@
                         <phase>verify</phase>
                         <goals>
                             <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <ratchetFrom>origin/main</ratchetFrom>
+                    <java>
+                        <googleJavaFormat>
+                            <version>1.24.0</version>
+                        </googleJavaFormat>
+                        <removeUnusedImports />
+                        <formatAnnotations />
+                        <trimTrailingWhitespace />
+                        <endWithNewline />
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>check-java-formatting</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
                         </goals>
                     </execution>
                 </executions>

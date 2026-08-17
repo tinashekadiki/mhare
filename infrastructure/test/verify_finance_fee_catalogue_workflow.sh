@@ -8,7 +8,7 @@ current_step='initialising Finance fee governance harness'
 trap 'status=$?; printf "FAIL: %s (exit %s)\n" "${current_step}" "${status}" >&2; exit "${status}"' ERR
 keycloak_base_url="${KEYCLOAK_BASE_URL:-http://localhost:8099}"
 finance_base_url="${FINANCE_BASE_URL:-http://localhost:19084}"
-postgres_container="${POSTGRES_CONTAINER:-emhare-flyway-postgres}"
+postgres_container="${POSTGRES_CONTAINER:-emhare-postgres}"
 run_identifier=$(uuidgen | tr '[:upper:]' '[:lower:]'); suffix=$(tr -d '-' <<<"${run_identifier}" | cut -c1-8 | tr '[:lower:]' '[:upper:]')
 client_id="e2e-finance-fees-${run_identifier}"; test_password='Temporary-Finance-Password-42'
 client_uuid=''; preparer_user_id=''; approver_user_id=''; catalogue_id=''

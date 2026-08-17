@@ -17,7 +17,17 @@
     <dependencies>
         <dependency>
             <groupId>zw.ac.uz.emhare</groupId>
-            <artifactId>service-common</artifactId>
+            <artifactId>service-foundation</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>zw.ac.uz.emhare</groupId>
+            <artifactId>persistence-audit</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>zw.ac.uz.emhare</groupId>
+            <artifactId>integration-contracts</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

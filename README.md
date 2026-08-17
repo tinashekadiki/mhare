@@ -295,11 +295,19 @@ Run one service and its required reactor dependencies with:
 mvn -pl services/student-records-service -am test
 ```
 
+OpenAPI is generated from each business service's live MVC mappings at `/v3/api-docs`; Swagger UI is available at `/swagger-ui.html`. Both require the `system-admin` role.
+
 ### Frontend
 
 ```bash
 npm run frontend:typecheck
 npm run frontend:build
+```
+
+Run the complete handoff gate, including backend tests, changed-file Java/Vue formatting, frontend unit coverage, type checks, production builds, changed-code coverage, and Playwright:
+
+```bash
+npm run quality
 ```
 
 Target one application when iterating:
@@ -433,7 +441,9 @@ Registers are paginated. Clear active search/status filters or use the paginatio
 ```text
 apps/                    Nuxt admin, applicant, student, and UI workbench apps
 packages/portal-shell/   Shared UI, authentication, API, and operational components
-libraries/service-common/Shared Spring security, audit, and service configuration
+libraries/service-foundation/Shared Spring security, web, and operational service configuration
+libraries/persistence-audit/Shared JPA and Envers audit infrastructure
+libraries/integration-contracts/Versioned cross-service event contracts
 services/                Independently owned Spring Boot services
 infrastructure/          Compose initialization, Keycloak realm, and live verifiers
 tests/e2e/               Desktop and mobile Playwright workflows
@@ -451,6 +461,7 @@ sparse-emhare/           Read-only CakePHP legacy requirements baseline
 - Use SweetAlert instead of browser `alert` or `confirm` dialogs.
 - Store official outputs as governed documents in S3-compatible storage.
 - Preserve audit history, workflow evidence, ownership checks, and optimistic locking.
+- Keep commits capability-scoped and stage explicit paths so migrations, contracts, implementation, and verification remain traceable; do not commit unless explicitly requested.
 - Do not commit generated secrets, local `.env` files, build output, or test evidence.
 - Do not change an accepted architecture decision without a superseding ADR.
 

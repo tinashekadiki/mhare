@@ -3,7 +3,7 @@ server:
 
 spring:
   config:
-    import: classpath:emhare-service-common.yml
+    import: classpath:emhare-service-foundation.yml
   application:
     name: accommodation-service
   datasource:

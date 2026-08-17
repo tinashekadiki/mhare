@@ -22,7 +22,7 @@ from playwright.sync_api import Page, expect, sync_playwright
 
 KEYCLOAK_BASE_URL = os.getenv("KEYCLOAK_BASE_URL", "http://localhost:8099")
 KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "emhare")
-POSTGRES_CONTAINER = os.getenv("POSTGRES_CONTAINER", "emhare-flyway-postgres")
+POSTGRES_CONTAINER = os.getenv("POSTGRES_CONTAINER", "emhare-postgres")
 API_GATEWAY_BASE_URL = os.getenv("API_GATEWAY_BASE_URL", "http://localhost:18080")
 APPLICANT_PORTAL_URL = os.getenv("APPLICANT_PORTAL_URL", "http://localhost:3001")
 ADMIN_PORTAL_URL = os.getenv("ADMIN_PORTAL_URL", "http://localhost:3000")

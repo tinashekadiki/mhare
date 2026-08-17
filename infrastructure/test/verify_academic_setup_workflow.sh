@@ -8,7 +8,7 @@ set -euo pipefail
 keycloak_base_url="${KEYCLOAK_BASE_URL:-http://localhost:8099}"
 keycloak_realm="${KEYCLOAK_REALM:-emhare}"
 academic_setup_base_url="${ACADEMIC_SETUP_BASE_URL:-http://localhost:18082}"
-postgres_container="${POSTGRES_CONTAINER:-emhare-flyway-postgres}"
+postgres_container="${POSTGRES_CONTAINER:-emhare-postgres}"
 run_identifier=$(uuidgen | tr '[:upper:]' '[:lower:]')
 code_suffix=$(tr -d '-' <<<"${run_identifier}" | cut -c1-8 | tr '[:lower:]' '[:upper:]')
 keycloak_client_id="e2e-academic-${run_identifier}"

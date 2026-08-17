@@ -10,7 +10,7 @@ trap 'status=$?; printf "FAIL: %s (exit %s)\n" "${current_step}" "${status}" >&2
 
 keycloak_base_url="${KEYCLOAK_BASE_URL:-http://localhost:8099}"
 exam_base_url="${EXAM_BASE_URL:-http://localhost:18087}"
-postgres_container="${POSTGRES_CONTAINER:-emhare-flyway-postgres}"
+postgres_container="${POSTGRES_CONTAINER:-emhare-postgres}"
 run_identifier=$(uuidgen | tr '[:upper:]' '[:lower:]')
 code_suffix=$(tr -d '-' <<<"${run_identifier}" | cut -c1-8 | tr '[:lower:]' '[:upper:]')
 client_id="e2e-exams-${run_identifier}"

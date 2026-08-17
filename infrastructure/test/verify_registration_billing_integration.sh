@@ -6,7 +6,7 @@
 set -euo pipefail
 current_step='initialising registration billing integration harness'
 trap 'status=$?; printf "FAIL: %s (exit %s)\n" "${current_step}" "${status}" >&2; exit "${status}"' ERR
-keycloak_base_url="${KEYCLOAK_BASE_URL:-http://localhost:8099}"; finance_base_url="${FINANCE_BASE_URL:-http://localhost:19084}"; rabbit_management_url="${RABBIT_MANAGEMENT_URL:-http://localhost:15672}"; postgres_container="${POSTGRES_CONTAINER:-emhare-flyway-postgres}"
+keycloak_base_url="${KEYCLOAK_BASE_URL:-http://localhost:8099}"; finance_base_url="${FINANCE_BASE_URL:-http://localhost:19084}"; rabbit_management_url="${RABBIT_MANAGEMENT_URL:-http://localhost:15672}"; postgres_container="${POSTGRES_CONTAINER:-emhare-postgres}"
 run_identifier=$(uuidgen | tr '[:upper:]' '[:lower:]'); suffix=$(tr -d '-' <<<"${run_identifier}" | cut -c1-8 | tr '[:lower:]' '[:upper:]'); client_id="e2e-registration-billing-${run_identifier}"; password='Temporary-Registration-Billing-42'
 client_uuid=''; preparer_user_id=''; approver_user_id=''; programme_catalogue_id=''; module_catalogue_id=''; account_id=$(uuidgen | tr '[:upper:]' '[:lower:]'); student_id=$(uuidgen | tr '[:upper:]' '[:lower:]'); registration_event_id=$(uuidgen | tr '[:upper:]' '[:lower:]')
 admin_token=$(curl -fsS -X POST "${keycloak_base_url}/realms/master/protocol/openid-connect/token" -H 'Content-Type: application/x-www-form-urlencoded' --data-urlencode grant_type=password --data-urlencode client_id=admin-cli --data-urlencode username=admin --data-urlencode password=admin | jq -er .access_token)

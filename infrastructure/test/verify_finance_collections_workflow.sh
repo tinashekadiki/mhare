@@ -8,7 +8,7 @@ current_step='initialising Finance collections harness'
 trap 'status=$?; printf "FAIL: %s (exit %s)\n" "${current_step}" "${status}" >&2; exit "${status}"' ERR
 keycloak_base_url="${KEYCLOAK_BASE_URL:-http://localhost:8099}"
 finance_base_url="${FINANCE_BASE_URL:-http://localhost:19084}"
-postgres_container="${POSTGRES_CONTAINER:-emhare-flyway-postgres}"
+postgres_container="${POSTGRES_CONTAINER:-emhare-postgres}"
 run_identifier=$(uuidgen | tr '[:upper:]' '[:lower:]');suffix=$(tr -d '-' <<<"${run_identifier}" | cut -c1-8 | tr '[:lower:]' '[:upper:]')
 client_id="e2e-finance-collections-${run_identifier}";test_password='Temporary-Finance-Collections-42'
 client_uuid='';cashier_user_id='';treasury_user_id='';reconciler_user_id='';allocator_user_id='';poster_user_id=''

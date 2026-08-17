@@ -21,7 +21,7 @@ keycloak_admin_username="${KEYCLOAK_ADMIN_USERNAME:-admin}"
 keycloak_admin_password="${KEYCLOAK_ADMIN_PASSWORD:-admin}"
 core_identity_base_url="${CORE_IDENTITY_BASE_URL:-http://localhost:8081}"
 admissions_base_url="${ADMISSIONS_BASE_URL:-http://localhost:8083}"
-postgres_container="${POSTGRES_CONTAINER:-emhare-flyway-postgres}"
+postgres_container="${POSTGRES_CONTAINER:-emhare-postgres}"
 
 test_run_identifier=$(uuidgen | tr '[:upper:]' '[:lower:]')
 keycloak_client_id="e2e-offers-${test_run_identifier}"

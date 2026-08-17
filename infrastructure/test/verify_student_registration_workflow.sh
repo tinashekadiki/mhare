@@ -20,7 +20,7 @@ keycloak_admin_username="${KEYCLOAK_ADMIN_USERNAME:-admin}"
 keycloak_admin_password="${KEYCLOAK_ADMIN_PASSWORD:-admin}"
 academic_base_url="${ACADEMIC_BASE_URL:-http://localhost:18082}"
 student_records_base_url="${STUDENT_RECORDS_BASE_URL:-http://localhost:18085}"
-postgres_container="${POSTGRES_CONTAINER:-emhare-flyway-postgres}"
+postgres_container="${POSTGRES_CONTAINER:-emhare-postgres}"
 
 test_run_identifier=$(uuidgen | tr '[:upper:]' '[:lower:]')
 client_id="e2e-registration-${test_run_identifier}"

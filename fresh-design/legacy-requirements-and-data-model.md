@@ -4,7 +4,7 @@ Author: Tinashe K
 
 ## Scope
 
-This document extracts what the legacy `emhare_2_9` application was doing end to end. It is not the improved design yet. It is the baseline business map to preserve before rebuilding eMhare fresh.
+This document extracts what the legacy `emhare_2_9` application was doing end to end. It is not the improved design and is not an implementation contract. It is historical evidence only; accepted ADRs and `new-emhare-functional-requirements.md` are authoritative wherever their direction differs from the legacy workflow or the early "Fresh model implications" notes below.
 
 Evidence used:
 
@@ -297,10 +297,10 @@ Fresh model implications:
 - Generated official letters should be stored as generated documents.
 - Offer response should be explicit and immutable.
 - Applicant-to-student conversion should only happen from an accepted offer.
+- Per ADR-0014, new processing creates an individual offer directly from an approved programme-choice admission decision. Selection rounds and offer batches are retired write models and remain only as historical evidence.
 
 Admissions entities:
 
-- `offer_batches`
 - `offers`
 - `offer_conditions`
 - `offer_dispatches`
@@ -784,4 +784,4 @@ Admissions should start with:
 - How many programme choices should be configurable per admission cycle?
 - Which payment providers are required in the first build?
 - Should accommodation applications start in the first admissions release or remain a later student-services module?
-- Which reports are mandatory for go-live: applicant statistics, accepted vs registered, offer batches, qualification summaries, payment reports, or programme capacity reports?
+- Which reports are mandatory for go-live: applicant statistics, accepted vs registered, historical offer activity, qualification summaries, payment reports, or programme capacity reports?

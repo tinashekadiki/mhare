@@ -32,7 +32,9 @@
     "e2e:workbench": "playwright test tests/e2e/ui-workbench.spec.ts",
     "frontend:build": "nx run-many -t build -p admin-portal applicant-portal student-portal ui-workbench",
     "frontend:typecheck": "nx run-many -t typecheck -p admin-portal applicant-portal student-portal ui-workbench",
-    "quality": "mvn verify && npm run test:unit:coverage && npm run frontend:typecheck && npm run frontend:build && npm run coverage:changed && npm run e2e"
+    "format:check": "node scripts/check-formatting.mjs",
+    "format:changed": "node scripts/check-formatting.mjs --write",
+    "quality": "mvn verify && npm run format:check && npm run test:unit:coverage && npm run frontend:typecheck && npm run frontend:build && npm run coverage:changed && npm run e2e"
   },
   "devDependencies": {
     "@nx/nuxt": "^23.1.1",
@@ -42,6 +44,7 @@
     "@vue/test-utils": "^2.4.11",
     "happy-dom": "^20.11.2",
     "nx": "^23.1.1",
+    "prettier": "^3.6.2",
     "vitest": "^4.1.10"
   },
   "dependencies": {
