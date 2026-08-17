@@ -3438,4 +3438,137 @@ test.describe("Core Identity authentication and RBAC", () => {
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Refresh offer status" })).toBeVisible();
   });
+
+  test("shows an applicant's accepted programme and prints only the current published offer letter", async ({
+    page,
+  }, testInfo) => {
+    const username = `codex.applicant-register.${testInfo.project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}@example.test`;
+    const applicantId = "a0000061-0000-4000-8000-000000000061";
+    const applicationId = "e0000061-0000-4000-8000-000000000061";
+    const generatedDocumentId = "d0000061-0000-4000-8000-000000000061";
+    const requestedOfferDispositions: string[] = [];
+    await ensureSystemAdminUser(username);
+
+    await page.route("**/api/admissions/applicants**", (route) => {
+      const requestUrl = new URL(route.request().url());
+      if (requestUrl.pathname.endsWith(`/${applicantId}`)) {
+        return route.fulfill({
+          json: {
+            profile: {
+              id: applicantId,
+              applicantNumber: "A000061",
+              applicantCategoryCode: "LOCAL",
+              firstName: "Wesley",
+              middleNames: null,
+              lastName: "Oneill",
+              primaryEmail: "wesley@example.test",
+              primaryPhone: "+263 77 100 0061",
+              dateOfBirth: "1990-01-14",
+              genderCode: "MALE",
+              nationalIdNumber: "905",
+              passportNumber: null,
+              residentialAddress: "Harare",
+              postalAddress: "Harare",
+              completenessPercentage: 100,
+              missingRequiredFields: [],
+              version: 1,
+            },
+            applications: [
+              {
+                id: applicationId,
+                applicationNumber: "EMH-AUG-2026-00000061",
+                intakeCode: "AUG-2026",
+                applicationTypeName: "Undergraduate and Diploma",
+                status: "CONVERTED",
+                programmeChoices: [],
+              },
+            ],
+          },
+        });
+      }
+      return route.fulfill({
+        json: {
+          content: [
+            {
+              id: applicantId,
+              applicantNumber: "A000061",
+              displayName: "Wesley Oneill",
+              applicantCategoryCode: "LOCAL",
+              primaryEmail: "wesley@example.test",
+              primaryPhone: "+263 77 100 0061",
+              profileCompletenessPercentage: 100,
+              applicationCount: 1,
+              latestApplicationNumber: "EMH-AUG-2026-00000061",
+              latestApplicationStatus: "CONVERTED",
+              latestIntakeCode: "AUG-2026",
+              updatedAt: "2026-08-16T12:00:00Z",
+              version: 1,
+            },
+          ],
+          page: 0,
+          size: 10,
+          totalElements: 1,
+          totalPages: 1,
+        },
+      });
+    });
+    await page.route(`**/api/admissions/work-items/${applicationId}`, (route) =>
+      route.fulfill({
+        json: {
+          offer: {
+            id: "offer-61",
+            applicationId,
+            offerNumber: "OFR-AUG-2026-00000001",
+            programmeCode: "HCS",
+            programmeName: "BACHELOR OF SCIENCE HONOURS DEGREE IN COMPUTER SCIENCE",
+            status: "CONVERTED",
+            currentPublicationId: "publication-61",
+            generatedDocumentId,
+            convertedStudentNumber: "R260000V",
+            response: {
+              response: "ACCEPTED",
+              respondedAt: "2026-08-16T12:00:00Z",
+              notes: null,
+            },
+          },
+        },
+      }),
+    );
+    await page.route(`**/api/documents/${generatedDocumentId}/download**`, (route) => {
+      requestedOfferDispositions.push(
+        new URL(route.request().url()).searchParams.get("disposition") ?? "attachment",
+      );
+      return route.fulfill({
+        json: {
+          documentId: generatedDocumentId,
+          downloadUrl: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0YK",
+        },
+      });
+    });
+
+    await page.goto("/operations/applicants");
+    await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, {
+      timeout: 15_000,
+    });
+    await loginWithKeycloak(page, username);
+    await expect(page).toHaveURL(/\/operations\/applicants$/, { timeout: 15_000 });
+
+    await page.getByRole("button", { name: "Wesley Oneill A000061", exact: true }).click();
+    await expect(page.getByText("Accepted programme", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("HCS · BACHELOR OF SCIENCE HONOURS DEGREE IN COMPUTER SCIENCE", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.getByText("Student R260000V", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Print offer letter" })).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
+
+    const offerLetterPopup = page.waitForEvent("popup");
+    await page.getByRole("button", { name: "Print offer letter" }).click();
+    await offerLetterPopup;
+    await expect.poll(() => requestedOfferDispositions).toContain("inline");
+  });
 });

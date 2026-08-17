@@ -80,6 +80,7 @@ export type OperationalDashboardSnapshot = OperationalDashboardModule & {
   generatedAt: string
   scopeNote: string
   metrics: OperationalDashboardMetric[]
+  summaryMetrics?: OperationalDashboardDistribution[]
   actions: OperationalDashboardAction[]
   distribution: OperationalDashboardDistribution[]
   links: OperationalDashboardLink[]
@@ -192,7 +193,7 @@ async function loadAcademicDashboard(api: OperationalDashboardApi): Promise<Oper
   const module = getModule('academic-setup')
   const draftCalendarRecords = [...overview.academicYears, ...overview.academicPeriods, ...overview.intakes]
     .filter(record => record.status === 'DRAFT').length
-  return snapshot(module, now(), 'Counts describe active governed catalogue records and the current intake calendar.', [
+  const dashboard = snapshot(module, now(), 'Counts describe active governed catalogue records and the current intake calendar.', [
     metric('Academic units', overview.academicUnits.filter(item => item.status === 'ACTIVE').length, 'Active nodes in the governed hierarchy', 'i-lucide-network', 'primary'),
     metric('Active Programmes', overview.programmes.filter(item => item.status === 'ACTIVE').length, 'Programme catalogue records', 'i-lucide-graduation-cap', 'info'),
     metric('Active Modules', overview.modules.filter(item => item.status === 'ACTIVE').length, 'Reusable Module catalogue records', 'i-lucide-book-open', 'success'),
@@ -207,6 +208,18 @@ async function loadAcademicDashboard(api: OperationalDashboardApi): Promise<Oper
     link('Modules', 'Maintain the reusable Module catalogue.', '/operations/modules', 'i-lucide-book-open'),
     link('Curriculum', 'Version Programme curriculum and Module placement.', '/operations/curriculum', 'i-lucide-list-tree')
   ])
+  return {
+    ...dashboard,
+    summaryMetrics: overview.academicUnitTypes
+      .filter(unitType => unitType.status === 'ACTIVE')
+      .sort((left, right) => left.levelOrder - right.levelOrder)
+      .map(unitType => ({
+        label: unitType.name,
+        value: overview.academicUnits.filter(unit =>
+          unit.status === 'ACTIVE' && unit.academicUnitTypeId === unitType.id
+        ).length
+      }))
+  }
 }
 
 async function loadAdmissionsDashboard(api: OperationalDashboardApi): Promise<OperationalDashboardSnapshot> {

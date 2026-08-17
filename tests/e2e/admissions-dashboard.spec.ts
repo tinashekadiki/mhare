@@ -177,13 +177,45 @@ test.describe('University operational dashboards', () => {
     })
     page.on('pageerror', error => browserErrors.push(error.message))
 
+    const academicOverviewResponse = page.waitForResponse(response =>
+      response.url().endsWith('/api/academic/overview') && response.request().method() === 'GET'
+    )
     await page.goto('/operations')
     await expect(page).toHaveURL(/\/realms\/emhare\/protocol\/openid-connect\/auth/, { timeout: 15_000 })
     await loginWithKeycloak(page, username)
     await expect(page).toHaveURL(/\/operations$/, { timeout: 20_000 })
-    await expect(page.getByRole('heading', { name: 'Operational pulse' })).toBeVisible()
+    await expect(page.getByTestId('operations-dashboard-content')).toBeVisible()
+    await expect(page.getByText('Cross-module control')).toHaveCount(0)
+    await expect(page.getByText('Operational pulse')).toHaveCount(0)
+    await expect(page.getByText('Every count comes from its owning service')).toHaveCount(0)
+    await expect(page.getByText('Owned service evidence')).toHaveCount(0)
+    await expect(page.getByText('University operations', { exact: true })).toHaveCount(1)
+    await expect(page.getByRole('heading', { name: 'Operations', exact: true })).toHaveCount(1)
     await expect(page.getByTestId(/^operations-module-/)).toHaveCount(11)
     await expect(page.getByRole('link', { name: 'Open dashboard' })).toHaveCount(11)
+
+    const academicOverviewNetworkResponse = await academicOverviewResponse
+    expect(academicOverviewNetworkResponse.ok()).toBeTruthy()
+    const academicOverview = await academicOverviewNetworkResponse.json() as {
+      academicUnitTypes: Array<{ id: string, name: string, levelOrder: number, status: string }>
+      academicUnits: Array<{ academicUnitTypeId: string, status: string }>
+    }
+    const configuredAcademicUnitCounts = academicOverview.academicUnitTypes
+      .filter(unitType => unitType.status === 'ACTIVE')
+      .sort((left, right) => left.levelOrder - right.levelOrder)
+      .map(unitType => ({
+        label: unitType.name,
+        value: academicOverview.academicUnits.filter(unit =>
+          unit.status === 'ACTIVE' && unit.academicUnitTypeId === unitType.id
+        ).length
+      }))
+    const academicUnitMetrics = page.getByTestId('operations-module-academic-setup')
+      .getByTestId('operations-summary-metric')
+    await expect(academicUnitMetrics).toHaveCount(configuredAcademicUnitCounts.length)
+    for (const [index, metric] of configuredAcademicUnitCounts.entries()) {
+      await expect(academicUnitMetrics.nth(index).getByTestId('operations-summary-value')).toHaveText(String(metric.value))
+      await expect(academicUnitMetrics.nth(index).getByTestId('operations-summary-label')).toHaveText(metric.label)
+    }
 
     const mainContentWidth = await contentWidth(page, 'operations-dashboard-content')
     expect(mainContentWidth.maximumWidth).toBe('none')
@@ -213,6 +245,10 @@ test.describe('University operational dashboards', () => {
       expect(moduleContentWidth.difference).toBeLessThanOrEqual(1)
     }
 
+    await page.goto('/operations')
+    await expect(page.getByTestId('operations-dashboard-content')).toBeVisible()
+    await expect(page.getByText('Loading', { exact: true })).toHaveCount(0, { timeout: 30_000 })
+    await expect(page.getByText(/^Updated /)).toBeVisible()
     const horizontalOverflow = await page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth
     )

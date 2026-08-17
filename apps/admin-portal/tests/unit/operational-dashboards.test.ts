@@ -101,6 +101,32 @@ describe('Operational dashboards', () => {
     expect(overview.find(module => module.key === 'academic-setup')).toMatchObject({ available: true })
   })
 
+  it('groups active academic units by the configured unit-type vocabulary', async () => {
+    const request = vi.fn(async () => ({
+      academicUnitTypes: [
+        { id: 'department-type', name: 'Department', levelOrder: 3, status: 'ACTIVE' },
+        { id: 'faculty-type', name: 'Faculty', levelOrder: 2, status: 'ACTIVE' },
+        { id: 'legacy-type', name: 'Legacy school', levelOrder: 1, status: 'INACTIVE' }
+      ],
+      academicUnits: [
+        { academicUnitTypeId: 'faculty-type', status: 'ACTIVE' },
+        { academicUnitTypeId: 'faculty-type', status: 'ACTIVE' },
+        { academicUnitTypeId: 'department-type', status: 'ACTIVE' },
+        { academicUnitTypeId: 'department-type', status: 'INACTIVE' },
+        { academicUnitTypeId: 'legacy-type', status: 'ACTIVE' }
+      ],
+      academicYears: [], academicPeriodTypes: [], academicPeriods: [], intakes: [],
+      programmeLevels: [], programmeTypes: [], programmes: [], modules: []
+    }))
+
+    const snapshot = await loadOperationalDashboard({ request }, 'academic-setup')
+
+    expect(snapshot.summaryMetrics).toEqual([
+      { label: 'Faculty', value: 2 },
+      { label: 'Department', value: 1 }
+    ])
+  })
+
   it('builds live snapshots for every implemented service contract', async () => {
     const responses: Record<string, unknown> = {
       '/api/core/reports/overview': {

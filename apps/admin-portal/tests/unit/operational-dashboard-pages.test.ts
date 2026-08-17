@@ -170,19 +170,23 @@ describe("Main Operations dashboard page", () => {
     vi.stubGlobal("useRoute", () => route);
     vi.stubGlobal("useEmhareApi", () => ({ errorMessage: vi.fn() }));
     dashboardLoaderMocks.loadOperationsOverview.mockImplementation(
-      async (_api: unknown, keys: string[]) => [
-        {
+      async (_api: unknown, keys: string[]) => {
+        const key = keys[0]
+        return [{
           ...financeSnapshot,
-          key: keys[0],
-          label: keys[0] === "finance" ? "Finance" : `Live ${keys[0]}`,
+          key,
+          label: key === "finance" ? "Finance" : `Live ${key}`,
           dashboardPath:
-            keys[0] === "admissions"
+            key === "admissions"
               ? "/operations/admissions-dashboard"
-              : `/operations/dashboard/${keys[0]}`,
-          available: keys[0] !== "notifications",
-          errorMessage: keys[0] === "notifications" ? "Notifications cannot be read." : undefined,
-        },
-      ],
+              : `/operations/dashboard/${key}`,
+          available: key !== "notifications",
+          errorMessage: key === "notifications" ? "Notifications cannot be read." : undefined,
+          summaryMetrics: key === "academic-setup"
+            ? [{ label: "Faculty", value: 3 }, { label: "Department", value: 5 }]
+            : undefined,
+        }]
+      },
     );
   });
 
@@ -194,9 +198,25 @@ describe("Main Operations dashboard page", () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain("Access restricted");
-    expect(wrapper.text()).toContain("Operational pulse");
-    expect(wrapper.text()).toContain("Module dashboards");
+    expect(wrapper.text()).not.toContain("Cross-module control");
+    expect(wrapper.text()).not.toContain("Operational pulse");
+    expect(wrapper.text()).not.toContain("University operations");
+    expect(wrapper.text()).not.toContain("Every count comes from its owning service");
+    expect(wrapper.text()).not.toContain("Owned service evidence");
+    expect(wrapper.text()).not.toContain("Control governed fees, billing and cash collection.");
+    expect(wrapper.findAll("h1")).toHaveLength(1);
+    expect(wrapper.get("h1").text()).toBe("Operations");
     expect(wrapper.findAll('[data-testid^="operations-module-"]')).toHaveLength(11);
+    const academicUnitMetrics = wrapper
+      .get('[data-testid="operations-module-academic-setup"]')
+      .findAll('[data-testid="operations-summary-metric"]');
+    expect(academicUnitMetrics.map((metric) => ({
+      label: metric.get('[data-testid="operations-summary-label"]').text(),
+      value: metric.get('[data-testid="operations-summary-value"]').text(),
+    }))).toEqual([
+      { label: "Faculty", value: "3" },
+      { label: "Department", value: "5" },
+    ]);
     expect(wrapper.get('[data-testid="operations-dashboard-content"]').classes()).toContain(
       "max-w-none",
     );
