@@ -23,6 +23,8 @@ This folder records the architecture decisions for the new eMhare before impleme
 | [ADR-0013](0013-application-payment-evidence-and-hosted-card-payments.md) | Application payment evidence and hosted card payments | Accepted |
 | [ADR-0014](0014-rolling-per-applicant-admissions-processing.md) | Rolling per-applicant admissions processing | Accepted |
 | [ADR-0015](0015-standard-microservice-architecture.md) | Standard microservice architecture | Accepted |
+| [ADR-0016](0016-single-public-gateway-and-communications-service.md) | Single public gateway and Communications service | Accepted |
+| [ADR-0017](0017-evidence-first-applicant-capture-and-ocr.md) | Evidence-first applicant capture and OCR | Accepted |
 
 ## Rules
 

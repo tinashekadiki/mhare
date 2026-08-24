@@ -23,6 +23,9 @@ spring:
                   - "http://localhost:3000"
                   - "http://localhost:3001"
                   - "http://localhost:3002"
+                  - "http://localhost:3100"
+                  - "http://localhost:3101"
+                  - "http://localhost:3102"
                 allowed-methods:
                   - GET
                   - POST
@@ -82,6 +85,10 @@ spring:
               uri: lb://notifications-service
               predicates:
                 - Path=/api/notifications/**
+            - id: communications-service
+              uri: lb://communications-service
+              predicates:
+                - Path=/api/communications/**
 
 management:
   endpoints:
@@ -123,6 +130,7 @@ emhare:
         - dining-service
         - documents-reporting-service
         - notifications-service
+        - communications-service
 
 logging:
   structured:

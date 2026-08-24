@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Swal from 'sweetalert2'
+import Swal from "sweetalert2";
 import type {
   ApplicantApplicationWorkspace,
   ApplicantQualificationSitting,
@@ -7,670 +7,936 @@ import type {
   ApplicationWorkspaceSection,
   AdmissionsApplicationSummary,
   AdmissionsApplicationWorkflowProgress,
-  AdmissionsApplicationWorkflowStage
-  , AdmissionsWorkItemCase
-} from '@emhare/portal-shell/types/admissions'
-import type { OfficialDocumentDownload, UploadedDocumentDownload } from '@emhare/portal-shell/types/documents'
+  AdmissionsApplicationWorkflowStage,
+  AdmissionsWorkItemCase,
+} from "@emhare/portal-shell/types/admissions";
+import type {
+  OfficialDocumentDownload,
+  UploadedDocumentDownload,
+} from "@emhare/portal-shell/types/documents";
 
-definePageMeta({ layout: 'dashboard' })
+definePageMeta({ layout: "dashboard" });
 
-const route = useRoute()
-const api = useEmhareApi()
-const auth = useEmhareAuth()
-const { confirmAction, showError, showSuccess } = useEmhareConfirm()
+const route = useRoute();
+const api = useEmhareApi();
+const auth = useEmhareAuth();
+const { confirmAction, showError, showSuccess } = useEmhareConfirm();
 
-const workspace = ref<ApplicantApplicationWorkspace | null>(null)
-const workItem = ref<AdmissionsWorkItemCase | null>(null)
-const workflowActionLoading = ref(false)
-const loading = ref(false)
-const refreshing = ref(false)
-const loadError = ref('')
-const returningToDraft = ref(false)
-const selectedDocument = ref<ApplicationDocumentRequirementState | null>(null)
-const documentDownload = ref<UploadedDocumentDownload | null>(null)
-const loadingDocumentPreview = ref(false)
-const documentPreviewError = ref('')
-const downloadingDocument = ref(false)
-const savingDocumentDecision = ref(false)
-const savingQualificationId = ref<string | null>(null)
-const openingOfferDocument = ref(false)
-const offerDocumentPollIntervalMs = 500
-const maximumOfferDocumentPolls = 60
+const workspace = ref<ApplicantApplicationWorkspace | null>(null);
+const workItem = ref<AdmissionsWorkItemCase | null>(null);
+const workflowActionLoading = ref(false);
+const loading = ref(false);
+const refreshing = ref(false);
+const loadError = ref("");
+const returningToDraft = ref(false);
+const identityNameDecisionWorking = ref(false);
+const selectedDocument = ref<ApplicationDocumentRequirementState | null>(null);
+const documentDownload = ref<UploadedDocumentDownload | null>(null);
+const loadingDocumentPreview = ref(false);
+const documentPreviewError = ref("");
+const downloadingDocument = ref(false);
+const savingDocumentDecision = ref(false);
+const savingQualificationId = ref<string | null>(null);
+const openingOfferDocument = ref(false);
+const offerDocumentPollIntervalMs = 500;
+const maximumOfferDocumentPolls = 60;
 
 type OfferDocumentGenerationResult = {
-  id: string
-  documentVersion: number
-  status: string
-  generatedDocumentId?: string | null
-  failureReason?: string | null
-}
+  id: string;
+  documentVersion: number;
+  status: string;
+  generatedDocumentId?: string | null;
+  failureReason?: string | null;
+};
 
 const applicationId = computed(() => {
-  const routeParameter = route.params.applicationId
-  return Array.isArray(routeParameter) ? routeParameter[0] ?? '' : routeParameter ?? ''
-})
+  const routeParameter = route.params.applicationId;
+  return Array.isArray(routeParameter) ? (routeParameter[0] ?? "") : (routeParameter ?? "");
+});
 const academicReviewAssignmentId = computed(() => {
-  const queryValue = route.query.academicReviewAssignmentId
-  return Array.isArray(queryValue) ? queryValue[0] ?? '' : queryValue ?? ''
-})
-const isAcademicRecommendationProfile = computed(() => Boolean(academicReviewAssignmentId.value))
-const returnToWorkflowPath = computed(() => isAcademicRecommendationProfile.value
-  ? '/operations/admissions-recommendations'
-  : '/operations/admissions')
+  const queryValue = route.query.academicReviewAssignmentId;
+  return Array.isArray(queryValue) ? (queryValue[0] ?? "") : (queryValue ?? "");
+});
+const isAcademicRecommendationProfile = computed(() => Boolean(academicReviewAssignmentId.value));
+const returnToWorkflowPath = computed(() =>
+  isAcademicRecommendationProfile.value
+    ? "/operations/admissions-recommendations"
+    : "/operations/admissions",
+);
 
-const application = computed(() => workspace.value?.application ?? null)
-const profile = computed(() => workspace.value?.profile ?? null)
-const completedSections = computed(() => workspace.value?.sections.filter(section => (
-  ['COMPLETE', 'VERIFIED'].includes(section.status)
-)).length ?? 0)
+const application = computed(() => workspace.value?.application ?? null);
+const profile = computed(() => workspace.value?.profile ?? null);
+const identityNameCorrection = computed(() => workspace.value?.identityNameCorrection ?? null);
+const completedSections = computed(
+  () =>
+    workspace.value?.sections.filter((section) => ["COMPLETE", "VERIFIED"].includes(section.status))
+      .length ?? 0,
+);
 const documentCounts = computed(() => {
-  const register = workspace.value?.documents
+  const register = workspace.value?.documents;
   return {
     total: register?.requirements.length ?? 0,
-    uploaded: register?.requirements.filter(requirement => Boolean(requirement.documentId)).length ?? 0,
+    uploaded:
+      register?.requirements.filter((requirement) => Boolean(requirement.documentId)).length ?? 0,
     pending: register?.pendingRequirementCodes.length ?? 0,
     missing: register?.missingRequirementCodes.length ?? 0,
-    rejected: register?.rejectedRequirementCodes.length ?? 0
-  }
-})
-const previewIsImage = computed(() => documentDownload.value?.mimeType.startsWith('image/') ?? false)
-const previewIsPdf = computed(() => documentDownload.value?.mimeType === 'application/pdf')
-const latestStoredOfferDocument = computed(() => workItem.value?.documentVersions.find(document => (
-  document.status === 'STORED' && Boolean(document.generatedDocumentId)
-)) ?? null)
+    rejected: register?.rejectedRequirementCodes.length ?? 0,
+  };
+});
+const previewIsImage = computed(
+  () => documentDownload.value?.mimeType.startsWith("image/") ?? false,
+);
+const previewIsPdf = computed(() => documentDownload.value?.mimeType === "application/pdf");
+const latestStoredOfferDocument = computed(
+  () =>
+    workItem.value?.documentVersions.find(
+      (document) => document.status === "STORED" && Boolean(document.generatedDocumentId),
+    ) ?? null,
+);
 const applicantInitials = computed(() => {
-  if (!profile.value) return 'AP'
-  return `${profile.value.firstName.charAt(0)}${profile.value.lastName.charAt(0)}`.toUpperCase()
-})
-const qualificationsAwaitingDecision = computed(() => workspace.value?.qualifications.filter(qualification => (
-  qualification.verificationStatus === 'CAPTURED'
-)) ?? [])
+  if (!profile.value) return "AP";
+  return `${profile.value.firstName.charAt(0)}${profile.value.lastName.charAt(0)}`.toUpperCase();
+});
+const qualificationsAwaitingDecision = computed(
+  () =>
+    workspace.value?.qualifications.filter(
+      (qualification) => qualification.verificationStatus === "CAPTURED",
+    ) ?? [],
+);
 const programmeRequirementsRoute = computed(() => ({
-  path: '/operations/programme-requirements',
+  path: "/operations/programme-requirements",
   query: {
     programmeId: application.value?.programmeChoices[0]?.programmeId,
     applicationTypeId: application.value?.applicationTypeId,
-    intakeId: application.value?.intakeId
-  }
-}))
-const recordedEligibility = computed(() => workItem.value?.auditHistory.find(event => (
-  event.fromStatus === 'UNDER_REVIEW' && ['ELIGIBLE', 'NOT_ELIGIBLE'].includes(event.toStatus)
-)) ?? workItem.value?.auditHistory.find(event => ['ELIGIBLE', 'NOT_ELIGIBLE'].includes(event.toStatus)) ?? null)
+    intakeId: application.value?.intakeId,
+  },
+}));
+const recordedEligibility = computed(
+  () =>
+    workItem.value?.auditHistory.find(
+      (event) =>
+        event.fromStatus === "UNDER_REVIEW" &&
+        ["ELIGIBLE", "NOT_ELIGIBLE"].includes(event.toStatus),
+    ) ??
+    workItem.value?.auditHistory.find((event) =>
+      ["ELIGIBLE", "NOT_ELIGIBLE"].includes(event.toStatus),
+    ) ??
+    null,
+);
 
 useHead({
-  title: computed(() => application.value
-    ? `${application.value.applicationNumber} · Admissions review`
-    : 'Admissions review')
-})
+  title: computed(() =>
+    application.value
+      ? `${application.value.applicationNumber} · Admissions review`
+      : "Admissions review",
+  ),
+});
 
-onMounted(loadApplication)
+onMounted(loadApplication);
 watch(applicationId, (currentId, previousId) => {
-  if (previousId && currentId !== previousId) loadApplication()
-})
+  if (previousId && currentId !== previousId) loadApplication();
+});
 
-async function loadApplication(options: { background?: boolean, preferredDocumentId?: string | null } = {}) {
-  if (!applicationId.value) return
-  if (options.background) refreshing.value = true
-  else loading.value = true
-  loadError.value = ''
+async function loadApplication(
+  options: { background?: boolean; preferredDocumentId?: string | null } = {},
+) {
+  if (!applicationId.value) return;
+  if (options.background) refreshing.value = true;
+  else loading.value = true;
+  loadError.value = "";
 
   try {
-    const loadedCase = await api.request<AdmissionsWorkItemCase>(`/api/admissions/work-items/${applicationId.value}`)
-    workItem.value = loadedCase
-    workspace.value = loadedCase.workspace
-    synchronizeSelectedDocument(options.preferredDocumentId)
+    const loadedCase = await api.request<AdmissionsWorkItemCase>(
+      `/api/admissions/work-items/${applicationId.value}`,
+    );
+    workItem.value = loadedCase;
+    workspace.value = loadedCase.workspace;
+    synchronizeSelectedDocument(options.preferredDocumentId);
   } catch (error) {
-    loadError.value = api.errorMessage(error, 'The applicant application could not be loaded.')
+    loadError.value = api.errorMessage(error, "The applicant application could not be loaded.");
   } finally {
-    loading.value = false
-    refreshing.value = false
+    loading.value = false;
+    refreshing.value = false;
   }
 }
 
-const currentChoiceId = computed(() => workItem.value?.academicReview?.programmeChoiceId
-  ?? application.value?.programmeChoices.find(choice => choice.choiceStatus === 'REQUIRES_REVIEW')?.id
-  ?? application.value?.programmeChoices[0]?.id ?? '')
-const can = (action: string) => workItem.value?.availableActions.includes(action) ?? false
+const currentChoiceId = computed(
+  () =>
+    workItem.value?.academicReview?.programmeChoiceId ??
+    application.value?.programmeChoices.find((choice) => choice.choiceStatus === "REQUIRES_REVIEW")
+      ?.id ??
+    application.value?.programmeChoices[0]?.id ??
+    "",
+);
+const can = (action: string) => workItem.value?.availableActions.includes(action) ?? false;
 
 async function runWorkflowAction(path: string, body?: Record<string, unknown>) {
-  workflowActionLoading.value = true
+  workflowActionLoading.value = true;
   try {
-    await api.request(path, { method: 'POST', ...(body ? { body } : {}) })
-    await loadApplication({ background: true })
-  } catch (error) { await showError('Admissions action failed', api.errorMessage(error)) }
-  finally { workflowActionLoading.value = false }
+    await api.request(path, { method: "POST", ...(body ? { body } : {}) });
+    await loadApplication({ background: true });
+  } catch (error) {
+    await showError("Admissions action failed", api.errorMessage(error));
+  } finally {
+    workflowActionLoading.value = false;
+  }
 }
 
 async function recalculateEligibility() {
-  await runWorkflowAction(`/api/admissions/applications/${applicationId.value}/eligibility/recalculate`)
+  await runWorkflowAction(
+    `/api/admissions/applications/${applicationId.value}/eligibility/recalculate`,
+  );
 }
 
 async function resolveEligibility() {
-  const result = await Swal.fire({ title: 'Resolve eligibility', input: 'select',
-    inputOptions: { ELIGIBLE: 'Eligible', CONDITIONALLY_ELIGIBLE: 'Conditionally eligible', NOT_ELIGIBLE: 'Not eligible' },
-    inputPlaceholder: 'Select outcome', showCancelButton: true, confirmButtonText: 'Continue', confirmButtonColor: '#20743a' })
-  if (!result.isConfirmed) return
-  const reason = await Swal.fire({ title: 'Record the eligibility reason', input: 'textarea', showCancelButton: true,
-    inputValidator: value => value.trim().length >= 10 ? undefined : 'Record at least 10 characters.', confirmButtonColor: '#20743a' })
-  if (!reason.isConfirmed) return
-  await runWorkflowAction(`/api/admissions/applications/${applicationId.value}/choices/${currentChoiceId.value}/eligibility-resolution`, { outcome: result.value, reason: reason.value.trim() })
+  const result = await Swal.fire({
+    title: "Resolve eligibility",
+    input: "select",
+    inputOptions: {
+      ELIGIBLE: "Eligible",
+      CONDITIONALLY_ELIGIBLE: "Conditionally eligible",
+      NOT_ELIGIBLE: "Not eligible",
+    },
+    inputPlaceholder: "Select outcome",
+    showCancelButton: true,
+    confirmButtonText: "Continue",
+    confirmButtonColor: "var(--color-uzazure-600)",
+  });
+  if (!result.isConfirmed) return;
+  const reason = await Swal.fire({
+    title: "Record the eligibility reason",
+    input: "textarea",
+    showCancelButton: true,
+    inputValidator: (value) =>
+      value.trim().length >= 10 ? undefined : "Record at least 10 characters.",
+    confirmButtonColor: "var(--color-uzazure-600)",
+  });
+  if (!reason.isConfirmed) return;
+  await runWorkflowAction(
+    `/api/admissions/applications/${applicationId.value}/choices/${currentChoiceId.value}/eligibility-resolution`,
+    { outcome: result.value, reason: reason.value.trim() },
+  );
 }
 
 async function recordRecommendation() {
-  const result = await Swal.fire({ title: 'Academic recommendation', input: 'select',
-    inputOptions: { RECOMMEND_ADMIT: 'Recommend admission', RECOMMEND_REJECT: 'Recommend rejection' },
-    inputPlaceholder: 'Select recommendation', showCancelButton: true, confirmButtonColor: '#20743a' })
-  if (!result.isConfirmed) return
-  const reason = await Swal.fire({ title: 'Record the academic reason', input: 'textarea', showCancelButton: true,
-    inputValidator: value => value.trim().length >= 10 ? undefined : 'Record at least 10 characters.', confirmButtonColor: '#20743a' })
-  if (!reason.isConfirmed) return
-  await runWorkflowAction(`/api/admissions/applications/${applicationId.value}/choices/${currentChoiceId.value}/academic-recommendation`, { recommendation: result.value, reason: reason.value.trim() })
+  const result = await Swal.fire({
+    title: "Academic recommendation",
+    input: "select",
+    inputOptions: {
+      RECOMMEND_ADMIT: "Recommend admission",
+      RECOMMEND_REJECT: "Recommend rejection",
+    },
+    inputPlaceholder: "Select recommendation",
+    showCancelButton: true,
+    confirmButtonColor: "var(--color-uzazure-600)",
+  });
+  if (!result.isConfirmed) return;
+  const reason = await Swal.fire({
+    title: "Record the academic reason",
+    input: "textarea",
+    showCancelButton: true,
+    inputValidator: (value) =>
+      value.trim().length >= 10 ? undefined : "Record at least 10 characters.",
+    confirmButtonColor: "var(--color-uzazure-600)",
+  });
+  if (!reason.isConfirmed) return;
+  await runWorkflowAction(
+    `/api/admissions/applications/${applicationId.value}/choices/${currentChoiceId.value}/academic-recommendation`,
+    { recommendation: result.value, reason: reason.value.trim() },
+  );
 }
 
 async function returnRecommendation() {
   const result = await Swal.fire({
-    title: 'Return academic recommendation',
-    text: 'The academic reviewer will receive this choice again with your reason.',
-    input: 'textarea',
-    inputLabel: 'What must be reconsidered?',
-    inputPlaceholder: 'Give the reviewer a clear, actionable reason.',
+    title: "Return academic recommendation",
+    text: "The academic reviewer will receive this choice again with your reason.",
+    input: "textarea",
+    inputLabel: "What must be reconsidered?",
+    inputPlaceholder: "Give the reviewer a clear, actionable reason.",
     showCancelButton: true,
-    confirmButtonText: 'Return to reviewer',
-    confirmButtonColor: '#b7791f',
-    inputValidator: value => value.trim().length >= 10 ? undefined : 'Record at least 10 characters.'
-  })
-  if (!result.isConfirmed) return
+    confirmButtonText: "Return to reviewer",
+    confirmButtonColor: "#b7791f",
+    inputValidator: (value) =>
+      value.trim().length >= 10 ? undefined : "Record at least 10 characters.",
+  });
+  if (!result.isConfirmed) return;
   await runWorkflowAction(
     `/api/admissions/applications/${applicationId.value}/choices/${currentChoiceId.value}/academic-recommendation/return`,
-    { reason: result.value.trim() }
-  )
+    { reason: result.value.trim() },
+  );
 }
 
 async function recordDecision() {
-  const result = await Swal.fire({ title: 'Final admission decision', input: 'select',
-    inputOptions: { ADMIT: 'Admit', REJECT: 'Reject and continue to next eligible choice' }, inputPlaceholder: 'Select final decision',
-    showCancelButton: true, confirmButtonColor: '#20743a' })
-  if (!result.isConfirmed) return
-  const reason = await Swal.fire({ title: 'Record the decision reason', input: 'textarea', showCancelButton: true,
-    inputValidator: value => value.trim().length >= 10 ? undefined : 'Record at least 10 characters.', confirmButtonColor: '#20743a' })
-  if (!reason.isConfirmed) return
-  await runWorkflowAction(`/api/admissions/applications/${applicationId.value}/choices/${currentChoiceId.value}/decision`, { decision: result.value, reason: reason.value.trim() })
+  const result = await Swal.fire({
+    title: "Final admission decision",
+    input: "select",
+    inputOptions: { ADMIT: "Admit", REJECT: "Reject and continue to next eligible choice" },
+    inputPlaceholder: "Select final decision",
+    showCancelButton: true,
+    confirmButtonColor: "var(--color-uzazure-600)",
+  });
+  if (!result.isConfirmed) return;
+  const reason = await Swal.fire({
+    title: "Record the decision reason",
+    input: "textarea",
+    showCancelButton: true,
+    inputValidator: (value) =>
+      value.trim().length >= 10 ? undefined : "Record at least 10 characters.",
+    confirmButtonColor: "var(--color-uzazure-600)",
+  });
+  if (!reason.isConfirmed) return;
+  await runWorkflowAction(
+    `/api/admissions/applications/${applicationId.value}/choices/${currentChoiceId.value}/decision`,
+    { decision: result.value, reason: reason.value.trim() },
+  );
 }
 
 async function updateOfferTerms() {
-  const offer = workItem.value?.offer
-  if (!offer) return
-  const result = await Swal.fire({ title: 'Offer terms', html: `
+  const offer = workItem.value?.offer;
+  if (!offer) return;
+  const result = await Swal.fire({
+    title: "Offer terms",
+    html: `
     <label class="swal2-label">Offer type</label><select id="offer-type" class="swal2-select"><option value="FIRM">Firm</option><option value="CONDITIONAL">Conditional</option></select>
-    <p class="swal2-html-container">Acceptance, registration, orientation and commencement dates are taken from <strong>${application.value?.intakeCode ?? 'the intake'}</strong>.</p>
+    <p class="swal2-html-container">Acceptance, registration, orientation and commencement dates are taken from <strong>${application.value?.intakeCode ?? "the intake"}</strong>.</p>
     <label class="swal2-label">Conditions</label><textarea id="offer-conditions" class="swal2-textarea"></textarea>`,
-    showCancelButton: true, confirmButtonText: 'Save terms', confirmButtonColor: '#20743a',
-    preConfirm: () => { const type=(document.getElementById('offer-type') as HTMLSelectElement).value; const conditions=(document.getElementById('offer-conditions') as HTMLTextAreaElement).value; return { type, conditions } } })
-  if (!result.isConfirmed || !result.value) return
-  workflowActionLoading.value = true
-  try { await api.request(`/api/admissions/offers/${offer.id}`, { method: 'PUT', body: { offerType: result.value.type, conditionsText: result.value.conditions || null } }); await loadApplication({ background: true }) }
-  catch (error) { await showError('Offer terms could not be saved', api.errorMessage(error)) }
-  finally { workflowActionLoading.value = false }
+    showCancelButton: true,
+    confirmButtonText: "Save terms",
+    confirmButtonColor: "var(--color-uzazure-600)",
+    preConfirm: () => {
+      const type = (document.getElementById("offer-type") as HTMLSelectElement).value;
+      const conditions = (document.getElementById("offer-conditions") as HTMLTextAreaElement).value;
+      return { type, conditions };
+    },
+  });
+  if (!result.isConfirmed || !result.value) return;
+  workflowActionLoading.value = true;
+  try {
+    await api.request(`/api/admissions/offers/${offer.id}`, {
+      method: "PUT",
+      body: { offerType: result.value.type, conditionsText: result.value.conditions || null },
+    });
+    await loadApplication({ background: true });
+  } catch (error) {
+    await showError("Offer terms could not be saved", api.errorMessage(error));
+  } finally {
+    workflowActionLoading.value = false;
+  }
 }
 
 async function generateOfferDocument() {
-  const offer = workItem.value?.offer
-  if (!offer) return
+  const offer = workItem.value?.offer;
+  if (!offer) return;
 
-  const previewWindow = window.open('about:blank', '_blank')
-  if (previewWindow) previewWindow.opener = null
-  workflowActionLoading.value = true
+  const previewWindow = window.open("about:blank", "_blank");
+  if (previewWindow) previewWindow.opener = null;
+  workflowActionLoading.value = true;
   try {
     const generation = await api.request<OfferDocumentGenerationResult>(
       `/api/admissions/offers/${offer.id}/document-generation`,
-      { method: 'POST' }
-    )
-    const storedDocument = await waitForStoredOfferDocument(generation.documentVersion)
+      { method: "POST" },
+    );
+    const storedDocument = await waitForStoredOfferDocument(generation.documentVersion);
     if (!storedDocument.generatedDocumentId) {
-      throw new Error('The generated offer letter was stored without a document reference.')
+      throw new Error("The generated offer letter was stored without a document reference.");
     }
     const document = await api.request<OfficialDocumentDownload>(
-      `/api/documents/${storedDocument.generatedDocumentId}/download?disposition=inline`
-    )
+      `/api/documents/${storedDocument.generatedDocumentId}/download?disposition=inline`,
+    );
     if (previewWindow) {
-      previewWindow.location.href = document.downloadUrl
+      previewWindow.location.href = document.downloadUrl;
     } else {
-      await showError('Offer letter generated', 'The PDF was generated, but the browser blocked its preview tab. Use Preview offer letter to open it.')
+      await showError(
+        "Offer letter generated",
+        "The PDF was generated, but the browser blocked its preview tab. Use Preview offer letter to open it.",
+      );
     }
   } catch (error) {
-    previewWindow?.close()
-    await showError('Offer letter could not be generated', api.errorMessage(error))
+    previewWindow?.close();
+    await showError("Offer letter could not be generated", api.errorMessage(error));
   } finally {
-    workflowActionLoading.value = false
+    workflowActionLoading.value = false;
   }
 }
 
 async function waitForStoredOfferDocument(documentVersion: number) {
   for (let attempt = 0; attempt < maximumOfferDocumentPolls; attempt += 1) {
-    const loadedCase = await api.request<AdmissionsWorkItemCase>(`/api/admissions/work-items/${applicationId.value}`)
-    workItem.value = loadedCase
-    workspace.value = loadedCase.workspace
-    synchronizeSelectedDocument()
-    const document = loadedCase.documentVersions.find(candidate => candidate.version === documentVersion)
-    if (document?.status === 'STORED') return document
-    if (document?.status === 'FAILED') {
-      throw new Error(document.failureReason || 'The offer-letter PDF generation failed.')
+    const loadedCase = await api.request<AdmissionsWorkItemCase>(
+      `/api/admissions/work-items/${applicationId.value}`,
+    );
+    workItem.value = loadedCase;
+    workspace.value = loadedCase.workspace;
+    synchronizeSelectedDocument();
+    const document = loadedCase.documentVersions.find(
+      (candidate) => candidate.version === documentVersion,
+    );
+    if (document?.status === "STORED") return document;
+    if (document?.status === "FAILED") {
+      throw new Error(document.failureReason || "The offer-letter PDF generation failed.");
     }
     if (attempt < maximumOfferDocumentPolls - 1) {
-      await new Promise(resolve => window.setTimeout(resolve, offerDocumentPollIntervalMs))
+      await new Promise((resolve) => window.setTimeout(resolve, offerDocumentPollIntervalMs));
     }
   }
-  throw new Error('The offer letter is still being generated. Refresh the case before trying again.')
+  throw new Error(
+    "The offer letter is still being generated. Refresh the case before trying again.",
+  );
 }
-async function publishAndSend() { if (!workItem.value?.offer) return; const confirmed = await confirmAction({ title: 'Publish and send?', text: 'The latest PDF becomes authoritative in the applicant portal and an attachment email is queued.', confirmButtonText: 'Publish and send', icon: 'warning' }); if (confirmed) await runWorkflowAction(`/api/admissions/offers/${workItem.value.offer.id}/publish-and-send`) }
-async function retryOfferEmail() { if (!workItem.value?.offer) return; const result = await Swal.fire({ title: 'Retry offer email', input: 'textarea', showCancelButton: true, inputValidator: value => value.trim().length >= 10 ? undefined : 'Record at least 10 characters.', confirmButtonColor: '#20743a' }); if (result.isConfirmed) await runWorkflowAction(`/api/admissions/offers/${workItem.value.offer.id}/email-retry`, { reason: result.value.trim() }) }
+async function publishAndSend() {
+  if (!workItem.value?.offer) return;
+  const confirmed = await confirmAction({
+    title: "Publish and send?",
+    text: "The latest PDF becomes authoritative in the applicant portal and an attachment email is queued.",
+    confirmButtonText: "Publish and send",
+    icon: "warning",
+  });
+  if (confirmed)
+    await runWorkflowAction(`/api/admissions/offers/${workItem.value.offer.id}/publish-and-send`);
+}
+async function retryOfferEmail() {
+  if (!workItem.value?.offer) return;
+  const result = await Swal.fire({
+    title: "Retry offer email",
+    input: "textarea",
+    showCancelButton: true,
+    inputValidator: (value) =>
+      value.trim().length >= 10 ? undefined : "Record at least 10 characters.",
+    confirmButtonColor: "var(--color-uzazure-600)",
+  });
+  if (result.isConfirmed)
+    await runWorkflowAction(`/api/admissions/offers/${workItem.value.offer.id}/email-retry`, {
+      reason: result.value.trim(),
+    });
+}
 
 async function recordQualificationDecision(
-  qualification: Pick<ApplicantQualificationSitting, 'id' | 'level' | 'version'>,
-  decision: 'VERIFIED' | 'REJECTED'
+  qualification: Pick<ApplicantQualificationSitting, "id" | "level" | "version">,
+  decision: "VERIFIED" | "REJECTED",
 ) {
-  const verifying = decision === 'VERIFIED'
+  const verifying = decision === "VERIFIED";
   const result = await Swal.fire({
-    title: verifying ? `Verify ${formatStatus(qualification.level)} evidence?` : `Reject ${formatStatus(qualification.level)} evidence?`, text: verifying ? 'Confirm that the uploaded evidence and captured results match.' : 'The application will remain blocked until the applicant corrects this evidence and resubmits.', input: 'textarea', inputLabel: verifying ? 'Verification note (optional)' : 'Rejection reason', inputPlaceholder: verifying ? 'Record what was checked' : 'Explain exactly what must be corrected', inputAttributes: { maxlength: '1000' }, inputValidator: value => !verifying && value.trim().length < 10 ? 'Record at least 10 characters explaining what must be corrected.' : undefined,
-    icon: verifying ? 'question' : 'warning', showCancelButton: true, confirmButtonText: verifying ? 'Verify qualification' : 'Reject qualification', cancelButtonText: 'Cancel', confirmButtonColor: verifying ? '#20743a' : '#dc2626'
-  })
-  if (!result.isConfirmed) return
+    title: verifying
+      ? `Verify ${formatStatus(qualification.level)} evidence?`
+      : `Reject ${formatStatus(qualification.level)} evidence?`,
+    text: verifying
+      ? "Confirm that the uploaded evidence and captured results match."
+      : "The application will remain blocked until the applicant corrects this evidence and resubmits.",
+    input: "textarea",
+    inputLabel: verifying ? "Verification note (optional)" : "Rejection reason",
+    inputPlaceholder: verifying
+      ? "Record what was checked"
+      : "Explain exactly what must be corrected",
+    inputAttributes: { maxlength: "1000" },
+    inputValidator: (value) =>
+      !verifying && value.trim().length < 10
+        ? "Record at least 10 characters explaining what must be corrected."
+        : undefined,
+    icon: verifying ? "question" : "warning",
+    showCancelButton: true,
+    confirmButtonText: verifying ? "Verify qualification" : "Reject qualification",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: verifying ? "var(--color-uzazure-600)" : "#dc2626",
+  });
+  if (!result.isConfirmed) return;
 
-  savingQualificationId.value = qualification.id
+  savingQualificationId.value = qualification.id;
   try {
-    await api.request(`/api/admissions/applications/${applicationId.value}/qualifications/${qualification.id}/decision`, {
-      method: 'POST',
-      body: { decision, reason: String(result.value ?? '').trim() || null, expectedVersion: qualification.version }
-    })
-    await loadApplication({ background: true })
-    await showSuccess(verifying ? 'Qualification verified' : 'Qualification rejected', verifying
-      ? 'The workflow will advance automatically when every verification gate is clear.'
-      : 'The recorded reason is retained with the application evidence.')
+    await api.request(
+      `/api/admissions/applications/${applicationId.value}/qualifications/${qualification.id}/decision`,
+      {
+        method: "POST",
+        body: {
+          decision,
+          reason: String(result.value ?? "").trim() || null,
+          expectedVersion: qualification.version,
+        },
+      },
+    );
+    await loadApplication({ background: true });
+    await showSuccess(
+      verifying ? "Qualification verified" : "Qualification rejected",
+      verifying
+        ? "The workflow will advance automatically when every verification gate is clear."
+        : "The recorded reason is retained with the application evidence.",
+    );
   } catch (error) {
-    await showError('Qualification decision could not be recorded', api.errorMessage(error))
+    await showError("Qualification decision could not be recorded", api.errorMessage(error));
   } finally {
-    savingQualificationId.value = null
+    savingQualificationId.value = null;
   }
 }
 
-async function openOfferDocument(disposition: 'inline' | 'attachment') {
-  const generatedDocumentId = latestStoredOfferDocument.value?.generatedDocumentId
+async function openOfferDocument(disposition: "inline" | "attachment") {
+  const generatedDocumentId = latestStoredOfferDocument.value?.generatedDocumentId;
   if (!generatedDocumentId) {
-    await showError('Offer letter is not available', 'A stored offer-letter PDF has not been generated yet.')
-    return
+    await showError(
+      "Offer letter is not available",
+      "A stored offer-letter PDF has not been generated yet.",
+    );
+    return;
   }
-  const documentWindow = window.open('about:blank', '_blank')
+  const documentWindow = window.open("about:blank", "_blank");
   if (!documentWindow) {
-    await showError('Offer letter could not be opened', 'The browser blocked the document tab. Allow pop-ups for eMhare and try again.')
-    return
+    await showError(
+      "Offer letter could not be opened",
+      "The browser blocked the document tab. Allow pop-ups for eMhare and try again.",
+    );
+    return;
   }
-  documentWindow.opener = null
-  openingOfferDocument.value = true
+  documentWindow.opener = null;
+  openingOfferDocument.value = true;
   try {
     const document = await api.request<OfficialDocumentDownload>(
-      `/api/documents/${generatedDocumentId}/download?disposition=${disposition}`
-    )
-    documentWindow.location.href = document.downloadUrl
+      `/api/documents/${generatedDocumentId}/download?disposition=${disposition}`,
+    );
+    documentWindow.location.href = document.downloadUrl;
   } catch (error) {
-    documentWindow.close()
-    await showError('Offer letter could not be opened', api.errorMessage(error))
+    documentWindow.close();
+    await showError("Offer letter could not be opened", api.errorMessage(error));
   } finally {
-    openingOfferDocument.value = false
+    openingOfferDocument.value = false;
   }
 }
 
 function synchronizeSelectedDocument(preferredDocumentId?: string | null) {
-  const requirements = workspace.value?.documents.requirements ?? []
-  const currentDocumentId = preferredDocumentId ?? selectedDocument.value?.documentId
-  const nextDocument = requirements.find(requirement => requirement.documentId === currentDocumentId)
-    ?? requirements.find(requirement => requirement.state === 'PENDING' && requirement.documentId)
-    ?? requirements.find(requirement => requirement.documentId)
-    ?? requirements[0]
-    ?? null
+  const requirements = workspace.value?.documents.requirements ?? [];
+  const currentDocumentId = preferredDocumentId ?? selectedDocument.value?.documentId;
+  const nextDocument =
+    requirements.find((requirement) => requirement.documentId === currentDocumentId) ??
+    requirements.find((requirement) => requirement.state === "PENDING" && requirement.documentId) ??
+    requirements.find((requirement) => requirement.documentId) ??
+    requirements[0] ??
+    null;
 
   if (!nextDocument) {
-    selectedDocument.value = null
-    documentDownload.value = null
-    documentPreviewError.value = ''
-    return
+    selectedDocument.value = null;
+    documentDownload.value = null;
+    documentPreviewError.value = "";
+    return;
   }
 
-  const previewAlreadyLoaded = nextDocument.documentId
-    && nextDocument.documentId === documentDownload.value?.documentId
-  selectedDocument.value = nextDocument
-  if (!previewAlreadyLoaded) loadDocumentPreview(nextDocument)
+  const previewAlreadyLoaded =
+    nextDocument.documentId && nextDocument.documentId === documentDownload.value?.documentId;
+  selectedDocument.value = nextDocument;
+  if (!previewAlreadyLoaded) loadDocumentPreview(nextDocument);
 }
 
 async function selectDocument(requirement: ApplicationDocumentRequirementState) {
-  selectedDocument.value = requirement
-  await loadDocumentPreview(requirement)
+  selectedDocument.value = requirement;
+  await loadDocumentPreview(requirement);
 }
 
 async function loadDocumentPreview(requirement: ApplicationDocumentRequirementState) {
-  documentDownload.value = null
-  documentPreviewError.value = ''
-  if (!requirement.documentId) return
+  documentDownload.value = null;
+  documentPreviewError.value = "";
+  if (!requirement.documentId) return;
 
-  loadingDocumentPreview.value = true
+  loadingDocumentPreview.value = true;
   try {
     documentDownload.value = await api.request<UploadedDocumentDownload>(
-      `/api/documents/uploads/${requirement.documentId}/download?disposition=inline`
-    )
+      `/api/documents/uploads/${requirement.documentId}/download?disposition=inline`,
+    );
   } catch (error) {
-    documentPreviewError.value = api.errorMessage(error, 'The document preview could not be loaded.')
+    documentPreviewError.value = api.errorMessage(
+      error,
+      "The document preview could not be loaded.",
+    );
   } finally {
-    loadingDocumentPreview.value = false
+    loadingDocumentPreview.value = false;
   }
 }
 
 async function returnApplicationToDraft() {
-  if (!application.value) return
+  if (!application.value) return;
   const result = await Swal.fire({
-    title: 'Return application to draft?',
+    title: "Return application to draft?",
     text: `${application.value.applicationNumber} will reopen for the applicant to make corrections and submit again.`,
-    input: 'textarea',
-    inputLabel: 'Required correction',
-    inputPlaceholder: 'Explain exactly what the applicant must edit',
-    inputAttributes: { maxlength: '1000' },
-    inputValidator: value => value.trim().length >= 10
-      ? undefined
-      : 'Record at least 10 characters explaining the required correction.',
-    icon: 'warning',
+    input: "textarea",
+    inputLabel: "Required correction",
+    inputPlaceholder: "Explain exactly what the applicant must edit",
+    inputAttributes: { maxlength: "1000" },
+    inputValidator: (value) =>
+      value.trim().length >= 10
+        ? undefined
+        : "Record at least 10 characters explaining the required correction.",
+    icon: "warning",
     showCancelButton: true,
-    confirmButtonText: 'Return to draft',
-    cancelButtonText: 'Cancel',
-    confirmButtonColor: '#20743a'
-  })
-  if (!result.isConfirmed) return
+    confirmButtonText: "Return to draft",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "var(--color-uzazure-600)",
+  });
+  if (!result.isConfirmed) return;
 
-  returningToDraft.value = true
+  returningToDraft.value = true;
   try {
     await api.request<AdmissionsApplicationSummary>(
       `/api/admissions/applications/${application.value.id}/return-to-draft`,
-      { method: 'POST', body: { reason: result.value.trim() } }
-    )
-    await loadApplication({ background: true })
+      { method: "POST", body: { reason: result.value.trim() } },
+    );
+    await loadApplication({ background: true });
     await showSuccess(
-      'Application returned to draft',
-      'The applicant can now edit the application and submit it again.'
-    )
+      "Application returned to draft",
+      "The applicant can now edit the application and submit it again.",
+    );
   } catch (error) {
-    await showError('Application could not be returned to draft', api.errorMessage(error))
+    await showError("Application could not be returned to draft", api.errorMessage(error));
   } finally {
-    returningToDraft.value = false
+    returningToDraft.value = false;
   }
 }
 
 async function verifySelectedDocument() {
-  const requirement = selectedDocument.value
-  if (!requirement?.documentId || requirement.state !== 'PENDING') return
+  const requirement = selectedDocument.value;
+  if (!requirement?.documentId || requirement.state !== "PENDING") return;
 
   const result = await Swal.fire({
-    title: 'Verify this document?',
+    title: "Verify this document?",
     text: `${requirement.requirementName} will be accepted as supporting evidence.`,
-    input: 'textarea',
-    inputLabel: 'Verification comment (optional)',
-    inputPlaceholder: 'Record what was checked and matched',
-    inputAttributes: { maxlength: '500' },
-    icon: 'question',
+    input: "textarea",
+    inputLabel: "Verification comment (optional)",
+    inputPlaceholder: "Record what was checked and matched",
+    inputAttributes: { maxlength: "500" },
+    icon: "question",
     showCancelButton: true,
-    confirmButtonText: 'Verify document',
-    cancelButtonText: 'Cancel',
-    confirmButtonColor: '#20743a'
-  })
-  if (!result.isConfirmed) return
+    confirmButtonText: "Verify document",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "var(--color-uzazure-600)",
+  });
+  if (!result.isConfirmed) return;
 
-  await saveDocumentDecision('VERIFIED', String(result.value ?? '').trim() || null)
+  await saveDocumentDecision("VERIFIED", String(result.value ?? "").trim() || null);
 }
 
 async function rejectSelectedDocument() {
-  const requirement = selectedDocument.value
-  if (!requirement?.documentId || requirement.state !== 'PENDING') return
+  const requirement = selectedDocument.value;
+  if (!requirement?.documentId || requirement.state !== "PENDING") return;
 
   const result = await Swal.fire({
-    title: 'Request a replacement?',
+    title: "Request a replacement?",
     text: `${requirement.requirementName} will be rejected and the applicant will receive the reason.`,
-    input: 'textarea',
-    inputLabel: 'Rejection reason',
-    inputPlaceholder: 'State the missing, unreadable, expired, or mismatched evidence',
-    inputAttributes: { maxlength: '500' },
-    inputValidator: value => value.trim().length >= 10
-      ? undefined
-      : 'Record at least 10 characters explaining what must be corrected.',
-    icon: 'warning',
+    input: "textarea",
+    inputLabel: "Rejection reason",
+    inputPlaceholder: "State the missing, unreadable, expired, or mismatched evidence",
+    inputAttributes: { maxlength: "500" },
+    inputValidator: (value) =>
+      value.trim().length >= 10
+        ? undefined
+        : "Record at least 10 characters explaining what must be corrected.",
+    icon: "warning",
     showCancelButton: true,
-    confirmButtonText: 'Request replacement',
-    cancelButtonText: 'Cancel',
-    confirmButtonColor: '#dc2626'
-  })
-  if (!result.isConfirmed) return
+    confirmButtonText: "Request replacement",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#dc2626",
+  });
+  if (!result.isConfirmed) return;
 
-  await saveDocumentDecision('REJECTED', result.value.trim())
+  await saveDocumentDecision("REJECTED", result.value.trim());
 }
 
-async function saveDocumentDecision(decision: 'VERIFIED' | 'REJECTED', commentOrReason: string | null) {
-  const requirement = selectedDocument.value
-  if (!requirement?.documentId) return
-
-  savingDocumentDecision.value = true
+async function decideIdentityNameCorrection(decision: "approve" | "reject") {
+  const correction = identityNameCorrection.value;
+  if (!correction?.id || correction.status !== "REQUESTED") return;
+  const approving = decision === "approve";
+  const result = await Swal.fire({
+    title: approving ? "Approve official-name correction?" : "Reject official-name correction?",
+    text: approving
+      ? "The application snapshot, applicant profile, Core account, and Keycloak profile will be synchronized to the document name."
+      : "The registered account name will remain unchanged.",
+    input: "textarea",
+    inputLabel: approving ? "Approval reason and evidence checked" : "Rejection reason",
+    inputPlaceholder: approving
+      ? "Record the identity document and comparison completed"
+      : "Explain what the applicant must correct",
+    inputAttributes: { maxlength: "1000" },
+    inputValidator: (value) =>
+      value.trim().length >= 10 ? undefined : "Record at least 10 characters for the audit trail.",
+    icon: approving ? "question" : "warning",
+    showCancelButton: true,
+    confirmButtonText: approving ? "Approve and synchronize" : "Reject correction",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: approving ? "var(--color-uzazure-600)" : "#dc2626",
+  });
+  if (!result.isConfirmed) return;
+  identityNameDecisionWorking.value = true;
   try {
-    const action = decision === 'VERIFIED' ? 'verify' : 'reject'
-    const body = decision === 'VERIFIED'
-      ? { expectedVersion: requirement.documentVersion, comment: commentOrReason }
-      : { expectedVersion: requirement.documentVersion, reason: commentOrReason }
-    await api.request(`/api/documents/uploads/${requirement.documentId}/${action}`, { method: 'POST', body })
-    await refreshDocumentProjection(requirement.documentId, decision)
-    if (decision === 'VERIFIED') {
-      await showSuccess('Document verified', `${requirement.requirementName} is now accepted evidence.`)
-    } else {
-      await showSuccess('Replacement requested', 'The applicant will receive the recorded reason and can upload corrected evidence.')
-    }
+    await api.request(`/api/admissions/identity-name-corrections/${correction.id}/${decision}`, {
+      method: "POST",
+      body: { reason: result.value.trim() },
+    });
+    await loadApplication({ background: true });
+    await showSuccess(
+      approving ? "Official name synchronized" : "Name correction rejected",
+      approving
+        ? "Admissions and the signed-in account now use the approved document name. The audit records retain both values."
+        : "The applicant can review the reason and submit corrected evidence or a new request.",
+    );
   } catch (error) {
-    await showError('Document decision could not be recorded', api.errorMessage(error))
+    await showError(
+      approving ? "Official name could not be synchronized" : "Correction could not be rejected",
+      api.errorMessage(error),
+    );
   } finally {
-    savingDocumentDecision.value = false
+    identityNameDecisionWorking.value = false;
   }
 }
 
-async function refreshDocumentProjection(documentId: string, expectedState: 'VERIFIED' | 'REJECTED') {
+async function saveDocumentDecision(
+  decision: "VERIFIED" | "REJECTED",
+  commentOrReason: string | null,
+) {
+  const requirement = selectedDocument.value;
+  if (!requirement?.documentId) return;
+
+  savingDocumentDecision.value = true;
+  try {
+    const action = decision === "VERIFIED" ? "verify" : "reject";
+    const body =
+      decision === "VERIFIED"
+        ? { expectedVersion: requirement.documentVersion, comment: commentOrReason }
+        : { expectedVersion: requirement.documentVersion, reason: commentOrReason };
+    await api.request(`/api/documents/uploads/${requirement.documentId}/${action}`, {
+      method: "POST",
+      body,
+    });
+    await refreshDocumentProjection(requirement.documentId, decision);
+    if (decision === "VERIFIED") {
+      await showSuccess(
+        "Document verified",
+        `${requirement.requirementName} is now accepted evidence.`,
+      );
+    } else {
+      await showSuccess(
+        "Replacement requested",
+        "The applicant will receive the recorded reason and can upload corrected evidence.",
+      );
+    }
+  } catch (error) {
+    await showError("Document decision could not be recorded", api.errorMessage(error));
+  } finally {
+    savingDocumentDecision.value = false;
+  }
+}
+
+async function refreshDocumentProjection(
+  documentId: string,
+  expectedState: "VERIFIED" | "REJECTED",
+) {
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    await loadApplication({ background: true, preferredDocumentId: documentId })
-    const projectedDocument = workspace.value?.documents.requirements.find(requirement => requirement.documentId === documentId)
-    if (projectedDocument?.state === expectedState) return
-    await new Promise(resolve => window.setTimeout(resolve, 200 * (attempt + 1)))
+    await loadApplication({ background: true, preferredDocumentId: documentId });
+    const projectedDocument = workspace.value?.documents.requirements.find(
+      (requirement) => requirement.documentId === documentId,
+    );
+    if (projectedDocument?.state === expectedState) return;
+    await new Promise((resolve) => window.setTimeout(resolve, 200 * (attempt + 1)));
   }
 }
 
 async function downloadSelectedDocument() {
-  const documentId = selectedDocument.value?.documentId
-  if (!documentId) return
+  const documentId = selectedDocument.value?.documentId;
+  if (!documentId) return;
 
-  downloadingDocument.value = true
+  downloadingDocument.value = true;
   try {
     const download = await api.request<UploadedDocumentDownload>(
-      `/api/documents/uploads/${documentId}/download`
-    )
-    const link = window.document.createElement('a')
-    link.href = download.downloadUrl
-    link.target = '_blank'
-    link.rel = 'noopener noreferrer'
-    link.download = download.originalFileName
-    link.click()
+      `/api/documents/uploads/${documentId}/download`,
+    );
+    const link = window.document.createElement("a");
+    link.href = download.downloadUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.download = download.originalFileName;
+    link.click();
   } catch (error) {
-    await showError('Document could not be downloaded', api.errorMessage(error))
+    await showError("Document could not be downloaded", api.errorMessage(error));
   } finally {
-    downloadingDocument.value = false
+    downloadingDocument.value = false;
   }
 }
 
 async function expandDocumentPreview() {
-  const download = documentDownload.value
-  if (!download) return
+  const download = documentDownload.value;
+  if (!download) return;
 
-  const previewTitle = selectedDocument.value?.fileName
-    ?? selectedDocument.value?.requirementName
-    ?? download.originalFileName
+  const previewTitle =
+    selectedDocument.value?.fileName ??
+    selectedDocument.value?.requirementName ??
+    download.originalFileName;
 
   await Swal.fire({
     title: previewTitle,
-    html: '<div data-expanded-document-preview></div>',
-    width: 'min(96vw, 88rem)',
-    padding: '1rem',
+    html: "<div data-expanded-document-preview></div>",
+    width: "min(96vw, 88rem)",
+    padding: "1rem",
     heightAuto: false,
-    background: '#ffffff',
-    color: '#0f172a',
+    background: "#ffffff",
+    color: "#0f172a",
     showConfirmButton: false,
     showCloseButton: true,
-    closeButtonAriaLabel: 'Close expanded document preview',
+    closeButtonAriaLabel: "Close expanded document preview",
     customClass: {
-      popup: 'border-t-4 border-primary',
-      title: 'break-all pr-10 text-left text-xl',
-      htmlContainer: 'm-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50'
+      popup: "border-t-4 border-primary",
+      title: "break-all pr-10 text-left text-xl",
+      htmlContainer: "m-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50",
     },
     didOpen: () => {
-      const popup = Swal.getPopup()
+      const popup = Swal.getPopup();
       if (popup) {
-        popup.style.borderTop = '4px solid #20743a'
-        popup.style.opacity = '1'
+        popup.style.borderTop = "4px solid var(--color-uzazure-600)";
+        popup.style.opacity = "1";
       }
 
-      const title = Swal.getTitle()
+      const title = Swal.getTitle();
       if (title) {
-        title.style.margin = '0 0 0.75rem'
-        title.style.paddingRight = '3rem'
-        title.style.fontSize = '1.25rem'
-        title.style.lineHeight = '1.5'
-        title.style.textAlign = 'left'
-        title.style.wordBreak = 'break-word'
+        title.style.margin = "0 0 0.75rem";
+        title.style.paddingRight = "3rem";
+        title.style.fontSize = "1.25rem";
+        title.style.lineHeight = "1.5";
+        title.style.textAlign = "left";
+        title.style.wordBreak = "break-word";
       }
 
-      const htmlContainer = Swal.getHtmlContainer()
-      if (htmlContainer) htmlContainer.style.margin = '0'
-      const previewHost = htmlContainer?.querySelector<HTMLElement>('[data-expanded-document-preview]')
-      if (!previewHost) return
+      const htmlContainer = Swal.getHtmlContainer();
+      if (htmlContainer) htmlContainer.style.margin = "0";
+      const previewHost = htmlContainer?.querySelector<HTMLElement>(
+        "[data-expanded-document-preview]",
+      );
+      if (!previewHost) return;
 
-      if (download.mimeType.startsWith('image/')) {
-        const image = window.document.createElement('img')
-        image.src = download.downloadUrl
-        image.alt = `${selectedDocument.value?.requirementName ?? 'Application document'} expanded preview`
-        image.dataset.testid = 'expanded-document-preview-image'
-        image.style.cssText = 'display:block;width:100%;height:min(78vh,56rem);object-fit:contain;background:#f8fafc;'
-        previewHost.append(image)
-        return
+      if (download.mimeType.startsWith("image/")) {
+        const image = window.document.createElement("img");
+        image.src = download.downloadUrl;
+        image.alt = `${selectedDocument.value?.requirementName ?? "Application document"} expanded preview`;
+        image.dataset.testid = "expanded-document-preview-image";
+        image.style.cssText =
+          "display:block;width:100%;height:min(78vh,56rem);object-fit:contain;background:#f8fafc;";
+        previewHost.append(image);
+        return;
       }
 
-      if (download.mimeType === 'application/pdf') {
-        const frame = window.document.createElement('iframe')
-        frame.src = download.downloadUrl
-        frame.title = `${selectedDocument.value?.requirementName ?? 'Application document'} expanded preview`
-        frame.dataset.testid = 'expanded-document-preview-frame'
-        frame.style.cssText = 'display:block;width:100%;height:min(78vh,56rem);border:0;background:white;'
-        previewHost.append(frame)
-        return
+      if (download.mimeType === "application/pdf") {
+        const frame = window.document.createElement("iframe");
+        frame.src = download.downloadUrl;
+        frame.title = `${selectedDocument.value?.requirementName ?? "Application document"} expanded preview`;
+        frame.dataset.testid = "expanded-document-preview-frame";
+        frame.style.cssText =
+          "display:block;width:100%;height:min(78vh,56rem);border:0;background:white;";
+        previewHost.append(frame);
+        return;
       }
 
-      const message = window.document.createElement('div')
-      message.className = 'flex min-h-80 items-center justify-center p-8 text-center text-sm text-gray-600'
-      message.textContent = 'A larger inline preview is not available for this file type. Download the document to review it.'
-      previewHost.append(message)
+      const message = window.document.createElement("div");
+      message.className =
+        "flex min-h-80 items-center justify-center p-8 text-center text-sm text-gray-600";
+      message.textContent =
+        "A larger inline preview is not available for this file type. Download the document to review it.";
+      previewHost.append(message);
     },
     willClose: () => {
-      const expandedFrame = Swal.getHtmlContainer()?.querySelector<HTMLIFrameElement>('[data-testid="expanded-document-preview-frame"]')
-      if (expandedFrame) expandedFrame.src = 'about:blank'
-    }
-  })
+      const expandedFrame = Swal.getHtmlContainer()?.querySelector<HTMLIFrameElement>(
+        '[data-testid="expanded-document-preview-frame"]',
+      );
+      if (expandedFrame) expandedFrame.src = "about:blank";
+    },
+  });
 }
 
 function applicationStatusTone(status: string) {
-  if (status === 'SUBMITTED' || status === 'UNDER_REVIEW') return 'info' as const
-  if (['ELIGIBLE', 'SHORTLISTED', 'SELECTED', 'OFFERED', 'ACCEPTED', 'CONVERTED'].includes(status)) return 'success' as const
-  if (['INCOMPLETE', 'NOT_ELIGIBLE', 'DECLINED', 'WITHDRAWN'].includes(status)) return 'error' as const
-  return 'neutral' as const
+  if (status === "SUBMITTED" || status === "UNDER_REVIEW") return "info" as const;
+  if (["ELIGIBLE", "SHORTLISTED", "SELECTED", "OFFERED", "ACCEPTED", "CONVERTED"].includes(status))
+    return "success" as const;
+  if (["INCOMPLETE", "NOT_ELIGIBLE", "DECLINED", "WITHDRAWN"].includes(status))
+    return "error" as const;
+  return "neutral" as const;
 }
 
-function paymentStatusTone(status: AdmissionsApplicationSummary['paymentClearanceStatus']) {
-  if (['PAID', 'WAIVED', 'NOT_REQUIRED'].includes(status)) return 'success' as const
-  return 'warning' as const
+function paymentStatusTone(status: AdmissionsApplicationSummary["paymentClearanceStatus"]) {
+  if (["PAID", "WAIVED", "NOT_REQUIRED"].includes(status)) return "success" as const;
+  return "warning" as const;
 }
 
-function sectionStatusTone(status: ApplicationWorkspaceSection['status']) {
-  if (status === 'COMPLETE' || status === 'VERIFIED') return 'success' as const
-  if (status === 'REJECTED' || status === 'CORRECTION_REQUIRED') return 'error' as const
-  return 'warning' as const
+function sectionStatusTone(status: ApplicationWorkspaceSection["status"]) {
+  if (status === "COMPLETE" || status === "VERIFIED") return "success" as const;
+  if (status === "REJECTED" || status === "CORRECTION_REQUIRED") return "error" as const;
+  return "warning" as const;
 }
 
-function qualificationStatusTone(status: ApplicantQualificationSitting['verificationStatus']) {
-  if (status === 'VERIFIED') return 'success' as const
-  if (status === 'REJECTED') return 'error' as const
-  return 'warning' as const
+function qualificationStatusTone(status: ApplicantQualificationSitting["verificationStatus"]) {
+  if (status === "VERIFIED") return "success" as const;
+  if (status === "REJECTED") return "error" as const;
+  return "warning" as const;
 }
 
-function documentStatusTone(state: ApplicationDocumentRequirementState['state']) {
-  if (state === 'VERIFIED') return 'success' as const
-  if (state === 'REJECTED' || state === 'MISSING') return 'error' as const
-  return 'warning' as const
+function documentStatusTone(state: ApplicationDocumentRequirementState["state"]) {
+  if (state === "VERIFIED") return "success" as const;
+  if (state === "REJECTED" || state === "MISSING") return "error" as const;
+  return "warning" as const;
 }
 
 function refereeInvitationStatusTone(status: string) {
-  if (status === 'SUBMITTED') return 'success' as const
-  if (status === 'REVOKED' || status === 'EXPIRED') return 'error' as const
-  if (status === 'NOT_SENT') return 'neutral' as const
-  return 'warning' as const
+  if (status === "SUBMITTED") return "success" as const;
+  if (status === "REVOKED" || status === "EXPIRED") return "error" as const;
+  if (status === "NOT_SENT") return "neutral" as const;
+  return "warning" as const;
 }
 
 function refereeInvitationStatusLabel(status: string) {
-  if (status === 'SUBMITTED') return 'Reference received'
-  if (status === 'OPENED') return 'Invitation opened'
-  if (status === 'SENT') return 'Invitation sent'
-  return formatStatus(status)
+  if (status === "SUBMITTED") return "Reference received";
+  if (status === "OPENED") return "Invitation opened";
+  if (status === "SENT") return "Invitation sent";
+  return formatStatus(status);
 }
 
-function workflowStageTone(state: AdmissionsApplicationWorkflowStage['state']) {
-  if (state === 'COMPLETED') return 'success' as const
-  if (state === 'CURRENT') return 'warning' as const
-  return 'neutral' as const
+function workflowStageTone(state: AdmissionsApplicationWorkflowStage["state"]) {
+  if (state === "COMPLETED") return "success" as const;
+  if (state === "CURRENT") return "warning" as const;
+  return "neutral" as const;
 }
 
-function workflowStageIcon(state: AdmissionsApplicationWorkflowStage['state']) {
-  if (state === 'COMPLETED') return 'i-lucide-check'
-  if (state === 'CURRENT') return 'i-lucide-circle-dot'
-  if (state === 'NOT_APPLICABLE') return 'i-lucide-minus'
-  return 'i-lucide-lock-keyhole'
+function workflowStageIcon(state: AdmissionsApplicationWorkflowStage["state"]) {
+  if (state === "COMPLETED") return "i-lucide-check";
+  if (state === "CURRENT") return "i-lucide-circle-dot";
+  if (state === "NOT_APPLICABLE") return "i-lucide-minus";
+  return "i-lucide-lock-keyhole";
 }
 
-function workflowStageMarkerClasses(state: AdmissionsApplicationWorkflowStage['state']) {
-  if (state === 'COMPLETED') return 'border-primary bg-primary text-white'
-  if (state === 'CURRENT') return 'border-warning bg-warning/10 text-warning'
-  return 'border-muted bg-elevated text-muted'
+function workflowStageMarkerClasses(state: AdmissionsApplicationWorkflowStage["state"]) {
+  if (state === "COMPLETED") return "border-primary bg-primary text-white";
+  if (state === "CURRENT") return "border-warning bg-warning/10 text-warning";
+  return "border-muted bg-elevated text-muted";
 }
 
 function currentWorkflowStep(progress: AdmissionsApplicationWorkflowProgress) {
-  return progress.stages.find(stage => stage.code === progress.currentStageCode)?.sequence ?? 1
+  return progress.stages.find((stage) => stage.code === progress.currentStageCode)?.sequence ?? 1;
 }
 
-function paymentStatusLabel(status: AdmissionsApplicationSummary['paymentClearanceStatus']) {
+function paymentStatusLabel(status: AdmissionsApplicationSummary["paymentClearanceStatus"]) {
   return {
-    NOT_REQUIRED: 'Fee not required',
-    PENDING: 'Payment pending',
-    UNRATED: 'Rate pending',
-    PAID: 'Payment cleared',
-    WAIVED: 'Fee waived'
-  }[status]
+    NOT_REQUIRED: "Fee not required",
+    PENDING: "Payment pending",
+    UNRATED: "Rate pending",
+    PAID: "Payment cleared",
+    WAIVED: "Fee waived",
+  }[status];
 }
 
 function formatStatus(value: string | null | undefined) {
-  if (!value) return 'Not captured'
-  return value.toLowerCase().replaceAll('_', ' ').replace(/(^|\s)\S/g, character => character.toUpperCase())
+  if (!value) return "Not captured";
+  return value
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replace(/(^|\s)\S/g, (character) => character.toUpperCase());
 }
 
 function formatDate(value: string | null | undefined) {
-  if (!value) return 'Not captured'
-  return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium' }).format(new Date(value))
+  if (!value) return "Not captured";
+  return new Intl.DateTimeFormat("en-ZW", { dateStyle: "medium" }).format(new Date(value));
 }
 
 function formatDateTime(value: string | null | undefined) {
-  if (!value) return 'Not captured'
-  return new Intl.DateTimeFormat('en-ZW', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  if (!value) return "Not captured";
+  return new Intl.DateTimeFormat("en-ZW", { dateStyle: "medium", timeStyle: "short" }).format(
+    new Date(value),
+  );
 }
 </script>
 
@@ -702,10 +968,15 @@ function formatDateTime(value: string | null | undefined) {
       <UDashboardToolbar v-if="application">
         <template #left>
           <span class="font-mono text-xs text-muted">{{ application.applicantNumber }}</span>
-          <span class="text-xs text-muted">{{ application.intakeCode }} · {{ application.applicationTypeName }}</span>
+          <span class="text-xs text-muted"
+            >{{ application.intakeCode }} · {{ application.applicationTypeName }}</span
+          >
         </template>
         <template #right>
-          <EmhareStatusPill :label="formatStatus(application.status)" :tone="applicationStatusTone(application.status)" />
+          <EmhareStatusPill
+            :label="formatStatus(application.status)"
+            :tone="applicationStatusTone(application.status)"
+          />
           <EmhareStatusPill
             :label="paymentStatusLabel(application.paymentClearanceStatus)"
             :tone="paymentStatusTone(application.paymentClearanceStatus)"
@@ -731,7 +1002,14 @@ function formatDateTime(value: string | null | undefined) {
           icon="i-lucide-circle-alert"
           title="Applicant application unavailable"
           :description="loadError"
-          :actions="[{ label: 'Return to workflow', to: returnToWorkflowPath, color: 'neutral', variant: 'outline' }]"
+          :actions="[
+            {
+              label: 'Return to workflow',
+              to: returnToWorkflowPath,
+              color: 'neutral',
+              variant: 'outline',
+            },
+          ]"
         />
       </div>
 
@@ -744,22 +1022,34 @@ function formatDateTime(value: string | null | undefined) {
           title="Applicant profile for academic-unit recommendation"
           description="This is a read-only consolidated view. Return to the recommendation queue to claim the application or record your recommendation."
         />
-        <section class="overflow-hidden rounded-xl border border-muted bg-default shadow-sm" aria-labelledby="applicant-name">
+        <section
+          class="overflow-hidden rounded-xl border border-muted bg-default shadow-sm"
+          aria-labelledby="applicant-name"
+        >
           <div class="h-1.5 bg-primary" />
           <div class="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex min-w-0 items-center gap-4">
-              <div class="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary text-lg font-semibold text-white shadow-sm">
+              <div
+                class="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary text-lg font-semibold text-white shadow-sm"
+              >
                 {{ applicantInitials }}
               </div>
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
-                  <h1 id="applicant-name" class="truncate text-2xl font-semibold tracking-tight text-highlighted">
+                  <h1
+                    id="applicant-name"
+                    class="truncate text-2xl font-semibold tracking-tight text-highlighted"
+                  >
                     {{ application.applicantName }}
                   </h1>
-                  <EmhareStatusPill :label="formatStatus(profile.applicantCategoryCode)" tone="neutral" />
+                  <EmhareStatusPill
+                    :label="formatStatus(profile.applicantCategoryCode)"
+                    tone="neutral"
+                  />
                 </div>
                 <p class="mt-1 text-sm text-muted">
-                  {{ profile.primaryEmail }}<span v-if="profile.primaryPhone"> · {{ profile.primaryPhone }}</span>
+                  {{ profile.primaryEmail
+                  }}<span v-if="profile.primaryPhone"> · {{ profile.primaryPhone }}</span>
                 </p>
                 <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-muted">
                   <span>{{ profile.applicantNumber }}</span>
@@ -768,7 +1058,10 @@ function formatDateTime(value: string | null | undefined) {
               </div>
             </div>
 
-            <div v-if="!isAcademicRecommendationProfile" class="flex flex-wrap items-center gap-2 lg:justify-end">
+            <div
+              v-if="!isAcademicRecommendationProfile"
+              class="flex flex-wrap items-center gap-2 lg:justify-end"
+            >
               <UButton
                 v-if="['SUBMITTED', 'UNDER_REVIEW'].includes(application.status)"
                 label="Request applicant correction"
@@ -795,48 +1088,218 @@ function formatDateTime(value: string | null | undefined) {
             </div>
             <div class="border-b border-muted px-5 py-3 lg:border-r lg:border-b-0">
               <p class="text-xs uppercase tracking-wide text-muted">Application type</p>
-              <p class="mt-1 text-sm font-medium text-highlighted">{{ application.applicationTypeName }}</p>
+              <p class="mt-1 text-sm font-medium text-highlighted">
+                {{ application.applicationTypeName }}
+              </p>
             </div>
             <div class="border-b border-muted px-5 py-3 sm:border-r sm:border-b-0 lg:border-r">
               <p class="text-xs uppercase tracking-wide text-muted">Workflow</p>
-              <p class="mt-1 text-sm font-medium text-highlighted">{{ formatStatus(application.status) }}</p>
+              <p class="mt-1 text-sm font-medium text-highlighted">
+                {{ formatStatus(application.status) }}
+              </p>
             </div>
             <div class="px-5 py-3">
               <p class="text-xs uppercase tracking-wide text-muted">Payment reference</p>
-              <p class="mt-1 truncate font-mono text-sm font-medium text-highlighted">{{ application.payment?.reference ?? 'Not required' }}</p>
+              <p class="mt-1 truncate font-mono text-sm font-medium text-highlighted">
+                {{ application.payment?.reference ?? "Not required" }}
+              </p>
             </div>
           </div>
         </section>
 
-        <UCard v-if="workItem" :ui="{ body: 'p-5 sm:p-5' }" data-testid="next-admissions-action"><div class="flex flex-wrap items-start justify-between gap-3">
-            <div><h2 class="text-lg font-semibold text-highlighted">Current Admissions action</h2><p class="mt-1 text-sm text-muted">Transitions and permissions are supplied by the server for this case.</p></div>
-            <EmhareStatusPill :label="formatStatus(workspace.workflowProgress.currentStageCode)" tone="info" />
+        <EmhareIdentityNameMismatchPanel
+          v-if="identityNameCorrection"
+          :correction="identityNameCorrection"
+          mode="staff"
+          :loading="identityNameDecisionWorking"
+          :editable="false"
+          @approve="decideIdentityNameCorrection('approve')"
+          @reject="decideIdentityNameCorrection('reject')"
+        />
+
+        <UCard v-if="workItem" :ui="{ body: 'p-5 sm:p-5' }" data-testid="next-admissions-action"
+          ><div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-semibold text-highlighted">Current Admissions action</h2>
+              <p class="mt-1 text-sm text-muted">
+                Transitions and permissions are supplied by the server for this case.
+              </p>
+            </div>
+            <EmhareStatusPill
+              :label="formatStatus(workspace.workflowProgress.currentStageCode)"
+              tone="info"
+            />
           </div>
-          <div v-if="recordedEligibility" class="mt-4 flex flex-wrap items-start justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4" data-testid="recorded-eligibility">
-            <div><p class="text-sm font-semibold text-highlighted">Recorded eligibility</p><p class="mt-1 text-sm text-muted">{{ recordedEligibility.reason }}</p></div>
-            <EmhareStatusPill :label="formatStatus(recordedEligibility.toStatus)" :tone="recordedEligibility.toStatus === 'ELIGIBLE' ? 'success' : 'error'" />
+          <div
+            v-if="recordedEligibility"
+            class="mt-4 flex flex-wrap items-start justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4"
+            data-testid="recorded-eligibility"
+          >
+            <div>
+              <p class="text-sm font-semibold text-highlighted">Recorded eligibility</p>
+              <p class="mt-1 text-sm text-muted">{{ recordedEligibility.reason }}</p>
+            </div>
+            <EmhareStatusPill
+              :label="formatStatus(recordedEligibility.toStatus)"
+              :tone="recordedEligibility.toStatus === 'ELIGIBLE' ? 'success' : 'error'"
+            />
           </div>
-          <UAlert v-if="qualificationsAwaitingDecision.length" class="mt-4" color="warning" variant="soft" icon="i-lucide-graduation-cap" :title="`Verify ${qualificationsAwaitingDecision.length} qualification ${qualificationsAwaitingDecision.length === 1 ? 'sitting' : 'sittings'}`" description="Open Academic evidence below and record Verify or Reject for every captured sitting. This application cannot enter Eligibility until every sitting is verified." /><UAlert v-else-if="application.status === 'SUBMITTED' && !workItem.blockers.length" class="mt-4" color="info" variant="soft" icon="i-lucide-loader-circle" title="Review starts automatically" description="Once payment, documents, qualifications and duplicate checks are clear, this application moves to the next action without a manual hand-off." />
-          <UAlert v-if="workItem.blockers.length" class="mt-4" color="warning" variant="soft" title="Processing blockers" :description="workItem.blockers.join(' · ')" />
+          <UAlert
+            v-if="qualificationsAwaitingDecision.length"
+            class="mt-4"
+            color="warning"
+            variant="soft"
+            icon="i-lucide-graduation-cap"
+            :title="`Verify ${qualificationsAwaitingDecision.length} qualification ${qualificationsAwaitingDecision.length === 1 ? 'sitting' : 'sittings'}`"
+            description="Open Academic evidence below and record Verify or Reject for every captured sitting. This application cannot enter Eligibility until every sitting is verified."
+          /><UAlert
+            v-else-if="application.status === 'SUBMITTED' && !workItem.blockers.length"
+            class="mt-4"
+            color="info"
+            variant="soft"
+            icon="i-lucide-loader-circle"
+            title="Review starts automatically"
+            description="Once payment, documents, qualifications and duplicate checks are clear, this application moves to the next action without a manual hand-off."
+          />
+          <UAlert
+            v-if="workItem.blockers.length"
+            class="mt-4"
+            color="warning"
+            variant="soft"
+            title="Processing blockers"
+            :description="workItem.blockers.join(' · ')"
+          />
           <div class="mt-4 flex flex-wrap gap-2">
-            <UButton v-if="auth.hasPermission('ADMISSIONS_SETUP_MANAGE')" label="Review programme requirements" icon="i-lucide-list-checks" color="neutral" variant="outline" :to="programmeRequirementsRoute" /><UButton v-if="workspace.workflowProgress.currentStageCode === 'ELIGIBILITY' && can('RECALCULATE_ELIGIBILITY')" label="Recalculate eligibility" icon="i-lucide-calculator" color="neutral" variant="outline" :loading="workflowActionLoading" @click="recalculateEligibility" /><UButton v-if="workspace.workflowProgress.currentStageCode === 'ELIGIBILITY' && can('RESOLVE_ELIGIBILITY')" label="Resolve eligibility" icon="i-lucide-list-checks" :loading="workflowActionLoading" @click="resolveEligibility" />
-            <UButton v-if="can('RECORD_ACADEMIC_RECOMMENDATION')" label="Record recommendation" icon="i-lucide-message-square-check" :loading="workflowActionLoading" @click="recordRecommendation" />
-            <UButton v-if="can('RECORD_ADMISSION_DECISION')" label="Record final decision" icon="i-lucide-gavel" :loading="workflowActionLoading" @click="recordDecision" />
-            <UButton v-if="can('RETURN_ACADEMIC_RECOMMENDATION')" label="Return to academic reviewer" icon="i-lucide-undo-2" color="warning" variant="outline" :loading="workflowActionLoading" @click="returnRecommendation" />
-            <UButton v-if="can('UPDATE_OFFER')" label="Edit offer terms" icon="i-lucide-pencil" color="neutral" variant="outline" :loading="workflowActionLoading" @click="updateOfferTerms" />
-            <UButton v-if="can('GENERATE_OFFER_DOCUMENT')" label="Generate and preview offer letter" icon="i-lucide-file-output" color="neutral" variant="outline" :loading="workflowActionLoading" @click="generateOfferDocument" />
-            <UButton v-if="can('PUBLISH_AND_SEND')" label="Publish and send" icon="i-lucide-send" :loading="workflowActionLoading" @click="publishAndSend" />
-            <UButton v-if="can('RETRY_EMAIL')" label="Retry email" icon="i-lucide-refresh-cw" color="warning" variant="outline" :loading="workflowActionLoading" @click="retryOfferEmail" />
+            <UButton
+              v-if="auth.hasPermission('ADMISSIONS_SETUP_MANAGE')"
+              label="Review programme requirements"
+              icon="i-lucide-list-checks"
+              color="neutral"
+              variant="outline"
+              :to="programmeRequirementsRoute"
+            /><UButton
+              v-if="
+                workspace.workflowProgress.currentStageCode === 'ELIGIBILITY' &&
+                can('RECALCULATE_ELIGIBILITY')
+              "
+              label="Recalculate eligibility"
+              icon="i-lucide-calculator"
+              color="neutral"
+              variant="outline"
+              :loading="workflowActionLoading"
+              @click="recalculateEligibility"
+            /><UButton
+              v-if="
+                workspace.workflowProgress.currentStageCode === 'ELIGIBILITY' &&
+                can('RESOLVE_ELIGIBILITY')
+              "
+              label="Resolve eligibility"
+              icon="i-lucide-list-checks"
+              :loading="workflowActionLoading"
+              @click="resolveEligibility"
+            />
+            <UButton
+              v-if="can('RECORD_ACADEMIC_RECOMMENDATION')"
+              label="Record recommendation"
+              icon="i-lucide-message-square-check"
+              :loading="workflowActionLoading"
+              @click="recordRecommendation"
+            />
+            <UButton
+              v-if="can('RECORD_ADMISSION_DECISION')"
+              label="Record final decision"
+              icon="i-lucide-gavel"
+              :loading="workflowActionLoading"
+              @click="recordDecision"
+            />
+            <UButton
+              v-if="can('RETURN_ACADEMIC_RECOMMENDATION')"
+              label="Return to academic reviewer"
+              icon="i-lucide-undo-2"
+              color="warning"
+              variant="outline"
+              :loading="workflowActionLoading"
+              @click="returnRecommendation"
+            />
+            <UButton
+              v-if="can('UPDATE_OFFER')"
+              label="Edit offer terms"
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="outline"
+              :loading="workflowActionLoading"
+              @click="updateOfferTerms"
+            />
+            <UButton
+              v-if="can('GENERATE_OFFER_DOCUMENT')"
+              label="Generate and preview offer letter"
+              icon="i-lucide-file-output"
+              color="neutral"
+              variant="outline"
+              :loading="workflowActionLoading"
+              @click="generateOfferDocument"
+            />
+            <UButton
+              v-if="can('PUBLISH_AND_SEND')"
+              label="Publish and send"
+              icon="i-lucide-send"
+              :loading="workflowActionLoading"
+              @click="publishAndSend"
+            />
+            <UButton
+              v-if="can('RETRY_EMAIL')"
+              label="Retry email"
+              icon="i-lucide-refresh-cw"
+              color="warning"
+              variant="outline"
+              :loading="workflowActionLoading"
+              @click="retryOfferEmail"
+            />
           </div>
-          <div v-if="workItem.offer" class="mt-4 space-y-4 border-t border-muted pt-4" data-testid="staff-offer-letter">
+          <div
+            v-if="workItem.offer"
+            class="mt-4 space-y-4 border-t border-muted pt-4"
+            data-testid="staff-offer-letter"
+          >
             <div class="grid gap-3 sm:grid-cols-3">
-              <div><p class="text-xs uppercase text-muted">Offer</p><p class="font-mono text-sm">{{ workItem.offer.offerNumber }}</p></div>
-              <div><p class="text-xs uppercase text-muted">Current PDF</p><p class="text-sm">{{ latestStoredOfferDocument?.documentNumber ?? 'Not generated' }}</p></div>
-              <div><p class="text-xs uppercase text-muted">Portal / email</p><p class="text-sm">{{ workItem.publications[0] ? `Published · ${formatStatus(workItem.publications[0].emailStatus)}` : 'Not published' }}</p></div>
+              <div>
+                <p class="text-xs uppercase text-muted">Offer</p>
+                <p class="font-mono text-sm">{{ workItem.offer.offerNumber }}</p>
+              </div>
+              <div>
+                <p class="text-xs uppercase text-muted">Current PDF</p>
+                <p class="text-sm">
+                  {{ latestStoredOfferDocument?.documentNumber ?? "Not generated" }}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs uppercase text-muted">Portal / email</p>
+                <p class="text-sm">
+                  {{
+                    workItem.publications[0]
+                      ? `Published · ${formatStatus(workItem.publications[0].emailStatus)}`
+                      : "Not published"
+                  }}
+                </p>
+              </div>
             </div>
             <div v-if="latestStoredOfferDocument" class="flex flex-wrap justify-end gap-2">
-              <UButton label="Preview offer letter" icon="i-lucide-eye" color="neutral" variant="outline" :loading="openingOfferDocument" @click="openOfferDocument('inline')" />
-              <UButton label="Download offer letter" icon="i-lucide-download" color="neutral" variant="outline" :loading="openingOfferDocument" @click="openOfferDocument('attachment')" />
+              <UButton
+                label="Preview offer letter"
+                icon="i-lucide-eye"
+                color="neutral"
+                variant="outline"
+                :loading="openingOfferDocument"
+                @click="openOfferDocument('inline')"
+              />
+              <UButton
+                label="Download offer letter"
+                icon="i-lucide-download"
+                color="neutral"
+                variant="outline"
+                :loading="openingOfferDocument"
+                @click="openOfferDocument('attachment')"
+              />
             </div>
             <UAlert
               v-else
@@ -855,21 +1318,52 @@ function formatDateTime(value: string | null | undefined) {
               <UCard :ui="{ body: 'p-5 sm:p-5' }">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h2 id="readiness-heading" class="text-lg font-semibold text-highlighted">Review readiness</h2>
-                    <p class="mt-1 text-sm text-muted">A single view of completeness before a governed admissions decision.</p>
+                    <h2 id="readiness-heading" class="text-lg font-semibold text-highlighted">
+                      Review readiness
+                    </h2>
+                    <p class="mt-1 text-sm text-muted">
+                      A single view of completeness before a governed admissions decision.
+                    </p>
                   </div>
                   <EmhareStatusPill
-                    :label="workspace.readyForSubmission ? 'Application complete' : 'Attention required'"
+                    :label="
+                      workspace.readyForSubmission ? 'Application complete' : 'Attention required'
+                    "
                     :tone="workspace.readyForSubmission ? 'success' : 'warning'"
                   />
                 </div>
 
                 <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                  <EmhareKpiCard label="Profile" :value="`${profile.completenessPercentage}%`" icon="i-lucide-user-round-check" :tone="profile.completenessPercentage === 100 ? 'success' : 'warning'" />
-                  <EmhareKpiCard label="Sections" :value="`${completedSections}/${workspace.sections.length}`" icon="i-lucide-list-checks" :tone="completedSections === workspace.sections.length ? 'success' : 'warning'" />
-                  <EmhareKpiCard label="Documents" :value="`${documentCounts.uploaded}/${documentCounts.total}`" icon="i-lucide-files" :tone="workspace.documents.requiredDocumentsUploaded ? 'success' : 'error'" />
-                  <EmhareKpiCard label="Programme choices" :value="application.programmeChoices.length" icon="i-lucide-list-ordered" :tone="application.programmeChoices.length ? 'success' : 'error'" />
-                  <EmhareKpiCard label="ZIMSEC points" :value="application.calculatedTotalPoints ?? 'Pending submission'" icon="i-lucide-calculator" :tone="application.calculatedTotalPoints != null ? 'success' : 'neutral'" />
+                  <EmhareKpiCard
+                    label="Profile"
+                    :value="`${profile.completenessPercentage}%`"
+                    icon="i-lucide-user-round-check"
+                    :tone="profile.completenessPercentage === 100 ? 'success' : 'warning'"
+                  />
+                  <EmhareKpiCard
+                    label="Sections"
+                    :value="`${completedSections}/${workspace.sections.length}`"
+                    icon="i-lucide-list-checks"
+                    :tone="completedSections === workspace.sections.length ? 'success' : 'warning'"
+                  />
+                  <EmhareKpiCard
+                    label="Documents"
+                    :value="`${documentCounts.uploaded}/${documentCounts.total}`"
+                    icon="i-lucide-files"
+                    :tone="workspace.documents.requiredDocumentsUploaded ? 'success' : 'error'"
+                  />
+                  <EmhareKpiCard
+                    label="Programme choices"
+                    :value="application.programmeChoices.length"
+                    icon="i-lucide-list-ordered"
+                    :tone="application.programmeChoices.length ? 'success' : 'error'"
+                  />
+                  <EmhareKpiCard
+                    label="ZIMSEC points"
+                    :value="application.calculatedTotalPoints ?? 'Pending submission'"
+                    icon="i-lucide-calculator"
+                    :tone="application.calculatedTotalPoints != null ? 'success' : 'neutral'"
+                  />
                 </div>
 
                 <UAlert
@@ -888,12 +1382,20 @@ function formatDateTime(value: string | null | undefined) {
               <UCard :ui="{ body: 'p-5 sm:p-5' }">
                 <div class="flex items-center gap-2">
                   <UIcon name="i-lucide-contact" class="size-5 text-primary" />
-                  <h2 id="personal-details-heading" class="text-lg font-semibold text-highlighted">Personal and contact details</h2>
+                  <h2 id="personal-details-heading" class="text-lg font-semibold text-highlighted">
+                    Personal and contact details
+                  </h2>
                 </div>
                 <EmhareDescriptionList
                   class="mt-4"
                   :items="[
-                    { label: 'Full name', value: `${profile.titleCode ? `${profile.titleCode} ` : ''}${profile.firstName} ${profile.middleNames ?? ''} ${profile.lastName}`.replace(/\s+/g, ' ').trim() },
+                    {
+                      label: 'Full name',
+                      value:
+                        `${profile.titleCode ? `${profile.titleCode} ` : ''}${profile.firstName} ${profile.middleNames ?? ''} ${profile.lastName}`
+                          .replace(/\s+/g, ' ')
+                          .trim(),
+                    },
                     { label: 'Date of birth', value: formatDate(profile.dateOfBirth) },
                     { label: 'Gender', value: formatStatus(profile.genderCode) },
                     { label: 'Marital status', value: formatStatus(profile.maritalStatusCode) },
@@ -901,10 +1403,13 @@ function formatDateTime(value: string | null | undefined) {
                     { label: 'Passport number', value: profile.passportNumber },
                     { label: 'Place of birth', value: profile.placeOfBirth },
                     { label: 'Sponsor type', value: formatStatus(profile.sponsorTypeCode) },
-                    { label: 'Disability status', value: formatStatus(profile.disabilityStatusCode) },
+                    {
+                      label: 'Disability status',
+                      value: formatStatus(profile.disabilityStatusCode),
+                    },
                     { label: 'Special needs', value: profile.specialNeeds },
                     { label: 'Postal address', value: profile.postalAddress },
-                    { label: 'Residential address', value: profile.residentialAddress }
+                    { label: 'Residential address', value: profile.residentialAddress },
                   ]"
                 />
               </UCard>
@@ -915,9 +1420,16 @@ function formatDateTime(value: string | null | undefined) {
                 <div class="flex items-center justify-between gap-3">
                   <div class="flex items-center gap-2">
                     <UIcon name="i-lucide-list-ordered" class="size-5 text-primary" />
-                    <h2 id="programme-choices-heading" class="text-lg font-semibold text-highlighted">Programme choices</h2>
+                    <h2
+                      id="programme-choices-heading"
+                      class="text-lg font-semibold text-highlighted"
+                    >
+                      Programme choices
+                    </h2>
                   </div>
-                  <span class="text-sm text-muted">{{ application.programmeChoices.length }} recorded</span>
+                  <span class="text-sm text-muted"
+                    >{{ application.programmeChoices.length }} recorded</span
+                  >
                 </div>
 
                 <div v-if="application.programmeChoices.length" class="mt-4 space-y-3">
@@ -926,17 +1438,36 @@ function formatDateTime(value: string | null | undefined) {
                     :key="choice.id"
                     class="grid gap-3 rounded-lg border border-muted p-4 sm:grid-cols-[auto_1fr_auto] sm:items-center"
                   >
-                    <span class="flex size-9 items-center justify-center rounded-lg bg-primary/10 font-semibold text-primary">{{ choice.choiceRank }}</span>
+                    <span
+                      class="flex size-9 items-center justify-center rounded-lg bg-primary/10 font-semibold text-primary"
+                      >{{ choice.choiceRank }}</span
+                    >
                     <div class="min-w-0">
-                      <p class="font-medium text-highlighted">{{ choice.programmeCode }} · {{ choice.programmeName }}</p>
-                      <p class="mt-1 text-sm text-muted">{{ choice.awardName }} · {{ choice.owningAcademicUnitName }}</p>
-                      <p v-if="choice.evaluationSummary" class="mt-2 text-sm text-muted">{{ choice.evaluationSummary }}</p>
-                      <p v-if="choice.decisionReason" class="mt-1 text-sm text-error">{{ choice.decisionReason }}</p>
+                      <p class="font-medium text-highlighted">
+                        {{ choice.programmeCode }} · {{ choice.programmeName }}
+                      </p>
+                      <p class="mt-1 text-sm text-muted">
+                        {{ choice.awardName }} · {{ choice.owningAcademicUnitName }}
+                      </p>
+                      <p v-if="choice.evaluationSummary" class="mt-2 text-sm text-muted">
+                        {{ choice.evaluationSummary }}
+                      </p>
+                      <p v-if="choice.decisionReason" class="mt-1 text-sm text-error">
+                        {{ choice.decisionReason }}
+                      </p>
                     </div>
-                    <EmhareStatusPill :label="formatStatus(choice.choiceStatus)" :tone="applicationStatusTone(choice.choiceStatus)" />
+                    <EmhareStatusPill
+                      :label="formatStatus(choice.choiceStatus)"
+                      :tone="applicationStatusTone(choice.choiceStatus)"
+                    />
                   </article>
                 </div>
-                <EmhareFeedbackState v-else state="empty" title="No programme choices" description="The applicant has not recorded a programme choice." />
+                <EmhareFeedbackState
+                  v-else
+                  state="empty"
+                  title="No programme choices"
+                  description="The applicant has not recorded a programme choice."
+                />
               </UCard>
             </section>
 
@@ -945,32 +1476,81 @@ function formatDateTime(value: string | null | undefined) {
                 <div class="flex items-center justify-between gap-3">
                   <div class="flex items-center gap-2">
                     <UIcon name="i-lucide-graduation-cap" class="size-5 text-primary" />
-                    <h2 id="qualifications-heading" class="text-lg font-semibold text-highlighted">Academic evidence</h2>
+                    <h2 id="qualifications-heading" class="text-lg font-semibold text-highlighted">
+                      Academic evidence
+                    </h2>
                   </div>
-                  <span class="text-sm text-muted">{{ workspace.qualifications.length }} sittings</span>
+                  <span class="text-sm text-muted"
+                    >{{ workspace.qualifications.length }} sittings</span
+                  >
                 </div>
 
                 <div v-if="workspace.qualifications.length" class="mt-4 space-y-4">
-                  <article v-for="qualification in workspace.qualifications" :key="qualification.id" class="overflow-hidden rounded-lg border border-muted">
-                    <div class="flex flex-wrap items-start justify-between gap-3 bg-elevated/50 px-4 py-3">
+                  <article
+                    v-for="qualification in workspace.qualifications"
+                    :key="qualification.id"
+                    class="overflow-hidden rounded-lg border border-muted"
+                  >
+                    <div
+                      class="flex flex-wrap items-start justify-between gap-3 bg-elevated/50 px-4 py-3"
+                    >
                       <div>
-                        <p class="font-medium text-highlighted">{{ formatStatus(qualification.level) }}</p>
-                        <p class="mt-1 text-sm text-muted">
-                          {{ qualification.examBody?.name ?? qualification.institutionName ?? 'Institution not captured' }}
-                          <span v-if="qualification.yearWritten"> · {{ qualification.yearWritten }}</span>
+                        <p class="font-medium text-highlighted">
+                          {{ formatStatus(qualification.level) }}
                         </p>
-                        <p v-if="qualification.centreNumber || qualification.candidateNumber" class="mt-1 font-mono text-xs text-muted">
-                          {{ qualification.centreNumber ?? 'No centre' }} · {{ qualification.candidateNumber ?? 'No candidate number' }}
+                        <p class="mt-1 text-sm text-muted">
+                          {{
+                            qualification.examBody?.name ??
+                            qualification.institutionName ??
+                            "Institution not captured"
+                          }}
+                          <span v-if="qualification.yearWritten">
+                            · {{ qualification.yearWritten }}</span
+                          >
+                        </p>
+                        <p
+                          v-if="qualification.centreNumber || qualification.candidateNumber"
+                          class="mt-1 font-mono text-xs text-muted"
+                        >
+                          {{ qualification.centreNumber ?? "No centre" }} ·
+                          {{ qualification.candidateNumber ?? "No candidate number" }}
                         </p>
                       </div>
                       <div class="flex flex-wrap items-center justify-end gap-2">
-                        <EmhareStatusPill :label="formatStatus(qualification.verificationStatus)" :tone="qualificationStatusTone(qualification.verificationStatus)" />
-                        <template v-if="qualification.verificationStatus === 'CAPTURED' && !isAcademicRecommendationProfile && auth.hasPermission('ADMISSIONS_APPLICATION_REVIEW')"><UButton label="Verify qualification" icon="i-lucide-shield-check" color="primary" size="xs" :loading="savingQualificationId === qualification.id" @click="recordQualificationDecision(qualification, 'VERIFIED')" /><UButton label="Reject qualification" icon="i-lucide-circle-x" color="error" variant="outline" size="xs" :loading="savingQualificationId === qualification.id" @click="recordQualificationDecision(qualification, 'REJECTED')" /></template>
+                        <EmhareStatusPill
+                          :label="formatStatus(qualification.verificationStatus)"
+                          :tone="qualificationStatusTone(qualification.verificationStatus)"
+                        />
+                        <template
+                          v-if="
+                            qualification.verificationStatus === 'CAPTURED' &&
+                            !isAcademicRecommendationProfile &&
+                            auth.hasPermission('ADMISSIONS_APPLICATION_REVIEW')
+                          "
+                          ><UButton
+                            label="Verify qualification"
+                            icon="i-lucide-shield-check"
+                            color="primary"
+                            size="xs"
+                            :loading="savingQualificationId === qualification.id"
+                            @click="
+                              recordQualificationDecision(qualification, 'VERIFIED')
+                            " /><UButton
+                            label="Reject qualification"
+                            icon="i-lucide-circle-x"
+                            color="error"
+                            variant="outline"
+                            size="xs"
+                            :loading="savingQualificationId === qualification.id"
+                            @click="recordQualificationDecision(qualification, 'REJECTED')"
+                        /></template>
                       </div>
                     </div>
                     <div class="overflow-x-auto">
                       <table class="w-full text-left text-sm">
-                        <thead class="border-y border-muted text-xs uppercase tracking-wide text-muted">
+                        <thead
+                          class="border-y border-muted text-xs uppercase tracking-wide text-muted"
+                        >
                           <tr>
                             <th class="px-4 py-2 font-medium">Subject</th>
                             <th class="px-4 py-2 font-medium">Grade</th>
@@ -978,20 +1558,37 @@ function formatDateTime(value: string | null | undefined) {
                           </tr>
                         </thead>
                         <tbody>
-                          <tr v-for="result in qualification.results" :key="result.id" class="border-b border-muted last:border-b-0">
-                            <td class="px-4 py-2.5 text-highlighted">{{ result.subjectNameSnapshot }}</td>
-                            <td class="px-4 py-2.5 font-semibold text-highlighted">{{ result.grade }}</td>
-                            <td class="px-4 py-2.5 text-right text-muted">{{ result.points ?? '—' }}</td>
+                          <tr
+                            v-for="result in qualification.results"
+                            :key="result.id"
+                            class="border-b border-muted last:border-b-0"
+                          >
+                            <td class="px-4 py-2.5 text-highlighted">
+                              {{ result.subjectNameSnapshot }}
+                            </td>
+                            <td class="px-4 py-2.5 font-semibold text-highlighted">
+                              {{ result.grade }}
+                            </td>
+                            <td class="px-4 py-2.5 text-right text-muted">
+                              {{ result.points ?? "—" }}
+                            </td>
                           </tr>
                           <tr v-if="!qualification.results.length">
-                            <td colspan="3" class="px-4 py-6 text-center text-muted">No subject results captured.</td>
+                            <td colspan="3" class="px-4 py-6 text-center text-muted">
+                              No subject results captured.
+                            </td>
                           </tr>
                         </tbody>
                       </table>
                     </div>
                   </article>
                 </div>
-                <EmhareFeedbackState v-else state="empty" title="No academic evidence" description="No qualification sittings have been captured." />
+                <EmhareFeedbackState
+                  v-else
+                  state="empty"
+                  title="No academic evidence"
+                  description="No qualification sittings have been captured."
+                />
               </UCard>
             </section>
 
@@ -999,20 +1596,33 @@ function formatDateTime(value: string | null | undefined) {
               <UCard :ui="{ body: 'p-5 sm:p-5' }">
                 <div class="flex items-center gap-2">
                   <UIcon name="i-lucide-users-round" class="size-5 text-primary" />
-                  <h2 id="supporting-details-heading" class="text-lg font-semibold text-highlighted">Supporting details</h2>
+                  <h2
+                    id="supporting-details-heading"
+                    class="text-lg font-semibold text-highlighted"
+                  >
+                    Supporting details
+                  </h2>
                 </div>
 
                 <div class="mt-4 grid gap-5 lg:grid-cols-2">
                   <div>
                     <h3 class="text-sm font-semibold text-highlighted">Next of kin</h3>
                     <div v-if="workspace.nextOfKin.length" class="mt-2 space-y-2">
-                      <div v-for="contact in workspace.nextOfKin" :key="contact.id" class="rounded-lg border border-muted p-3">
+                      <div
+                        v-for="contact in workspace.nextOfKin"
+                        :key="contact.id"
+                        class="rounded-lg border border-muted p-3"
+                      >
                         <div class="flex items-center justify-between gap-2">
                           <p class="font-medium text-highlighted">{{ contact.fullName }}</p>
                           <EmhareStatusPill v-if="contact.primary" label="Primary" tone="primary" />
                         </div>
-                        <p class="mt-1 text-sm text-muted">{{ formatStatus(contact.relationshipCode) }} · {{ contact.phoneNumber }}</p>
-                        <p v-if="contact.email" class="mt-1 text-sm text-muted">{{ contact.email }}</p>
+                        <p class="mt-1 text-sm text-muted">
+                          {{ formatStatus(contact.relationshipCode) }} · {{ contact.phoneNumber }}
+                        </p>
+                        <p v-if="contact.email" class="mt-1 text-sm text-muted">
+                          {{ contact.email }}
+                        </p>
                       </div>
                     </div>
                     <p v-else class="mt-2 text-sm text-muted">No next-of-kin details captured.</p>
@@ -1021,50 +1631,89 @@ function formatDateTime(value: string | null | undefined) {
                   <div>
                     <h3 class="text-sm font-semibold text-highlighted">Referees</h3>
                     <div v-if="workspace.referees.length" class="mt-2 space-y-2">
-                      <div v-for="referee in workspace.referees" :key="referee.id" class="rounded-lg border border-muted p-3">
+                      <div
+                        v-for="referee in workspace.referees"
+                        :key="referee.id"
+                        class="rounded-lg border border-muted p-3"
+                      >
                         <div class="flex items-center justify-between gap-2">
                           <p class="font-medium text-highlighted">{{ referee.fullName }}</p>
-                          <EmhareStatusPill :label="refereeInvitationStatusLabel(referee.invitationStatus)" :tone="refereeInvitationStatusTone(referee.invitationStatus)" />
+                          <EmhareStatusPill
+                            :label="refereeInvitationStatusLabel(referee.invitationStatus)"
+                            :tone="refereeInvitationStatusTone(referee.invitationStatus)"
+                          />
                         </div>
-                        <p class="mt-1 text-sm text-muted">{{ referee.organisation }}<span v-if="referee.positionTitle"> · {{ referee.positionTitle }}</span></p>
-                        <p class="mt-1 text-sm text-muted">{{ referee.email }}<span v-if="referee.phoneNumber"> · {{ referee.phoneNumber }}</span></p>
-                        <div v-if="referee.invitationStatus === 'SUBMITTED'" class="mt-3 rounded-md bg-elevated p-3" data-testid="confidential-reference-response">
+                        <p class="mt-1 text-sm text-muted">
+                          {{ referee.organisation
+                          }}<span v-if="referee.positionTitle"> · {{ referee.positionTitle }}</span>
+                        </p>
+                        <p class="mt-1 text-sm text-muted">
+                          {{ referee.email
+                          }}<span v-if="referee.phoneNumber"> · {{ referee.phoneNumber }}</span>
+                        </p>
+                        <div
+                          v-if="referee.invitationStatus === 'SUBMITTED'"
+                          class="mt-3 rounded-md bg-elevated p-3"
+                          data-testid="confidential-reference-response"
+                        >
                           <div class="grid gap-3 sm:grid-cols-2">
                             <div>
                               <p class="text-xs uppercase text-muted">Relationship stated</p>
-                              <p class="mt-1 text-sm text-highlighted">{{ referee.referenceRelationshipToApplicant ?? 'Not stated' }}</p>
+                              <p class="mt-1 text-sm text-highlighted">
+                                {{ referee.referenceRelationshipToApplicant ?? "Not stated" }}
+                              </p>
                             </div>
                             <div>
                               <p class="text-xs uppercase text-muted">Years known</p>
-                              <p class="mt-1 text-sm text-highlighted">{{ referee.yearsKnown ?? 'Not stated' }}</p>
+                              <p class="mt-1 text-sm text-highlighted">
+                                {{ referee.yearsKnown ?? "Not stated" }}
+                              </p>
                             </div>
                             <div>
                               <p class="text-xs uppercase text-muted">Recommendation</p>
-                              <p class="mt-1 text-sm font-medium text-highlighted">{{ formatStatus(referee.recommendation) }}</p>
+                              <p class="mt-1 text-sm font-medium text-highlighted">
+                                {{ formatStatus(referee.recommendation) }}
+                              </p>
                             </div>
                             <div>
                               <p class="text-xs uppercase text-muted">Submitted</p>
-                              <p class="mt-1 text-sm text-highlighted">{{ formatDateTime(referee.referenceSubmittedAt) }}</p>
+                              <p class="mt-1 text-sm text-highlighted">
+                                {{ formatDateTime(referee.referenceSubmittedAt) }}
+                              </p>
                             </div>
                           </div>
                           <div class="mt-3 border-t border-muted pt-3">
                             <p class="text-xs uppercase text-muted">Confidential reference</p>
-                            <p class="mt-1 whitespace-pre-wrap text-sm leading-6 text-highlighted">{{ referee.referenceComments ?? 'No comments provided.' }}</p>
+                            <p class="mt-1 whitespace-pre-wrap text-sm leading-6 text-highlighted">
+                              {{ referee.referenceComments ?? "No comments provided." }}
+                            </p>
                           </div>
                         </div>
                       </div>
                     </div>
-                    <p v-else class="mt-2 text-sm text-muted">No referee details required or captured.</p>
+                    <p v-else class="mt-2 text-sm text-muted">
+                      No referee details required or captured.
+                    </p>
                   </div>
                 </div>
 
-                <div v-if="workspace.employmentHistory.length" class="mt-5 border-t border-muted pt-5">
+                <div
+                  v-if="workspace.employmentHistory.length"
+                  class="mt-5 border-t border-muted pt-5"
+                >
                   <h3 class="text-sm font-semibold text-highlighted">Employment history</h3>
                   <div class="mt-2 grid gap-2 lg:grid-cols-2">
-                    <div v-for="employment in workspace.employmentHistory" :key="employment.id" class="rounded-lg border border-muted p-3">
+                    <div
+                      v-for="employment in workspace.employmentHistory"
+                      :key="employment.id"
+                      class="rounded-lg border border-muted p-3"
+                    >
                       <p class="font-medium text-highlighted">{{ employment.positionTitle }}</p>
                       <p class="mt-1 text-sm text-muted">{{ employment.employerName }}</p>
-                      <p class="mt-1 text-xs text-muted">{{ formatDate(employment.startedOn) }} – {{ employment.current ? 'Present' : formatDate(employment.endedOn) }}</p>
+                      <p class="mt-1 text-xs text-muted">
+                        {{ formatDate(employment.startedOn) }} –
+                        {{ employment.current ? "Present" : formatDate(employment.endedOn) }}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1076,17 +1725,33 @@ function formatDateTime(value: string | null | undefined) {
                 <div class="flex items-center justify-between gap-3">
                   <div class="flex items-center gap-2">
                     <UIcon name="i-lucide-list-checks" class="size-5 text-primary" />
-                    <h2 id="sections-heading" class="text-lg font-semibold text-highlighted">Application sections</h2>
+                    <h2 id="sections-heading" class="text-lg font-semibold text-highlighted">
+                      Application sections
+                    </h2>
                   </div>
-                  <span class="text-sm text-muted">{{ completedSections }}/{{ workspace.sections.length }} complete</span>
+                  <span class="text-sm text-muted"
+                    >{{ completedSections }}/{{ workspace.sections.length }} complete</span
+                  >
                 </div>
                 <div class="mt-4 grid gap-2 md:grid-cols-2">
-                  <div v-for="section in workspace.sections" :key="section.id" class="rounded-lg border border-muted p-3">
+                  <div
+                    v-for="section in workspace.sections"
+                    :key="section.id"
+                    class="rounded-lg border border-muted p-3"
+                  >
                     <div class="flex items-center justify-between gap-2">
                       <p class="font-medium text-highlighted">{{ section.name }}</p>
-                      <EmhareStatusPill :label="formatStatus(section.status)" :tone="sectionStatusTone(section.status)" />
+                      <EmhareStatusPill
+                        :label="formatStatus(section.status)"
+                        :tone="sectionStatusTone(section.status)"
+                      />
                     </div>
-                    <p class="mt-1 text-sm text-muted">{{ section.completionSummary ?? (section.required ? 'Required section' : 'Optional section') }}</p>
+                    <p class="mt-1 text-sm text-muted">
+                      {{
+                        section.completionSummary ??
+                        (section.required ? "Required section" : "Optional section")
+                      }}
+                    </p>
                   </div>
                 </div>
               </UCard>
@@ -1101,10 +1766,13 @@ function formatDateTime(value: string | null | undefined) {
                     <UIcon name="i-lucide-git-branch" class="size-5 text-primary" />
                     <h2 class="text-lg font-semibold text-highlighted">Admissions workflow</h2>
                   </div>
-                  <p class="mt-1 text-sm text-muted">The applicant's current position from verification through response.</p>
+                  <p class="mt-1 text-sm text-muted">
+                    The applicant's current position from verification through response.
+                  </p>
                 </div>
                 <UBadge color="primary" variant="subtle" size="sm">
-                  Step {{ currentWorkflowStep(workspace.workflowProgress) }} of {{ workspace.workflowProgress.stages.length }}
+                  Step {{ currentWorkflowStep(workspace.workflowProgress) }} of
+                  {{ workspace.workflowProgress.stages.length }}
                 </UBadge>
               </div>
 
@@ -1136,7 +1804,11 @@ function formatDateTime(value: string | null | undefined) {
                         <p class="mt-1 font-medium text-highlighted">{{ stage.statusLabel }}</p>
                       </div>
                       <EmhareStatusPill
-                        :label="stage.state === 'NOT_APPLICABLE' ? 'Not applicable' : formatStatus(stage.state)"
+                        :label="
+                          stage.state === 'NOT_APPLICABLE'
+                            ? 'Not applicable'
+                            : formatStatus(stage.state)
+                        "
                         :tone="workflowStageTone(stage.state)"
                       />
                     </div>
@@ -1155,19 +1827,29 @@ function formatDateTime(value: string | null | undefined) {
                   <div>
                     <div class="flex items-center gap-2">
                       <UIcon name="i-lucide-files" class="size-5 text-primary" />
-                      <h2 id="documents-heading" class="text-lg font-semibold text-highlighted">Documents</h2>
+                      <h2 id="documents-heading" class="text-lg font-semibold text-highlighted">
+                        Documents
+                      </h2>
                     </div>
-                    <p class="mt-1 text-sm text-muted">Select evidence to preview without leaving this application.</p>
+                    <p class="mt-1 text-sm text-muted">
+                      Select evidence to preview without leaving this application.
+                    </p>
                   </div>
                   <EmhareStatusPill
-                    :label="workspace.documents.requiredDocumentsVerified ? 'Verified' : `${documentCounts.pending + documentCounts.missing + documentCounts.rejected} outstanding`"
+                    :label="
+                      workspace.documents.requiredDocumentsVerified
+                        ? 'Verified'
+                        : `${documentCounts.pending + documentCounts.missing + documentCounts.rejected} outstanding`
+                    "
                     :tone="workspace.documents.requiredDocumentsVerified ? 'success' : 'warning'"
                   />
                 </div>
 
                 <div class="mt-3 grid grid-cols-3 gap-2 text-center">
                   <div class="rounded-md bg-elevated px-2 py-2">
-                    <p class="text-lg font-semibold text-highlighted">{{ documentCounts.uploaded }}</p>
+                    <p class="text-lg font-semibold text-highlighted">
+                      {{ documentCounts.uploaded }}
+                    </p>
                     <p class="text-xs text-muted">Uploaded</p>
                   </div>
                   <div class="rounded-md bg-elevated px-2 py-2">
@@ -1175,43 +1857,71 @@ function formatDateTime(value: string | null | undefined) {
                     <p class="text-xs text-muted">Pending</p>
                   </div>
                   <div class="rounded-md bg-elevated px-2 py-2">
-                    <p class="text-lg font-semibold text-error">{{ documentCounts.missing + documentCounts.rejected }}</p>
+                    <p class="text-lg font-semibold text-error">
+                      {{ documentCounts.missing + documentCounts.rejected }}
+                    </p>
                     <p class="text-xs text-muted">Needs action</p>
                   </div>
                 </div>
               </div>
 
-              <div v-if="workspace.documents.requirements.length" class="max-h-60 overflow-y-auto border-b border-muted p-2">
+              <div
+                v-if="workspace.documents.requirements.length"
+                class="max-h-60 overflow-y-auto border-b border-muted p-2"
+              >
                 <button
                   v-for="requirement in workspace.documents.requirements"
                   :key="requirement.requirementCode"
                   type="button"
                   class="flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                  :class="selectedDocument?.requirementCode === requirement.requirementCode
-                    ? 'border-primary bg-primary/5'
-                    : 'border-transparent hover:border-muted hover:bg-elevated'"
+                  :class="
+                    selectedDocument?.requirementCode === requirement.requirementCode
+                      ? 'border-primary bg-primary/5'
+                      : 'border-transparent hover:border-muted hover:bg-elevated'
+                  "
                   @click="selectDocument(requirement)"
                 >
-                  <span class="flex size-9 shrink-0 items-center justify-center rounded-md bg-elevated text-primary">
-                    <UIcon :name="requirement.documentId ? 'i-lucide-file-text' : 'i-lucide-file-question'" class="size-4" />
+                  <span
+                    class="flex size-9 shrink-0 items-center justify-center rounded-md bg-elevated text-primary"
+                  >
+                    <UIcon
+                      :name="
+                        requirement.documentId ? 'i-lucide-file-text' : 'i-lucide-file-question'
+                      "
+                      class="size-4"
+                    />
                   </span>
                   <span class="min-w-0 flex-1">
-                    <span class="block truncate text-sm font-medium text-highlighted">{{ requirement.requirementName }}</span>
-                    <span class="mt-0.5 block truncate text-xs text-muted">{{ requirement.fileName ?? (requirement.required ? 'Required upload missing' : 'Optional upload missing') }}</span>
+                    <span class="block truncate text-sm font-medium text-highlighted">{{
+                      requirement.requirementName
+                    }}</span>
+                    <span class="mt-0.5 block truncate text-xs text-muted">{{
+                      requirement.fileName ??
+                      (requirement.required ? "Required upload missing" : "Optional upload missing")
+                    }}</span>
                   </span>
-                  <EmhareStatusPill :label="formatStatus(requirement.state)" :tone="documentStatusTone(requirement.state)" />
+                  <EmhareStatusPill
+                    :label="formatStatus(requirement.state)"
+                    :tone="documentStatusTone(requirement.state)"
+                  />
                 </button>
               </div>
 
               <div v-if="selectedDocument" class="border-b border-muted p-4">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                   <div class="min-w-0">
-                    <p class="truncate font-medium text-highlighted">{{ selectedDocument.fileName ?? selectedDocument.requirementName }}</p>
-                    <p class="mt-1 text-xs text-muted">{{ selectedDocument.mimeType ?? 'No uploaded file' }}</p>
+                    <p class="truncate font-medium text-highlighted">
+                      {{ selectedDocument.fileName ?? selectedDocument.requirementName }}
+                    </p>
+                    <p class="mt-1 text-xs text-muted">
+                      {{ selectedDocument.mimeType ?? "No uploaded file" }}
+                    </p>
                   </div>
                   <div class="flex flex-wrap gap-1">
                     <UButton
-                      v-if="selectedDocument.state === 'PENDING' && !isAcademicRecommendationProfile"
+                      v-if="
+                        selectedDocument.state === 'PENDING' && !isAcademicRecommendationProfile
+                      "
                       label="Verify"
                       icon="i-lucide-shield-check"
                       color="primary"
@@ -1221,7 +1931,9 @@ function formatDateTime(value: string | null | undefined) {
                       @click="verifySelectedDocument"
                     />
                     <UButton
-                      v-if="selectedDocument.state === 'PENDING' && !isAcademicRecommendationProfile"
+                      v-if="
+                        selectedDocument.state === 'PENDING' && !isAcademicRecommendationProfile
+                      "
                       label="Reject"
                       icon="i-lucide-file-x-2"
                       color="error"
@@ -1252,15 +1964,27 @@ function formatDateTime(value: string | null | undefined) {
                     />
                   </div>
                 </div>
-                <p v-if="selectedDocument.rejectionReason" class="mt-2 rounded-md bg-error/10 p-2 text-xs text-error">
+                <p
+                  v-if="selectedDocument.rejectionReason"
+                  class="mt-2 rounded-md bg-error/10 p-2 text-xs text-error"
+                >
                   {{ selectedDocument.rejectionReason }}
                 </p>
               </div>
 
-              <div class="relative min-h-64 border-t border-muted bg-[#edf1f5] p-2" data-testid="document-preview">
-                <div v-if="loadingDocumentPreview" class="absolute inset-0 flex items-center justify-center">
+              <div
+                class="relative min-h-64 border-t border-muted bg-[#edf1f5] p-2"
+                data-testid="document-preview"
+              >
+                <div
+                  v-if="loadingDocumentPreview"
+                  class="absolute inset-0 flex items-center justify-center"
+                >
                   <div class="text-center">
-                    <UIcon name="i-lucide-loader-circle" class="mx-auto size-7 animate-spin text-primary" />
+                    <UIcon
+                      name="i-lucide-loader-circle"
+                      class="mx-auto size-7 animate-spin text-primary"
+                    />
                     <p class="mt-2 text-sm text-muted">Preparing secure preview…</p>
                   </div>
                 </div>
@@ -1279,7 +2003,7 @@ function formatDateTime(value: string | null | undefined) {
                   :src="documentDownload.downloadUrl"
                   :alt="selectedDocument?.requirementName ?? 'Application document'"
                   class="h-64 w-full rounded-md object-contain bg-white p-3 shadow-sm"
-                >
+                />
 
                 <iframe
                   v-else-if="documentDownload && previewIsPdf"
@@ -1289,32 +2013,61 @@ function formatDateTime(value: string | null | undefined) {
                   data-testid="document-preview-frame"
                 />
 
-                <div v-else-if="documentDownload" class="flex min-h-64 items-center justify-center p-8 text-center">
+                <div
+                  v-else-if="documentDownload"
+                  class="flex min-h-64 items-center justify-center p-8 text-center"
+                >
                   <div>
-                    <span class="mx-auto flex size-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <span
+                      class="mx-auto flex size-14 items-center justify-center rounded-xl bg-primary/10 text-primary"
+                    >
                       <UIcon name="i-lucide-file-down" class="size-7" />
                     </span>
-                    <p class="mt-4 font-medium text-highlighted">Inline preview is not available for this file type</p>
+                    <p class="mt-4 font-medium text-highlighted">
+                      Inline preview is not available for this file type
+                    </p>
                     <p class="mt-1 text-sm text-muted">Download the file to review its contents.</p>
-                    <UButton class="mt-4" label="Download document" icon="i-lucide-download" color="primary" variant="soft" @click="downloadSelectedDocument" />
+                    <UButton
+                      class="mt-4"
+                      label="Download document"
+                      icon="i-lucide-download"
+                      color="primary"
+                      variant="soft"
+                      @click="downloadSelectedDocument"
+                    />
                   </div>
                 </div>
 
                 <div v-else class="flex min-h-64 items-center justify-center p-8 text-center">
                   <div>
-                    <span class="mx-auto flex size-14 items-center justify-center rounded-xl bg-elevated text-muted">
-                      <UIcon :name="selectedDocument ? 'i-lucide-file-question' : 'i-lucide-files'" class="size-7" />
+                    <span
+                      class="mx-auto flex size-14 items-center justify-center rounded-xl bg-elevated text-muted"
+                    >
+                      <UIcon
+                        :name="selectedDocument ? 'i-lucide-file-question' : 'i-lucide-files'"
+                        class="size-7"
+                      />
                     </span>
-                    <p class="mt-4 font-medium text-highlighted">{{ selectedDocument ? 'No file uploaded' : 'No documents configured' }}</p>
+                    <p class="mt-4 font-medium text-highlighted">
+                      {{ selectedDocument ? "No file uploaded" : "No documents configured" }}
+                    </p>
                     <p class="mt-1 text-sm text-muted">
-                      {{ selectedDocument ? 'This requirement cannot be previewed until the applicant uploads evidence.' : 'Document requirements will appear here when configured.' }}
+                      {{
+                        selectedDocument
+                          ? "This requirement cannot be previewed until the applicant uploads evidence."
+                          : "Document requirements will appear here when configured."
+                      }}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div v-if="documentDownload" class="border-t border-muted px-4 py-2.5 text-xs text-muted">
-                Secure preview expires {{ formatDateTime(documentDownload.expiresAt) }} · SHA-256 {{ documentDownload.checksumSha256.slice(0, 12) }}…
+              <div
+                v-if="documentDownload"
+                class="border-t border-muted px-4 py-2.5 text-xs text-muted"
+              >
+                Secure preview expires {{ formatDateTime(documentDownload.expiresAt) }} · SHA-256
+                {{ documentDownload.checksumSha256.slice(0, 12) }}…
               </div>
             </UCard>
           </aside>

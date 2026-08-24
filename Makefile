@@ -7,10 +7,17 @@ PROCESS_MANAGER := $(ROOT_DIR)/infrastructure/dev/manage-local-process.sh
 BACKEND_SERVICES := core-identity-service academic-setup-service admissions-service \
 	finance-service student-records-service assessment-results-service \
 	exams-timetabling-service accommodation-service dining-service \
-	documents-reporting-service notifications-service
+	documents-reporting-service notifications-service communications-service
 DISCOVERY_SERVICE := discovery-server
 SERVICES := $(DISCOVERY_SERVICE) $(BACKEND_SERVICES) api-gateway
 FRONTENDS := admin-portal applicant-portal student-portal
+ADMIN_PORTAL_PORT ?= 3100
+APPLICANT_PORTAL_PORT ?= 3001
+STUDENT_PORTAL_PORT ?= 3002
+EMHARE_ADMIN_PORTAL_URL ?= http://localhost:$(ADMIN_PORTAL_PORT)
+EMHARE_APPLICANT_PORTAL_URL ?= http://localhost:$(APPLICANT_PORTAL_PORT)
+EMHARE_STUDENT_PORTAL_URL ?= http://localhost:$(STUDENT_PORTAL_PORT)
+export EMHARE_ADMIN_PORTAL_URL EMHARE_APPLICANT_PORTAL_URL EMHARE_STUDENT_PORTAL_URL
 
 DB_HOST ?= localhost
 DB_PORT ?= 5433
@@ -76,6 +83,8 @@ ports: ## Show canonical local ports
 	@printf '%-32s %s\n' 'RustFS API / console' '9000 / 9001'
 	@printf '%-32s %s\n' 'Keycloak' '8099'
 	@printf '%-32s %s\n' 'Mailpit SMTP / UI' '1025 / 8025'
+	@printf '%-32s %s\n' 'ClamAV' '3310'
+	@printf '%-32s %s\n' 'Docling Serve OCR' '5001'
 	@printf '%-32s %s\n' 'Eureka Discovery' '8761'
 	@printf '%-32s %s\n' 'API Gateway' '8080'
 	@printf '%-32s %s\n' 'Core Identity' '8081'
@@ -89,12 +98,13 @@ ports: ## Show canonical local ports
 	@printf '%-32s %s\n' 'Dining' '8089'
 	@printf '%-32s %s\n' 'Documents and Reporting' '8090'
 	@printf '%-32s %s\n' 'Notifications' '8091'
-	@printf '%-32s %s\n' 'Admin / Applicant / Student' '3000 / 3001 / 3002'
+	@printf '%-32s %s\n' 'Communications' '8092'
+	@printf '%-32s %s\n' 'Admin / Applicant / Student' '$(ADMIN_PORTAL_PORT) / $(APPLICANT_PORTAL_PORT) / $(STUDENT_PORTAL_PORT)'
 
 # Infrastructure
 
-infra-up: doctor ## Start PostgreSQL, RabbitMQ, Valkey, RustFS, Keycloak, and Mailpit
-	docker compose up -d postgres rabbitmq valkey rustfs keycloak mailpit
+infra-up: doctor ## Start PostgreSQL, RabbitMQ, Valkey, RustFS, Keycloak, Mailpit, malware scanning, and OCR
+	docker compose up -d postgres rabbitmq valkey rustfs keycloak mailpit clamav docling-serve
 	@$(MAKE) infra-wait
 	@$(MAKE) keycloak-provisioner-config
 
@@ -109,6 +119,12 @@ infra-wait: ## Wait until every infrastructure dependency is ready
 	done; \
 	until [[ "$$(docker compose exec -T valkey valkey-cli ping 2>/dev/null | tr -d '\r')" == 'PONG' ]]; do \
 		(( SECONDS < deadline )) || { echo 'Valkey did not become ready.' >&2; exit 1; }; sleep 2; \
+	done; \
+	until docker compose exec -T clamav clamdscan --ping 1 >/dev/null 2>&1; do \
+		(( SECONDS < deadline )) || { echo 'ClamAV did not become ready.' >&2; exit 1; }; sleep 2; \
+	done; \
+	until curl -fsS --max-time 3 http://localhost:5001/health >/dev/null 2>&1; do \
+		(( SECONDS < deadline )) || { echo 'Docling Serve did not become ready.' >&2; exit 1; }; sleep 2; \
 	done; \
 	until curl -fsS --max-time 3 http://localhost:9000/health >/dev/null 2>&1; do \
 		(( SECONDS < deadline )) || { echo 'RustFS did not become ready.' >&2; exit 1; }; sleep 2; \
@@ -204,7 +220,7 @@ services-up: ## Start and await every backend, or SERVICE=<name>
 			api-gateway) echo 8080 ;; core-identity-service) echo 8081 ;; academic-setup-service) echo 8082 ;; \
 			admissions-service) echo 8083 ;; finance-service) echo 8084 ;; student-records-service) echo 8085 ;; \
 			assessment-results-service) echo 8086 ;; exams-timetabling-service) echo 8087 ;; accommodation-service) echo 8088 ;; \
-			dining-service) echo 8089 ;; documents-reporting-service) echo 8090 ;; notifications-service) echo 8091 ;; \
+			dining-service) echo 8089 ;; documents-reporting-service) echo 8090 ;; notifications-service) echo 8091 ;; communications-service) echo 8092 ;; \
 			*) return 1 ;; \
 		esac; \
 	}; \
@@ -230,7 +246,7 @@ services-up: ## Start and await every backend, or SERVICE=<name>
 
 services-down: ## Stop Make-managed backends, or SERVICE=<name>
 	@set -euo pipefail; \
-	port_for() { case "$$1" in discovery-server) echo 8761;; api-gateway) echo 8080;; core-identity-service) echo 8081;; academic-setup-service) echo 8082;; admissions-service) echo 8083;; finance-service) echo 8084;; student-records-service) echo 8085;; assessment-results-service) echo 8086;; exams-timetabling-service) echo 8087;; accommodation-service) echo 8088;; dining-service) echo 8089;; documents-reporting-service) echo 8090;; notifications-service) echo 8091;; *) return 1;; esac; }; \
+	port_for() { case "$$1" in discovery-server) echo 8761;; api-gateway) echo 8080;; core-identity-service) echo 8081;; academic-setup-service) echo 8082;; admissions-service) echo 8083;; finance-service) echo 8084;; student-records-service) echo 8085;; assessment-results-service) echo 8086;; exams-timetabling-service) echo 8087;; accommodation-service) echo 8088;; dining-service) echo 8089;; documents-reporting-service) echo 8090;; notifications-service) echo 8091;; communications-service) echo 8092;; *) return 1;; esac; }; \
 	services='$(if $(SERVICE),$(SERVICE),api-gateway $(BACKEND_SERVICES) discovery-server)'; \
 	for service_name in $$services; do \
 		service_port="$$(port_for "$$service_name")" || { echo "Unknown service: $$service_name" >&2; exit 2; }; \
@@ -256,7 +272,7 @@ backend-health: ## Verify every backend and gateway readiness
 
 frontends-up: ## Start all portals, or FRONTEND=<name>
 	@set -euo pipefail; \
-	port_for() { case "$$1" in admin-portal) echo 3000;; applicant-portal) echo 3001;; student-portal) echo 3002;; *) return 1;; esac; }; \
+	port_for() { case "$$1" in admin-portal) echo $(ADMIN_PORTAL_PORT);; applicant-portal) echo $(APPLICANT_PORTAL_PORT);; student-portal) echo $(STUDENT_PORTAL_PORT);; *) return 1;; esac; }; \
 	frontends='$(if $(FRONTEND),$(FRONTEND),$(FRONTENDS))'; \
 	[[ -d node_modules ]] || $(MAKE) frontend-install; \
 	for frontend_name in $$frontends; do \
@@ -270,7 +286,7 @@ frontends-up: ## Start all portals, or FRONTEND=<name>
 
 frontends-down: ## Stop Make-managed portals, or FRONTEND=<name>
 	@set -euo pipefail; \
-	port_for() { case "$$1" in admin-portal) echo 3000;; applicant-portal) echo 3001;; student-portal) echo 3002;; *) return 1;; esac; }; \
+	port_for() { case "$$1" in admin-portal) echo $(ADMIN_PORTAL_PORT);; applicant-portal) echo $(APPLICANT_PORTAL_PORT);; student-portal) echo $(STUDENT_PORTAL_PORT);; *) return 1;; esac; }; \
 	frontends='$(if $(FRONTEND),$(FRONTEND),$(FRONTENDS))'; \
 	for frontend_name in $$frontends; do \
 		frontend_port="$$(port_for "$$frontend_name")" || { echo "Unknown frontend: $$frontend_name" >&2; exit 2; }; \
@@ -282,23 +298,23 @@ frontends-restart: ## Restart portals, or FRONTEND=<name>
 	@$(MAKE) frontends-up FRONTEND='$(FRONTEND)'
 
 frontends-status: ## Show portal status
-	@'$(PROCESS_MANAGER)' status frontend admin-portal 3000
-	@'$(PROCESS_MANAGER)' status frontend applicant-portal 3001
-	@'$(PROCESS_MANAGER)' status frontend student-portal 3002
+	@'$(PROCESS_MANAGER)' status frontend admin-portal $(ADMIN_PORTAL_PORT)
+	@'$(PROCESS_MANAGER)' status frontend applicant-portal $(APPLICANT_PORTAL_PORT)
+	@'$(PROCESS_MANAGER)' status frontend student-portal $(STUDENT_PORTAL_PORT)
 
 frontend-health: ## Verify all three portals respond
 	@set -euo pipefail; \
-	for port in 3000 3001 3002; do curl -fsS --max-time 5 -o /dev/null "http://localhost:$$port/"; done; \
+	for port in $(ADMIN_PORTAL_PORT) $(APPLICANT_PORTAL_PORT) $(STUDENT_PORTAL_PORT); do curl -fsS --max-time 5 -o /dev/null "http://localhost:$$port/"; done; \
 	echo 'All portals are responding.'
 
 admin-dev: ## Run the admin portal in the foreground
-	npm run admin:dev
+	npm run admin:dev -- --port $(ADMIN_PORTAL_PORT)
 
 applicant-dev: ## Run the applicant portal in the foreground
-	npm run applicant:dev
+	npm run applicant:dev -- --port $(APPLICANT_PORTAL_PORT)
 
 student-dev: ## Run the student portal in the foreground
-	npm run student:dev
+	npm run student:dev -- --port $(STUDENT_PORTAL_PORT)
 
 # Complete workflows
 
@@ -365,8 +381,8 @@ force-stop: ## Stop a repo-owned process occupying SERVICE's canonical port
 		api-gateway) kind=backend; port=8080;; core-identity-service) kind=backend; port=8081;; academic-setup-service) kind=backend; port=8082;; \
 		admissions-service) kind=backend; port=8083;; finance-service) kind=backend; port=8084;; student-records-service) kind=backend; port=8085;; \
 		assessment-results-service) kind=backend; port=8086;; exams-timetabling-service) kind=backend; port=8087;; accommodation-service) kind=backend; port=8088;; \
-		dining-service) kind=backend; port=8089;; documents-reporting-service) kind=backend; port=8090;; notifications-service) kind=backend; port=8091;; \
-		admin-portal) kind=frontend; port=3000;; applicant-portal) kind=frontend; port=3001;; student-portal) kind=frontend; port=3002;; \
+		dining-service) kind=backend; port=8089;; documents-reporting-service) kind=backend; port=8090;; notifications-service) kind=backend; port=8091;; communications-service) kind=backend; port=8092;; \
+		admin-portal) kind=frontend; port=$(ADMIN_PORTAL_PORT);; applicant-portal) kind=frontend; port=$(APPLICANT_PORTAL_PORT);; student-portal) kind=frontend; port=$(STUDENT_PORTAL_PORT);; \
 		*) echo 'Set SERVICE to one backend or portal name. Run `make help` for the list.' >&2; exit 2;; \
 	esac; \
 	'$(PROCESS_MANAGER)' force-stop "$$kind" '$(SERVICE)' "$$port"

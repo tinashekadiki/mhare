@@ -67,6 +67,35 @@ public class AdmissionSubjectRequirement extends AuditableEntity {
     this.sortOrder = sortOrder;
   }
 
+  public AdmissionSubjectRequirement(
+      AdmissionRequirementSet requirementSet,
+      SubjectLevel level,
+      AdmissionSubject subject,
+      String subjectGroupCode,
+      SubjectRequirementType requirementType,
+      String minimumGrade,
+      BigDecimal minimumPoints,
+      Integer minimumCount,
+      BigDecimal weight,
+      int sortOrder) {
+    if (subject == null && (subjectGroupCode == null || subjectGroupCode.isBlank())) {
+      throw new IllegalArgumentException("A subject or subject group is required.");
+    }
+    if (subject != null && subject.getLevel() != level) {
+      throw new IllegalArgumentException("The subject level must match the requirement level.");
+    }
+    this.requirementSet = requirementSet;
+    this.level = level;
+    this.subject = subject;
+    this.subjectGroupCode = optional(subjectGroupCode);
+    this.requirementType = requirementType;
+    this.minimumGrade = optional(minimumGrade);
+    this.minimumPoints = minimumPoints;
+    this.minimumCount = minimumCount;
+    this.weight = weight;
+    this.sortOrder = sortOrder;
+  }
+
   public AdmissionRequirementSet getRequirementSet() {
     return requirementSet;
   }
@@ -105,5 +134,11 @@ public class AdmissionSubjectRequirement extends AuditableEntity {
 
   public int getSortOrder() {
     return sortOrder;
+  }
+
+  private static String optional(String value) {
+    return value == null || value.isBlank()
+        ? null
+        : value.trim().toUpperCase(java.util.Locale.ROOT);
   }
 }

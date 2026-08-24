@@ -1,9 +1,5 @@
 package zw.ac.uz.emhare.admissions.web;
 
-import zw.ac.uz.emhare.admissions.domain.model.Applicant;
-
-import zw.ac.uz.emhare.admissions.application.command.*;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -23,164 +19,189 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceService;
+import zw.ac.uz.emhare.admissions.api.controller.ApplicantApplicationWorkspaceController;
+import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.AddQualificationResultItemRequest;
+import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.AddQualificationResultsRequest;
+import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.QualificationDecisionRequest;
+import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.SaveOwnProfileRequest;
 import zw.ac.uz.emhare.admissions.application.AdmissionsRollingWorkflowService;
+import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceService;
 import zw.ac.uz.emhare.admissions.application.ApplicantApplicationWorkspaceViews.QualificationSittingSummary;
+import zw.ac.uz.emhare.admissions.application.ApplicantDocumentPrefillService;
+import zw.ac.uz.emhare.admissions.application.command.*;
 import zw.ac.uz.emhare.admissions.application.command.CreateQualificationResultCommand;
 import zw.ac.uz.emhare.admissions.application.command.UpdateApplicantProfileCommand;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient.CoreCurrentUserProfile;
 import zw.ac.uz.emhare.admissions.integration.CoreIdentityClient.CoreUserSummary;
 import zw.ac.uz.emhare.admissions.security.ApplicantRegistrationIdentityResolver;
-import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.SaveOwnProfileRequest;
-import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.AddQualificationResultItemRequest;
-import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.AddQualificationResultsRequest;
-import zw.ac.uz.emhare.admissions.api.model.ApplicantWorkspaceRequests.QualificationDecisionRequest;
-import zw.ac.uz.emhare.admissions.api.controller.ApplicantApplicationWorkspaceController;
 
-/** Verifies applicant-owned profile fields that are governed by registration identity. @author Tinashe K */
+/**
+ * Verifies applicant-owned profile fields that are governed by registration identity. @author
+ * Tinashe K
+ */
 @ExtendWith(MockitoExtension.class)
 class ApplicantApplicationWorkspaceControllerTest {
 
-    @Mock
-    private ApplicantApplicationWorkspaceService workspaceService;
+  @Mock private ApplicantApplicationWorkspaceService workspaceService;
 
-    @Mock
-    private CoreIdentityClient coreIdentityClient;
+  @Mock private CoreIdentityClient coreIdentityClient;
 
-    @Mock
-    private AdmissionsRollingWorkflowService rollingWorkflowService;
+  @Mock private AdmissionsRollingWorkflowService rollingWorkflowService;
 
-    private ApplicantApplicationWorkspaceController controller;
+  @Mock private ApplicantDocumentPrefillService applicantDocumentPrefillService;
 
-    @BeforeEach
-    void setUp() {
-        controller = new ApplicantApplicationWorkspaceController(
-                workspaceService,
-                coreIdentityClient,
-                new ApplicantRegistrationIdentityResolver(),
-                rollingWorkflowService);
-    }
+  private ApplicantApplicationWorkspaceController controller;
 
-    @Test
-    void saveProfile_shouldUseRegisteredNamesInsteadOfApplicantRequestFields() {
-        UUID applicationId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt());
-        when(coreIdentityClient.syncCurrentUser(authentication)).thenReturn(new CoreCurrentUserProfile(
+  @BeforeEach
+  void setUp() {
+    controller =
+        new ApplicantApplicationWorkspaceController(
+            workspaceService,
+            coreIdentityClient,
+            new ApplicantRegistrationIdentityResolver(),
+            rollingWorkflowService,
+            applicantDocumentPrefillService);
+  }
+
+  @Test
+  void saveProfile_shouldUseRegisteredNamesInsteadOfApplicantRequestFields() {
+    UUID applicationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt());
+    when(coreIdentityClient.syncCurrentUser(authentication))
+        .thenReturn(
+            new CoreCurrentUserProfile(
                 new CoreUserSummary(
-                        userId,
-                        UUID.randomUUID(),
-                        "registered.applicant",
-                        "registered@example.test",
-                        "Registered Applicant",
-                        "ACTIVE"),
+                    userId,
+                    UUID.randomUUID(),
+                    "registered.applicant",
+                    "registered@example.test",
+                    "Registered Applicant",
+                    "ACTIVE"),
                 List.of()));
-        when(workspaceService.saveOwnProfile(eq(applicationId), eq(userId), any(UpdateApplicantProfileCommand.class)))
-                .thenReturn(null);
+    when(workspaceService.saveOwnProfile(
+            eq(applicationId), eq(userId), any(UpdateApplicantProfileCommand.class)))
+        .thenReturn(null);
 
-        controller.saveProfile(authentication, applicationId, new SaveOwnProfileRequest(
-                "LOCAL",
-                "Ms",
-                "Middle",
-                LocalDate.of(2000, 1, 1),
-                "FEMALE",
-                "SINGLE",
-                "63-123456A78",
-                null,
-                null,
-                null,
-                "Harare",
-                "NONE",
-                null,
-                null,
-                "registered@example.test",
-                "+263771234567",
-                null,
-                "Harare",
-                4));
+    controller.saveProfile(
+        authentication,
+        applicationId,
+        new SaveOwnProfileRequest(
+            "LOCAL",
+            "Ms",
+            "Middle",
+            LocalDate.of(2000, 1, 1),
+            "FEMALE",
+            "SINGLE",
+            "63-123456A78",
+            null,
+            null,
+            null,
+            "Harare",
+            "NONE",
+            null,
+            null,
+            "registered@example.test",
+            "+263771234567",
+            null,
+            "Harare",
+            4));
 
-        ArgumentCaptor<UpdateApplicantProfileCommand> commandCaptor =
-                ArgumentCaptor.forClass(UpdateApplicantProfileCommand.class);
-        verify(workspaceService).saveOwnProfile(eq(applicationId), eq(userId), commandCaptor.capture());
-        assertEquals("Registered", commandCaptor.getValue().firstName());
-        assertEquals("Applicant", commandCaptor.getValue().lastName());
-    }
+    ArgumentCaptor<UpdateApplicantProfileCommand> commandCaptor =
+        ArgumentCaptor.forClass(UpdateApplicantProfileCommand.class);
+    verify(workspaceService).saveOwnProfile(eq(applicationId), eq(userId), commandCaptor.capture());
+    assertEquals("Registered", commandCaptor.getValue().firstName());
+    assertEquals("Applicant", commandCaptor.getValue().lastName());
+  }
 
-    @Test
-    void addQualificationResults_shouldMapEveryBatchRowToOneTransactionalServiceCall() {
-        UUID applicationId = UUID.randomUUID();
-        UUID sittingId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        UUID englishSubjectId = UUID.randomUUID();
-        UUID mathematicsSubjectId = UUID.randomUUID();
-        JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt());
-        when(coreIdentityClient.syncCurrentUser(authentication)).thenReturn(new CoreCurrentUserProfile(
+  @Test
+  void addQualificationResults_shouldMapEveryBatchRowToOneTransactionalServiceCall() {
+    UUID applicationId = UUID.randomUUID();
+    UUID sittingId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    UUID englishSubjectId = UUID.randomUUID();
+    UUID mathematicsSubjectId = UUID.randomUUID();
+    JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt());
+    when(coreIdentityClient.syncCurrentUser(authentication))
+        .thenReturn(
+            new CoreCurrentUserProfile(
                 new CoreUserSummary(
-                        userId,
-                        UUID.randomUUID(),
-                        "registered.applicant",
-                        "registered@example.test",
-                        "Registered Applicant",
-                        "ACTIVE"),
+                    userId,
+                    UUID.randomUUID(),
+                    "registered.applicant",
+                    "registered@example.test",
+                    "Registered Applicant",
+                    "ACTIVE"),
                 List.of()));
-        when(workspaceService.addQualificationResults(eq(applicationId), eq(userId), eq(sittingId), any()))
-                .thenReturn(null);
+    when(workspaceService.addQualificationResults(
+            eq(applicationId), eq(userId), eq(sittingId), any()))
+        .thenReturn(null);
 
-        controller.addQualificationResults(authentication, applicationId, sittingId, new AddQualificationResultsRequest(List.of(
+    controller.addQualificationResults(
+        authentication,
+        applicationId,
+        sittingId,
+        new AddQualificationResultsRequest(
+            List.of(
                 new AddQualificationResultItemRequest(englishSubjectId, "A", false),
                 new AddQualificationResultItemRequest(mathematicsSubjectId, "B", true))));
 
-        verify(workspaceService).addQualificationResults(
-                applicationId,
-                userId,
-                sittingId,
-                List.of(
-                        new CreateQualificationResultCommand(englishSubjectId, "A", false),
-                        new CreateQualificationResultCommand(mathematicsSubjectId, "B", true)));
-    }
+    verify(workspaceService)
+        .addQualificationResults(
+            applicationId,
+            userId,
+            sittingId,
+            List.of(
+                new CreateQualificationResultCommand(englishSubjectId, "A", false),
+                new CreateQualificationResultCommand(mathematicsSubjectId, "B", true)));
+  }
 
-    @Test
-    void recordQualificationDecision_shouldAdvanceRollingWorkflow_afterVerification() {
-        UUID applicationId = UUID.randomUUID();
-        UUID sittingId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt());
-        QualificationSittingSummary verifiedSummary = org.mockito.Mockito.mock(QualificationSittingSummary.class);
-        when(coreIdentityClient.syncCurrentUser(authentication)).thenReturn(new CoreCurrentUserProfile(
+  @Test
+  void recordQualificationDecision_shouldAdvanceRollingWorkflow_afterVerification() {
+    UUID applicationId = UUID.randomUUID();
+    UUID sittingId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt());
+    QualificationSittingSummary verifiedSummary =
+        org.mockito.Mockito.mock(QualificationSittingSummary.class);
+    when(coreIdentityClient.syncCurrentUser(authentication))
+        .thenReturn(
+            new CoreCurrentUserProfile(
                 new CoreUserSummary(
-                        userId,
-                        UUID.randomUUID(),
-                        "admissions.officer",
-                        "officer@example.test",
-                        "Admissions Officer",
-                        "ACTIVE"),
+                    userId,
+                    UUID.randomUUID(),
+                    "admissions.officer",
+                    "officer@example.test",
+                    "Admissions Officer",
+                    "ACTIVE"),
                 List.of()));
-        when(workspaceService.recordQualificationDecision(
-                applicationId, sittingId, userId, "VERIFIED", "Evidence matched.", 2L))
-                .thenReturn(verifiedSummary);
+    when(workspaceService.recordQualificationDecision(
+            applicationId, sittingId, userId, "VERIFIED", "Evidence matched.", 2L))
+        .thenReturn(verifiedSummary);
 
-        QualificationSittingSummary result = controller.recordQualificationDecision(
-                authentication,
-                applicationId,
-                sittingId,
-                new QualificationDecisionRequest("VERIFIED", "Evidence matched.", 2L));
+    QualificationSittingSummary result =
+        controller.recordQualificationDecision(
+            authentication,
+            applicationId,
+            sittingId,
+            new QualificationDecisionRequest("VERIFIED", "Evidence matched.", 2L));
 
-        assertEquals(verifiedSummary, result);
-        verify(rollingWorkflowService).advance(applicationId, userId);
-    }
+    assertEquals(verifiedSummary, result);
+    verify(rollingWorkflowService).advance(applicationId, userId);
+  }
 
-    private Jwt jwt() {
-        Instant now = Instant.now();
-        return new Jwt(
-                "token",
-                now,
-                now.plusSeconds(300),
-                Map.of("alg", "none"),
-                Map.of(
-                        "sub", UUID.randomUUID().toString(),
-                        "preferred_username", "registered.applicant",
-                        "given_name", "Registered",
-                        "family_name", "Applicant"));
-    }
+  private Jwt jwt() {
+    Instant now = Instant.now();
+    return new Jwt(
+        "token",
+        now,
+        now.plusSeconds(300),
+        Map.of("alg", "none"),
+        Map.of(
+            "sub", UUID.randomUUID().toString(),
+            "preferred_username", "registered.applicant",
+            "given_name", "Registered",
+            "family_name", "Applicant"));
+  }
 }

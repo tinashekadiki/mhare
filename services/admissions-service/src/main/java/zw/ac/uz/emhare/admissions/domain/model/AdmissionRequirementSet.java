@@ -73,6 +73,12 @@ public class AdmissionRequirementSet extends AuditableEntity {
   @Column(name = "requires_mathematics_or_science", nullable = false)
   private boolean requiresMathematicsOrScience;
 
+  @Column(name = "requires_mathematics", nullable = false)
+  private boolean requiresMathematics;
+
+  @Column(name = "requires_science", nullable = false)
+  private boolean requiresScience;
+
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "advanced_rules_json", columnDefinition = "jsonb")
   private String advancedRulesJson;
@@ -117,6 +123,40 @@ public class AdmissionRequirementSet extends AuditableEntity {
       boolean requiresMathematicsOrScience,
       String advancedRulesJson,
       String advancedRulesVersion) {
+    this(
+        programmeId,
+        applicationType,
+        intakeId,
+        versionCode,
+        effectiveFrom,
+        effectiveTo,
+        minimumTotalPoints,
+        maleCutoffPoints,
+        femaleCutoffPoints,
+        requiresEnglish,
+        false,
+        false,
+        requiresMathematicsOrScience,
+        advancedRulesJson,
+        advancedRulesVersion);
+  }
+
+  public AdmissionRequirementSet(
+      UUID programmeId,
+      ApplicationType applicationType,
+      UUID intakeId,
+      String versionCode,
+      LocalDate effectiveFrom,
+      LocalDate effectiveTo,
+      BigDecimal minimumTotalPoints,
+      BigDecimal maleCutoffPoints,
+      BigDecimal femaleCutoffPoints,
+      boolean requiresEnglish,
+      boolean requiresMathematics,
+      boolean requiresScience,
+      boolean requiresMathematicsOrScience,
+      String advancedRulesJson,
+      String advancedRulesVersion) {
     this.programmeId = programmeId;
     this.applicationType = applicationType;
     this.intakeId = intakeId;
@@ -136,6 +176,8 @@ public class AdmissionRequirementSet extends AuditableEntity {
     this.maleCutoffPoints = maleCutoffPoints;
     this.femaleCutoffPoints = femaleCutoffPoints;
     this.requiresEnglish = requiresEnglish;
+    this.requiresMathematics = requiresMathematics;
+    this.requiresScience = requiresScience;
     this.requiresMathematicsOrScience = requiresMathematicsOrScience;
     this.advancedRulesJson = advancedRulesJson;
     this.advancedRulesVersion = advancedRulesVersion;
@@ -256,6 +298,14 @@ public class AdmissionRequirementSet extends AuditableEntity {
 
   public boolean isRequiresMathematicsOrScience() {
     return requiresMathematicsOrScience;
+  }
+
+  public boolean isRequiresMathematics() {
+    return requiresMathematics;
+  }
+
+  public boolean isRequiresScience() {
+    return requiresScience;
   }
 
   public String getAdvancedRulesVersion() {

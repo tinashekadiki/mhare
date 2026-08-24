@@ -102,8 +102,22 @@ Initial service ownership:
 - `email`
 - `phone_number`
 - `display_name`
+- `first_name`
+- `middle_names`
+- `last_name`
 - `status` enum: `INVITED`, `ACTIVE`, `LOCKED`, `DISABLED`
 - `last_login_at`
+
+`official_name_synchronizations`
+- `source_request_id` unique; Admissions identity-name correction ID
+- `source_application_id`
+- `source_document_id`
+- `user_id`
+- previous and approved first, middle, and last-name values
+- approval reason
+- synchronization timestamp and actor
+
+Core applies each source request idempotently, records its evidence context, updates the local user, and synchronizes the linked Keycloak account. The Core audit row and Envers history remain authoritative for account-profile changes.
 
 `roles`
 - `id`
@@ -298,6 +312,25 @@ Specific programme targets form an optional whitelist. An empty whitelist means 
 - `verified_by_user_id`
 - `verified_at`
 
+`document_ocr_extractions`
+- `id`
+- `uploaded_document_id` unique
+- `status` enum: `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `UNSUPPORTED`
+- `engine_name`
+- `engine_version`
+- `structured_extraction_json`
+- `proposed_facts_json`
+- `confidence_json`
+- `warnings_json`
+- `attempt_count`
+- `next_attempt_at`
+- `started_at`
+- `completed_at`
+- `last_failure_code`
+- `last_failure_message`
+
+Documents and Reporting owns this evidence. Admissions may read applicant-owned completed extraction records to build editable proposals, but it shall not persist those values until the applicant saves the corresponding form.
+
 `workflow_instances`
 - `id`
 - `workflow_code`
@@ -426,6 +459,19 @@ Per ADR-0014, `admission_quotas` is retained only for institutional capacity pla
 
 Constraint: `user_id` is required because applicants must sign up or log in before applying. `first_name` and `last_name` are copied from the authenticated registration identity and are read-only in the applicant-owned application workflow; authorised staff correction remains separately governed and audited.
 
+`applicant_identity_name_corrections`
+- `application_id`
+- `applicant_id`
+- `document_id`
+- registered first, middle, and last-name snapshot
+- applicant-reviewed document first, middle, and last-name reading
+- `status` — `OCR_REVIEWED`, `REQUESTED`, `APPROVED`, `REJECTED`, or `SUPERSEDED`
+- request reason, requester, and request timestamp
+- decision reason, decision maker, and decision timestamp
+- Core synchronization timestamp
+
+The record is unique per application and source document. OCR correction changes only the applicant-reviewed proposal; it never mutates Documents and Reporting extraction evidence. A replacement document supersedes an unresolved request. Approval updates Admissions only after Core accepts the idempotent synchronization identified by this record ID.
+
 `applicant_next_of_kin`
 - `id`
 - `applicant_id`
@@ -468,6 +514,9 @@ Referee contacts remain reusable applicant-level contacts, but `application_refe
 - `applicant_id`
 - `application_type_id`
 - `application_number`
+- `official_first_name`
+- `official_middle_names`
+- `official_last_name`
 - `submitted_at`
 - `calculated_total_points` nullable until final submission
 - `points_calculated_at` nullable until final submission
@@ -484,6 +533,8 @@ Referee contacts remain reusable applicant-level contacts, but `application_refe
 - unique active application guard as appropriate for `intake_id`, `applicant_id`, `application_type_id`
 
 Constraint: fee-required applications cannot move to `UNDER_REVIEW`, evaluation, or academic review unless `payment_confirmed_at` is present or a payment override is recorded.
+
+The official-name columns are captured when the draft is created and preserve the name applicable to that application. An approved identity-name correction updates the applicable application snapshot and the applicant profile; other historical application snapshots are not rewritten.
 
 `application_status_events`
 - `id`
@@ -516,6 +567,8 @@ The two uniqueness constraints directly fix the legacy duplicate programme-choic
 - `status`
 - unique `application_id`, `requirement_code`, `document_id`
 
+Application-type document requirements and their application snapshots also carry `capture_section_code` and applicant-category applicability. Identity requirements use `PERSONAL_DETAILS`; explicitly configured general evidence uses `SUPPORTING_DOCUMENTS`. An application draft snapshots only rules applicable to its selected applicant category.
+
 ### Academic Evidence and Subject Catalogues
 
 `exam_bodies`
@@ -533,6 +586,8 @@ The two uniqueness constraints directly fix the legacy duplicate programme-choic
 - `level` enum: `O_LEVEL`, `A_LEVEL`, `OTHER`
 - `subject_group_code`
 - `is_science_subject`
+- `is_mathematics_subject`
+- `is_english_subject`
 - `is_active`
 - `legacy_olevel_subject_code`
 - `legacy_subject_code`
@@ -568,6 +623,8 @@ ZIMSEC is the baseline grading scale. Only A Level `grading_scale_values` carry 
 - `year_written`
 - `country_id`
 - `document_id`
+- `award_type_code` nullable enum-like: `DIPLOMA`, `CERTIFICATE`, `DEGREE`, `MASTERS`, `PROFESSIONAL`, `OTHER`
+- `qualification_name` nullable
 - `legacy_source_table`
 - `legacy_source_id`
 
@@ -602,6 +659,8 @@ For ZIMSEC A Level results the system-calculated point mapping is A = 5, B = 4, 
 - `male_cutoff_points` nullable
 - `female_cutoff_points` nullable
 - `requires_english`
+- `requires_mathematics`
+- `requires_science`
 - `requires_mathematics_or_science`
 - `advanced_rules_json` nullable
 - `advanced_rules_version` nullable

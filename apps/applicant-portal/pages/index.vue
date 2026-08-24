@@ -22,15 +22,11 @@ const loadingApplications = ref(false);
 const submittingApplicationId = ref<string | null>(null);
 const respondingOfferId = ref<string | null>(null);
 const loadError = ref("");
-const documentRegisters = reactive<
-  Record<string, ApplicationDocumentRegister | undefined>
->({});
+const documentRegisters = reactive<Record<string, ApplicationDocumentRegister | undefined>>({});
 const documentRegisterErrors = reactive<Record<string, string | undefined>>({});
 const loadingDocumentApplicationId = ref<string | null>(null);
 const documentDrawerOpen = ref(false);
-const selectedDocumentApplication = ref<AdmissionsApplicationSummary | null>(
-  null,
-);
+const selectedDocumentApplication = ref<AdmissionsApplicationSummary | null>(null);
 const uploadingDocument = ref(false);
 const documentUploadForm = reactive<{
   requirementCode: string;
@@ -45,10 +41,7 @@ const selectedDocumentRegister = computed(() =>
 const uploadableDocumentRequirements = computed(
   () =>
     selectedDocumentRegister.value?.requirements
-      .filter(
-        (requirement) =>
-          requirement.state === "MISSING" || requirement.state === "REJECTED",
-      )
+      .filter((requirement) => requirement.state === "MISSING" || requirement.state === "REJECTED")
       .map((requirement) => ({
         label: `${requirement.requirementName}${requirement.required ? " · Required" : " · Optional"}`,
         value: requirement.requirementCode,
@@ -61,14 +54,11 @@ const uploadableDocumentRequirements = computed(
 const selectedUploadRequirement = computed(
   () =>
     selectedDocumentRegister.value?.requirements.find(
-      (requirement) =>
-        requirement.requirementCode === documentUploadForm.requirementCode,
+      (requirement) => requirement.requirementCode === documentUploadForm.requirementCode,
     ) ?? null,
 );
 const selectedDocumentFile = computed(() =>
-  Array.isArray(documentUploadForm.file)
-    ? documentUploadForm.file[0]
-    : documentUploadForm.file,
+  Array.isArray(documentUploadForm.file) ? documentUploadForm.file[0] : documentUploadForm.file,
 );
 const documentUploadDisabled = computed(
   () =>
@@ -83,10 +73,7 @@ onMounted(async () => {
     return;
   }
   await auth.syncCoreUser();
-  await Promise.all([
-    loadApplications(),
-    loadOffers(),
-  ]);
+  await Promise.all([loadApplications(), loadOffers()]);
 });
 
 async function loadApplications() {
@@ -97,31 +84,22 @@ async function loadApplications() {
       "/api/admissions/applications/mine",
     );
     await Promise.all(
-      applications.value.map((application) =>
-        loadDocumentRegister(application, false),
-      ),
+      applications.value.map((application) => loadDocumentRegister(application, false)),
     );
   } catch (error) {
-    loadError.value = api.errorMessage(
-      error,
-      "Applications could not be loaded.",
-    );
+    loadError.value = api.errorMessage(error, "Applications could not be loaded.");
   } finally {
     loadingApplications.value = false;
   }
 }
 
-async function loadDocumentRegister(
-  application: AdmissionsApplicationSummary,
-  showLoading = true,
-) {
+async function loadDocumentRegister(application: AdmissionsApplicationSummary, showLoading = true) {
   if (showLoading) loadingDocumentApplicationId.value = application.id;
   documentRegisterErrors[application.id] = undefined;
   try {
-    documentRegisters[application.id] =
-      await api.request<ApplicationDocumentRegister>(
-        `/api/admissions/applications/${application.id}/documents/mine`,
-      );
+    documentRegisters[application.id] = await api.request<ApplicationDocumentRegister>(
+      `/api/admissions/applications/${application.id}/documents/mine`,
+    );
   } catch (error) {
     documentRegisterErrors[application.id] = api.errorMessage(
       error,
@@ -137,8 +115,7 @@ async function openDocumentDrawer(application: AdmissionsApplicationSummary) {
   Object.assign(documentUploadForm, { requirementCode: "", file: null });
   documentDrawerOpen.value = true;
   await loadDocumentRegister(application);
-  documentUploadForm.requirementCode =
-    uploadableDocumentRequirements.value[0]?.value ?? "";
+  documentUploadForm.requirementCode = uploadableDocumentRequirements.value[0]?.value ?? "";
 }
 
 function closeDocumentDrawer() {
@@ -146,11 +123,8 @@ function closeDocumentDrawer() {
   Object.assign(documentUploadForm, { requirementCode: "", file: null });
 }
 
-function chooseDocumentRequirement(
-  requirement: ApplicationDocumentRequirementState,
-) {
-  if (requirement.state !== "MISSING" && requirement.state !== "REJECTED")
-    return;
+function chooseDocumentRequirement(requirement: ApplicationDocumentRequirementState) {
+  if (requirement.state !== "MISSING" && requirement.state !== "REJECTED") return;
   documentUploadForm.requirementCode = requirement.requirementCode;
 }
 
@@ -169,24 +143,20 @@ async function uploadApplicationDocument() {
       uploadBody.append("replacesDocumentId", requirement.documentId);
     }
     uploadBody.append("file", file);
-    const uploadedDocument = await api.request<UploadedDocumentSummary>(
-      "/api/documents/uploads",
+    const uploadedDocument = await api.request<UploadedDocumentSummary>("/api/documents/uploads", {
+      method: "POST",
+      body: uploadBody,
+    });
+    documentRegisters[application.id] = await api.request<ApplicationDocumentRegister>(
+      `/api/admissions/applications/${application.id}/documents`,
       {
         method: "POST",
-        body: uploadBody,
+        body: {
+          documentId: uploadedDocument.id,
+          requirementCode: requirement.requirementCode,
+        },
       },
     );
-    documentRegisters[application.id] =
-      await api.request<ApplicationDocumentRegister>(
-        `/api/admissions/applications/${application.id}/documents`,
-        {
-          method: "POST",
-          body: {
-            documentId: uploadedDocument.id,
-            requirementCode: requirement.requirementCode,
-          },
-        },
-      );
     Object.assign(documentUploadForm, {
       requirementCode: uploadableDocumentRequirements.value[0]?.value ?? "",
       file: null,
@@ -204,9 +174,7 @@ async function uploadApplicationDocument() {
 
 async function loadOffers() {
   try {
-    offers.value = await api.request<AdmissionOfferSummary[]>(
-      "/api/admissions/offers/mine",
-    );
+    offers.value = await api.request<AdmissionOfferSummary[]>("/api/admissions/offers/mine");
   } catch (error) {
     loadError.value = api.errorMessage(error, "Offers could not be loaded.");
   }
@@ -229,11 +197,10 @@ async function submitApplication(application: AdmissionsApplicationSummary) {
 
   submittingApplicationId.value = application.id;
   try {
-    const submittedApplication =
-      await api.request<AdmissionsApplicationSummary>(
-        `/api/admissions/applications/${application.id}/submission`,
-        { method: "POST" },
-      );
+    const submittedApplication = await api.request<AdmissionsApplicationSummary>(
+      `/api/admissions/applications/${application.id}/submission`,
+      { method: "POST" },
+    );
     applications.value = applications.value.map((existingApplication) =>
       existingApplication.id === submittedApplication.id
         ? submittedApplication
@@ -246,10 +213,7 @@ async function submitApplication(application: AdmissionsApplicationSummary) {
       icon: "i-lucide-circle-check",
     });
   } catch (error) {
-    await showError(
-      "Application could not be submitted",
-      api.errorMessage(error),
-    );
+    await showError("Application could not be submitted", api.errorMessage(error));
   } finally {
     submittingApplicationId.value = null;
   }
@@ -263,11 +227,7 @@ async function acceptOffer(offer: AdmissionOfferSummary) {
     icon: "question",
   });
   if (!confirmed) return;
-  await respondToOffer(
-    offer,
-    "ACCEPTED",
-    "Accepted by applicant through the applicant portal.",
-  );
+  await respondToOffer(offer, "ACCEPTED", "Accepted by applicant through the applicant portal.");
 }
 
 async function declineOffer(offer: AdmissionOfferSummary) {
@@ -311,10 +271,7 @@ async function respondToOffer(
       `${updatedOffer.offerNumber} now records your permanent response.`,
     );
   } catch (error) {
-    await showError(
-      "Offer response could not be recorded",
-      api.errorMessage(error),
-    );
+    await showError("Offer response could not be recorded", api.errorMessage(error));
   } finally {
     respondingOfferId.value = null;
   }
@@ -322,33 +279,27 @@ async function respondToOffer(
 
 function offerStatusTone(status: AdmissionOfferSummary["status"]) {
   if (status === "SENT") return "info" as const;
-  if (status === "ACCEPTED" || status === "CONVERTED")
-    return "success" as const;
+  if (status === "ACCEPTED" || status === "CONVERTED") return "success" as const;
   if (status === "DECLINED" || status === "EXPIRED" || status === "WITHDRAWN")
     return "error" as const;
   return "neutral" as const;
 }
 
 function applicationStatusTone(status: string) {
-  if (status === "SUBMITTED" || status === "UNDER_REVIEW")
-    return "info" as const;
+  if (status === "SUBMITTED" || status === "UNDER_REVIEW") return "info" as const;
   if (status === "OFFERED" || status === "ACCEPTED") return "success" as const;
   if (status === "DECLINED" || status === "WITHDRAWN") return "error" as const;
   return "neutral" as const;
 }
 
-function paymentStatusTone(
-  status: AdmissionsApplicationSummary["paymentClearanceStatus"],
-) {
+function paymentStatusTone(status: AdmissionsApplicationSummary["paymentClearanceStatus"]) {
   if (status === "PAID" || status === "WAIVED" || status === "NOT_REQUIRED")
     return "success" as const;
   if (status === "UNRATED") return "warning" as const;
   return "warning" as const;
 }
 
-function paymentStatusLabel(
-  status: AdmissionsApplicationSummary["paymentClearanceStatus"],
-) {
+function paymentStatusLabel(status: AdmissionsApplicationSummary["paymentClearanceStatus"]) {
   return {
     NOT_REQUIRED: "Not required",
     PENDING: "Payment pending",
@@ -366,9 +317,7 @@ function formatStatus(status: string) {
     .join(" ");
 }
 
-function documentStatusTone(
-  state: ApplicationDocumentRequirementState["state"],
-) {
+function documentStatusTone(state: ApplicationDocumentRequirementState["state"]) {
   if (state === "VERIFIED") return "success" as const;
   if (state === "REJECTED" || state === "MISSING") return "error" as const;
   return "warning" as const;
@@ -376,8 +325,7 @@ function documentStatusTone(
 
 function applicationCanSubmit(application: AdmissionsApplicationSummary) {
   return (
-    application.canSubmit &&
-    Boolean(documentRegisters[application.id]?.requiredDocumentsUploaded)
+    application.canSubmit && Boolean(documentRegisters[application.id]?.requiredDocumentsUploaded)
   );
 }
 
@@ -386,9 +334,7 @@ function applicationHasClearedSubmissionRequirements(application: AdmissionsAppl
 }
 
 function applicationJourneySteps(application: AdmissionsApplicationSummary) {
-  const decided = ["OFFERED", "ACCEPTED", "DECLINED", "WITHDRAWN"].includes(
-    application.status,
-  );
+  const decided = ["OFFERED", "ACCEPTED", "DECLINED", "WITHDRAWN"].includes(application.status);
   return [
     { label: "Application", done: true },
     { label: "Documents & fee", done: applicationHasClearedSubmissionRequirements(application) },
@@ -403,20 +349,30 @@ function applicationSubmissionGuidance(application: AdmissionsApplicationSummary
   const instructions: string[] = [];
   const documentRegister = documentRegisters[application.id];
 
-  if (!application.programmeChoices.length) instructions.push('Add at least one programme choice.');
-  if (application.paymentRequired && !['PAID', 'WAIVED'].includes(application.paymentClearanceStatus)) {
-    instructions.push(application.paymentClearanceStatus === 'UNRATED'
-      ? 'Finance must capture an effective exchange rate and rate your payment before submission.'
-      : 'Pay the application fee and wait for Finance confirmation, or obtain an authorised waiver.');
+  if (!application.programmeChoices.length) instructions.push("Add at least one programme choice.");
+  if (
+    application.paymentRequired &&
+    !["PAID", "WAIVED"].includes(application.paymentClearanceStatus)
+  ) {
+    instructions.push(
+      application.paymentClearanceStatus === "UNRATED"
+        ? "Finance must capture an effective exchange rate and rate your payment before submission."
+        : "Pay the application fee and wait for Finance confirmation, or obtain an authorised waiver.",
+    );
   }
   if (documentRegister?.missingRequirementCodes.length) {
-    instructions.push(`Upload the missing required documents: ${documentRegister.missingRequirementCodes.join(', ')}.`);
+    instructions.push(
+      `Upload the missing required documents: ${documentRegister.missingRequirementCodes.join(", ")}.`,
+    );
   }
   if (documentRegister?.rejectedRequirementCodes.length) {
-    instructions.push(`Replace the rejected documents: ${documentRegister.rejectedRequirementCodes.join(', ')}.`);
+    instructions.push(
+      `Replace the rejected documents: ${documentRegister.rejectedRequirementCodes.join(", ")}.`,
+    );
   }
-  if (!documentRegister) instructions.push('Wait for the document requirements to finish loading.');
-  if (!application.canSubmit && !instructions.length) instructions.push('Complete all required application sections before submission.');
+  if (!documentRegister) instructions.push("Wait for the document requirements to finish loading.");
+  if (!application.canSubmit && !instructions.length)
+    instructions.push("Complete all required application sections before submission.");
   return applicationCanSubmit(application) ? [] : instructions;
 }
 
@@ -464,35 +420,18 @@ function formatMoney(amount: number | null, currencyCode: string | null) {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-ZW", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
+  return new Intl.DateTimeFormat("en-ZW", { dateStyle: "medium" }).format(new Date(value));
 }
 </script>
 
 <template>
   <div>
-    <div class="border-b border-muted">
+    <header class="border-b border-muted">
       <UContainer class="flex h-16 items-center justify-between">
-        <div class="flex items-center gap-2.5">
-          <div
-            class="grid size-8 shrink-0 place-items-center rounded-md bg-primary text-sm font-bold text-inverted"
-          >
-            e
-          </div>
-          <div class="leading-tight">
-            <p class="text-sm font-semibold text-highlighted">eMhare</p>
-            <p class="text-[11px] text-muted">Admissions</p>
-          </div>
-        </div>
+        <EmhareProductBrand label="eMhare" description="Admissions" />
         <div class="flex items-center gap-2">
           <template v-if="!auth.authenticated.value">
-            <UButton
-              label="Sign in"
-              color="neutral"
-              variant="ghost"
-              @click="auth.login('/')"
-            />
+            <UButton label="Sign in" color="neutral" variant="ghost" @click="auth.login('/')" />
             <UButton
               label="Create account"
               icon="i-lucide-user-plus"
@@ -525,7 +464,7 @@ function formatDate(value: string) {
           </template>
         </div>
       </UContainer>
-    </div>
+    </header>
 
     <UContainer v-if="!auth.authenticated.value" class="py-16 sm:py-24">
       <EmhareMarketingHero
@@ -556,21 +495,17 @@ function formatDate(value: string) {
       </EmhareMarketingHero>
 
       <div class="mt-20 border-t border-muted pt-14">
-        <p class="text-xs font-semibold tracking-wide text-muted uppercase">
-          Application process
-        </p>
+        <p class="text-xs font-semibold tracking-wide text-muted uppercase">Application process</p>
         <div class="mt-6">
           <EmhareStepList
             :steps="[
               {
                 label: 'Create your account',
-                description:
-                  'Register or sign in before starting an application.',
+                description: 'Register or sign in before starting an application.',
               },
               {
                 label: 'Choose your programmes',
-                description:
-                  'Select an open admission route and rank Programme choices.',
+                description: 'Select an open admission route and rank Programme choices.',
               },
               {
                 label: 'Upload your documents',
@@ -579,8 +514,7 @@ function formatDate(value: string) {
               },
               {
                 label: 'Track your decision',
-                description:
-                  'Monitor review status and respond to an admission offer.',
+                description: 'Monitor review status and respond to an admission offer.',
               },
             ]"
           />
@@ -590,27 +524,21 @@ function formatDate(value: string) {
       <div class="mt-20 grid gap-8 border-t border-muted pt-14 sm:grid-cols-3">
         <div>
           <UIcon name="i-lucide-shield-check" class="size-5 text-primary" />
-          <p class="mt-3 text-sm font-semibold text-highlighted">
-            Account access
-          </p>
+          <p class="mt-3 text-sm font-semibold text-highlighted">Account access</p>
           <p class="mt-1 text-sm text-muted">
             Sign in to manage your applications, documents, and offer responses.
           </p>
         </div>
         <div>
           <UIcon name="i-lucide-file-check-2" class="size-5 text-primary" />
-          <p class="mt-3 text-sm font-semibold text-highlighted">
-            Application status
-          </p>
+          <p class="mt-3 text-sm font-semibold text-highlighted">Application status</p>
           <p class="mt-1 text-sm text-muted">
             Review document, payment, and submission requirements for each application.
           </p>
         </div>
         <div>
           <UIcon name="i-lucide-badge-check" class="size-5 text-primary" />
-          <p class="mt-3 text-sm font-semibold text-highlighted">
-            Offer responses
-          </p>
+          <p class="mt-3 text-sm font-semibold text-highlighted">Offer responses</p>
           <p class="mt-1 text-sm text-muted">
             Accept or decline issued admission offers through the portal.
           </p>
@@ -619,21 +547,15 @@ function formatDate(value: string) {
     </UContainer>
 
     <UContainer v-else class="py-8 sm:py-10">
-      <div
-        class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
-      >
+      <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p class="text-xs font-semibold tracking-wide text-primary uppercase">
-            Welcome back
-          </p>
-          <h1
-            class="mt-1 text-2xl font-bold tracking-tight text-highlighted sm:text-3xl"
-          >
+          <p class="text-xs font-semibold tracking-wide text-primary uppercase">Welcome back</p>
+          <h1 class="mt-1 text-2xl font-bold tracking-tight text-highlighted sm:text-3xl">
             {{ auth.displayName.value }}
           </h1>
           <p class="mt-2 max-w-2xl text-sm text-muted">
-            Start an application for an open intake, clear any configured
-            fee, and submit it for review.
+            Start an application for an open intake, clear any configured fee, and submit it for
+            review.
           </p>
         </div>
         <UButton
@@ -662,23 +584,15 @@ function formatDate(value: string) {
       >
         <div class="flex items-end justify-between gap-3">
           <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-primary">
-              Decision centre
-            </p>
-            <h2
-              id="admission-offers-heading"
-              class="mt-1 text-xl font-semibold text-highlighted"
-            >
+            <p class="text-xs font-medium uppercase tracking-wide text-primary">Decision centre</p>
+            <h2 id="admission-offers-heading" class="mt-1 text-xl font-semibold text-highlighted">
               Admission offers
             </h2>
           </div>
           <span class="text-xs text-muted">Responses are permanent</span>
         </div>
 
-        <EmharePaginatedCollection
-          v-slot="{ items: paginatedOffers }"
-          :items="offers"
-        >
+        <EmharePaginatedCollection v-slot="{ items: paginatedOffers }" :items="offers">
           <div class="space-y-3">
             <UCard
               v-for="offer in paginatedOffers"
@@ -687,9 +601,7 @@ function formatDate(value: string) {
               variant="outline"
             >
               <template #header>
-                <div
-                  class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-                >
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p class="font-mono text-xs text-muted">
                       {{ offer.offerNumber }}
@@ -705,9 +617,7 @@ function formatDate(value: string) {
                 </div>
               </template>
 
-              <div
-                class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end"
-              >
+              <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div class="space-y-3">
                   <dl class="grid gap-3 text-sm sm:grid-cols-3">
                     <div>
@@ -737,8 +647,7 @@ function formatDate(value: string) {
                     icon="i-lucide-list-checks"
                     title="Conditional offer"
                     :description="
-                      offer.conditionsText ||
-                      'Review the listed conditions before responding.'
+                      offer.conditionsText || 'Review the listed conditions before responding.'
                     "
                   />
                   <EmharePaginatedCollection
@@ -746,25 +655,24 @@ function formatDate(value: string) {
                     :items="offer.conditions"
                     :initial-page-size="5"
                     v-slot="{ items: paginatedConditions }"
-                  ><ul class="space-y-2 rounded-lg border border-muted bg-elevated/40 p-3 text-sm">
-                    <li
-                      v-for="condition in paginatedConditions"
-                      :key="condition.code"
-                      class="flex items-start justify-between gap-3"
+                    ><ul
+                      class="space-y-2 rounded-lg border border-muted bg-elevated/40 p-3 text-sm"
                     >
-                      <span>{{ condition.description }}</span>
-                      <EmhareStatusPill
-                        :label="formatStatus(condition.status)"
-                        :tone="
-                          condition.status === 'PENDING' ? 'warning' : 'success'
-                        "
-                      />
-                    </li>
-                  </ul></EmharePaginatedCollection>
+                      <li
+                        v-for="condition in paginatedConditions"
+                        :key="condition.code"
+                        class="flex items-start justify-between gap-3"
+                      >
+                        <span>{{ condition.description }}</span>
+                        <EmhareStatusPill
+                          :label="formatStatus(condition.status)"
+                          :tone="condition.status === 'PENDING' ? 'warning' : 'success'"
+                        />
+                      </li></ul
+                  ></EmharePaginatedCollection>
                   <p v-if="offer.response" class="text-sm text-muted">
                     Response recorded
-                    {{ formatDate(offer.response.respondedAt) }}. This record
-                    cannot be changed.
+                    {{ formatDate(offer.response.respondedAt) }}. This record cannot be changed.
                   </p>
                   <UAlert
                     v-if="offer.convertedStudentNumber"
@@ -784,14 +692,8 @@ function formatDate(value: string) {
                   />
                 </div>
 
-                <div
-                  v-if="offer.currentPublicationId || offer.status === 'SENT'"
-                  class="space-y-3"
-                >
-                  <div
-                    v-if="offer.currentPublicationId"
-                    class="flex flex-wrap justify-end gap-2"
-                  >
+                <div v-if="offer.currentPublicationId || offer.status === 'SENT'" class="space-y-3">
+                  <div v-if="offer.currentPublicationId" class="flex flex-wrap justify-end gap-2">
                     <UButton
                       label="Preview"
                       icon="i-lucide-eye"
@@ -878,9 +780,7 @@ function formatDate(value: string) {
             <p class="text-xs font-medium uppercase tracking-wide text-primary">
               Application register
             </p>
-            <h2 class="mt-1 text-xl font-semibold text-highlighted">
-              My applications
-            </h2>
+            <h2 class="mt-1 text-xl font-semibold text-highlighted">My applications</h2>
           </div>
           <span class="text-xs text-muted">
             {{ applications.length }} record{{ applications.length === 1 ? "" : "s" }}
@@ -888,15 +788,9 @@ function formatDate(value: string) {
         </div>
 
         <div class="space-y-3">
-          <UCard
-            v-for="application in applications"
-            :key="application.id"
-            variant="outline"
-          >
+          <UCard v-for="application in applications" :key="application.id" variant="outline">
             <template #header>
-              <div
-                class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
-              >
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p class="font-mono text-xs text-muted">
                     {{ application.applicantNumber }} · {{ formatStatus(application.status) }}
@@ -914,12 +808,8 @@ function formatDate(value: string) {
                     :tone="applicationStatusTone(application.status)"
                   />
                   <EmhareStatusPill
-                    :label="
-                      paymentStatusLabel(application.paymentClearanceStatus)
-                    "
-                    :tone="
-                      paymentStatusTone(application.paymentClearanceStatus)
-                    "
+                    :label="paymentStatusLabel(application.paymentClearanceStatus)"
+                    :tone="paymentStatusTone(application.paymentClearanceStatus)"
                     icon="i-lucide-receipt-text"
                   />
                   <EmhareStatusPill
@@ -931,9 +821,7 @@ function formatDate(value: string) {
               </div>
             </template>
 
-            <div
-              class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start"
-            >
+            <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
               <div class="space-y-4">
                 <div v-if="application.programmeChoices.length" class="space-y-2">
                   <p class="text-xs font-medium uppercase tracking-wide text-muted">
@@ -981,18 +869,13 @@ function formatDate(value: string) {
                       :name="step.done ? 'i-lucide-circle-check' : 'i-lucide-circle'"
                       :class="step.done ? 'text-primary' : 'text-muted'"
                     />
-                    <span
-                      :class="step.done ? 'font-medium text-highlighted' : 'text-muted'"
-                    >
+                    <span :class="step.done ? 'font-medium text-highlighted' : 'text-muted'">
                       {{ step.label }}
                     </span>
                   </div>
                 </div>
 
-                <div
-                  v-if="application.payment"
-                  class="grid gap-3 text-sm sm:grid-cols-3"
-                >
+                <div v-if="application.payment" class="grid gap-3 text-sm sm:grid-cols-3">
                   <div>
                     <p class="text-xs text-muted">Payment reference</p>
                     <p class="mt-1 font-mono font-medium text-highlighted">
@@ -1003,10 +886,7 @@ function formatDate(value: string) {
                     <p class="text-xs text-muted">Amount due</p>
                     <p class="mt-1 font-medium text-highlighted">
                       {{
-                        formatMoney(
-                          application.payment.amountDue,
-                          application.payment.currencyCode,
-                        )
+                        formatMoney(application.payment.amountDue, application.payment.currencyCode)
                       }}
                     </p>
                   </div>
@@ -1102,7 +982,9 @@ function formatDate(value: string) {
                 </div>
                 <UButton
                   block
-                  :label="application.status === 'DRAFT' ? 'Continue application' : 'View application'"
+                  :label="
+                    application.status === 'DRAFT' ? 'Continue application' : 'View application'
+                  "
                   icon="i-lucide-arrow-right"
                   color="primary"
                   @click="navigateTo(`/applications/${application.id}`)"
@@ -1134,20 +1016,14 @@ function formatDate(value: string) {
         <div class="space-y-4">
           <UAlert
             v-if="
-              selectedDocumentApplication &&
-              documentRegisterErrors[selectedDocumentApplication.id]
+              selectedDocumentApplication && documentRegisterErrors[selectedDocumentApplication.id]
             "
             color="error"
             variant="soft"
             title="Document requirements unavailable"
-            :description="
-              documentRegisterErrors[selectedDocumentApplication.id]
-            "
+            :description="documentRegisterErrors[selectedDocumentApplication.id]"
           />
-          <div
-            v-if="selectedDocumentRegister"
-            class="grid gap-3 sm:grid-cols-3"
-          >
+          <div v-if="selectedDocumentRegister" class="grid gap-3 sm:grid-cols-3">
             <EmhareKpiCard
               label="Missing"
               :value="selectedDocumentRegister.missingRequirementCodes.length"
@@ -1186,12 +1062,7 @@ function formatDate(value: string) {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr
-                    v-if="
-                      loadingDocumentApplicationId ===
-                      selectedDocumentApplication?.id
-                    "
-                  >
+                  <tr v-if="loadingDocumentApplicationId === selectedDocumentApplication?.id">
                     <td colspan="3" class="p-4">
                       <USkeleton class="h-10 w-full" />
                     </td>
@@ -1212,10 +1083,7 @@ function formatDate(value: string) {
                           · {{ requirement.fileName }}</template
                         >
                       </p>
-                      <p
-                        v-if="requirement.rejectionReason"
-                        class="mt-1 text-xs text-error"
-                      >
+                      <p v-if="requirement.rejectionReason" class="mt-1 text-xs text-error">
                         {{ requirement.rejectionReason }}
                       </p>
                     </td>
@@ -1227,15 +1095,8 @@ function formatDate(value: string) {
                     </td>
                     <td class="p-3 text-right">
                       <UButton
-                        v-if="
-                          requirement.state === 'MISSING' ||
-                          requirement.state === 'REJECTED'
-                        "
-                        :label="
-                          requirement.state === 'REJECTED'
-                            ? 'Replace'
-                            : 'Upload'
-                        "
+                        v-if="requirement.state === 'MISSING' || requirement.state === 'REJECTED'"
+                        :label="requirement.state === 'REJECTED' ? 'Replace' : 'Upload'"
                         icon="i-lucide-upload"
                         color="primary"
                         variant="soft"
@@ -1292,11 +1153,7 @@ function formatDate(value: string) {
           </template>
           <UAlert
             v-else-if="selectedDocumentRegister?.requirements.length"
-            :color="
-              selectedDocumentRegister.requiredDocumentsVerified
-                ? 'success'
-                : 'warning'
-            "
+            :color="selectedDocumentRegister.requiredDocumentsVerified ? 'success' : 'warning'"
             variant="soft"
             :icon="
               selectedDocumentRegister.requiredDocumentsVerified

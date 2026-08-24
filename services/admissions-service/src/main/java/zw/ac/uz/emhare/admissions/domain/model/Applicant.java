@@ -212,6 +212,13 @@ public class Applicant extends AuditableEntity {
     lastName = requiredText(registeredLastName, "Last name");
   }
 
+  public void synchronizeApprovedOfficialName(
+      String approvedFirstName, String approvedMiddleNames, String approvedLastName) {
+    firstName = requiredText(approvedFirstName, "First name");
+    middleNames = optionalText(approvedMiddleNames);
+    lastName = requiredText(approvedLastName, "Last name");
+  }
+
   public void correctProfile(ApplicantProfileCorrection correction) {
     if (getVersion() != correction.expectedVersion()) {
       throw new IllegalStateException(

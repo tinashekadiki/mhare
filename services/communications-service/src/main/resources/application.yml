@@ -1,0 +1,28 @@
+server:
+  port: ${SERVER_PORT:8092}
+
+spring:
+  config:
+    import: classpath:emhare-service-foundation.yml
+  application:
+    name: communications-service
+  datasource:
+    url: ${COMMUNICATIONS_DATABASE_URL:jdbc:postgresql://localhost:5433/emhare_communications}
+    username: ${EMHARE_SERVICE_DB_USER:emhare_service}
+    password: ${EMHARE_SERVICE_DB_PASSWORD:emhare_dev_password}
+  servlet:
+    multipart:
+      max-file-size: ${COMMUNICATIONS_MEDIA_MAXIMUM_FILE_SIZE:10MB}
+      max-request-size: ${COMMUNICATIONS_MEDIA_MAXIMUM_FILE_SIZE:10MB}
+
+emhare:
+  communications:
+    public-gateway-base-url: ${EMHARE_PUBLIC_GATEWAY_URL:http://localhost:3002}
+    media:
+      bucket: ${COMMUNICATIONS_MEDIA_BUCKET:emhare-communications}
+      endpoint: ${DOCUMENTS_STORAGE_ENDPOINT:http://localhost:9000}
+      region: ${DOCUMENTS_STORAGE_REGION:us-east-1}
+      access-key: ${DOCUMENTS_STORAGE_ACCESS_KEY:emhare-dev-access}
+      secret-key: ${DOCUMENTS_STORAGE_SECRET_KEY:emhare-dev-secret-change-me}
+      path-style-access: ${DOCUMENTS_STORAGE_PATH_STYLE_ACCESS:true}
+      maximum-bytes: ${COMMUNICATIONS_MEDIA_MAXIMUM_BYTES:10485760}

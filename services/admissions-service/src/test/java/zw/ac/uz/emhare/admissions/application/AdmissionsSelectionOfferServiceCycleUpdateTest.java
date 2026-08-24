@@ -19,10 +19,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 import tools.jackson.databind.ObjectMapper;
 import zw.ac.uz.emhare.admissions.domain.model.AdmissionCycle;
 import zw.ac.uz.emhare.admissions.domain.model.AdmissionRequirementSet;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionSubject;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionSubjectRequirement;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicationType;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeDocumentRequirement;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicationTypeSection;
 import zw.ac.uz.emhare.admissions.domain.model.RequirementSetStatus;
+import zw.ac.uz.emhare.admissions.domain.model.SubjectLevel;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AcademicReviewAssignmentRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionCycleArchiveSummaryRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionCycleRepository;
@@ -30,6 +33,8 @@ import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionOfferRepos
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionQualificationRequirementGroupRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionQualificationRequirementItemRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionRequirementSetRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionSubjectRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionSubjectRequirementRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationEvaluationRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeChoiceRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRepository;
@@ -66,6 +71,8 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
   @Mock private AdmissionRequirementSetRepository requirementSetRepository;
   @Mock private AdmissionQualificationRequirementGroupRepository qualificationGroupRepository;
   @Mock private AdmissionQualificationRequirementItemRepository qualificationItemRepository;
+  @Mock private AdmissionSubjectRepository subjectRepository;
+  @Mock private AdmissionSubjectRequirementRepository subjectRequirementRepository;
   @Mock private ApplicationEvaluationRepository evaluationRepository;
   @Mock private QualificationEligibilityService qualificationEligibilityService;
   @Mock private AdvancedAdmissionRuleEvaluator advancedRuleEvaluator;
@@ -177,6 +184,61 @@ class AdmissionsSelectionOfferServiceCycleUpdateTest {
                               section ->
                                   "REFEREES".equals(section.getSectionCode())
                                       && section.getMinimumRecords() == 2);
+                }));
+  }
+
+  @Test
+  void persistsGovernedSubjectAndMinimumGradeRequirements() {
+    UUID programmeId = UUID.randomUUID();
+    UUID applicationTypeId = UUID.randomUUID();
+    UUID subjectId = UUID.randomUUID();
+    ApplicationType applicationType =
+        new ApplicationType("UNDERGRAD", "Undergraduate", false, false, false);
+    AdmissionSubject mathematics =
+        new AdmissionSubject("MATH", "Mathematics", SubjectLevel.A_LEVEL, "MATHEMATICS", false);
+    ReflectionTestUtils.setField(mathematics, "id", subjectId);
+    when(applicationTypeRepository.findById(applicationTypeId))
+        .thenReturn(Optional.of(applicationType));
+    when(subjectRepository.findByIdAndDeletedAtIsNull(subjectId))
+        .thenReturn(Optional.of(mathematics));
+    when(requirementSetRepository.saveAndFlush(
+            org.mockito.ArgumentMatchers.any(AdmissionRequirementSet.class)))
+        .thenAnswer(
+            invocation -> {
+              AdmissionRequirementSet value = invocation.getArgument(0);
+              ReflectionTestUtils.setField(value, "id", UUID.randomUUID());
+              return value;
+            });
+
+    service.createRequirementSet(
+        programmeId,
+        applicationTypeId,
+        null,
+        "MATH-1",
+        java.time.LocalDate.parse("2026-08-01"),
+        null,
+        null,
+        null,
+        null,
+        false,
+        false,
+        false,
+        false,
+        null,
+        null,
+        List.of(
+            new AdmissionsSelectionOfferService.SubjectRequirementInput(
+                "A_LEVEL", subjectId, null, "COMPULSORY", "C", null, 1, null, 1)),
+        List.of());
+
+    verify(subjectRequirementRepository)
+        .saveAll(
+            org.mockito.ArgumentMatchers.argThat(
+                requirements -> {
+                  AdmissionSubjectRequirement requirement = requirements.iterator().next();
+                  return requirement.getSubject().getId().equals(subjectId)
+                      && "C".equals(requirement.getMinimumGrade())
+                      && requirement.getLevel() == SubjectLevel.A_LEVEL;
                 }));
   }
 

@@ -19,6 +19,8 @@ import zw.ac.uz.emhare.admissions.domain.model.AdmissionOffer;
 import zw.ac.uz.emhare.admissions.domain.model.AdmissionQualificationRequirementGroup;
 import zw.ac.uz.emhare.admissions.domain.model.AdmissionQualificationRequirementItem;
 import zw.ac.uz.emhare.admissions.domain.model.AdmissionRequirementSet;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionSubject;
+import zw.ac.uz.emhare.admissions.domain.model.AdmissionSubjectRequirement;
 import zw.ac.uz.emhare.admissions.domain.model.Application;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicationEvaluation;
 import zw.ac.uz.emhare.admissions.domain.model.ApplicationProgrammeChoice;
@@ -38,6 +40,8 @@ import zw.ac.uz.emhare.admissions.domain.model.OfferStatusEvent;
 import zw.ac.uz.emhare.admissions.domain.model.ProgrammeChoiceStatus;
 import zw.ac.uz.emhare.admissions.domain.model.QualificationLevel;
 import zw.ac.uz.emhare.admissions.domain.model.SelectionRound;
+import zw.ac.uz.emhare.admissions.domain.model.SubjectLevel;
+import zw.ac.uz.emhare.admissions.domain.model.SubjectRequirementType;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AcademicReviewAssignmentRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionCycleArchiveSummaryRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionCycleRepository;
@@ -45,6 +49,8 @@ import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionOfferRepos
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionQualificationRequirementGroupRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionQualificationRequirementItemRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionRequirementSetRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionSubjectRepository;
+import zw.ac.uz.emhare.admissions.infrastructure.persistence.AdmissionSubjectRequirementRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationEvaluationRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationProgrammeChoiceRepository;
 import zw.ac.uz.emhare.admissions.infrastructure.persistence.ApplicationRepository;
@@ -80,6 +86,8 @@ public class AdmissionsSelectionOfferService {
   private final AdmissionRequirementSetRepository requirementSetRepository;
   private final AdmissionQualificationRequirementGroupRepository qualificationGroupRepository;
   private final AdmissionQualificationRequirementItemRepository qualificationItemRepository;
+  private final AdmissionSubjectRepository subjectRepository;
+  private final AdmissionSubjectRequirementRepository subjectRequirementRepository;
   private final ApplicationEvaluationRepository evaluationRepository;
   private final QualificationEligibilityService qualificationEligibilityService;
   private final AdvancedAdmissionRuleEvaluator advancedRuleEvaluator;
@@ -109,6 +117,8 @@ public class AdmissionsSelectionOfferService {
       AdmissionRequirementSetRepository requirementSetRepository,
       AdmissionQualificationRequirementGroupRepository qualificationGroupRepository,
       AdmissionQualificationRequirementItemRepository qualificationItemRepository,
+      AdmissionSubjectRepository subjectRepository,
+      AdmissionSubjectRequirementRepository subjectRequirementRepository,
       ApplicationEvaluationRepository evaluationRepository,
       QualificationEligibilityService qualificationEligibilityService,
       AdvancedAdmissionRuleEvaluator advancedRuleEvaluator,
@@ -137,6 +147,8 @@ public class AdmissionsSelectionOfferService {
     this.requirementSetRepository = requirementSetRepository;
     this.qualificationGroupRepository = qualificationGroupRepository;
     this.qualificationItemRepository = qualificationItemRepository;
+    this.subjectRepository = subjectRepository;
+    this.subjectRequirementRepository = subjectRequirementRepository;
     this.evaluationRepository = evaluationRepository;
     this.qualificationEligibilityService = qualificationEligibilityService;
     this.advancedRuleEvaluator = advancedRuleEvaluator;
@@ -451,9 +463,12 @@ public class AdmissionsSelectionOfferService {
       java.math.BigDecimal maleCutoffPoints,
       java.math.BigDecimal femaleCutoffPoints,
       boolean requiresEnglish,
+      boolean requiresMathematics,
+      boolean requiresScience,
       boolean requiresMathematicsOrScience,
       Map<String, Object> advancedRules,
       String advancedRulesVersion,
+      List<SubjectRequirementInput> subjectRequirements,
       List<QualificationRequirementGroupInput> qualificationGroups) {
     ApplicationType applicationType =
         applicationTypeRepository
@@ -473,11 +488,45 @@ public class AdmissionsSelectionOfferService {
                 maleCutoffPoints,
                 femaleCutoffPoints,
                 requiresEnglish,
+                requiresMathematics,
+                requiresScience,
                 requiresMathematicsOrScience,
                 advancedRulesJson,
                 advancedRulesJson == null
                     ? null
                     : requiredText(advancedRulesVersion, "Advanced-rules version")));
+    subjectRequirementRepository.saveAll(
+        (subjectRequirements == null ? List.<SubjectRequirementInput>of() : subjectRequirements)
+            .stream()
+                .map(
+                    input -> {
+                      SubjectLevel level =
+                          parseEnum(SubjectLevel.class, input.level(), "subject level");
+                      AdmissionSubject subject =
+                          input.subjectId() == null
+                              ? null
+                              : subjectRepository
+                                  .findByIdAndDeletedAtIsNull(input.subjectId())
+                                  .orElseThrow(
+                                      () ->
+                                          new IllegalArgumentException(
+                                              "Admission subject not found."));
+                      return new AdmissionSubjectRequirement(
+                          requirementSet,
+                          level,
+                          subject,
+                          input.subjectGroupCode(),
+                          parseEnum(
+                              SubjectRequirementType.class,
+                              input.requirementType(),
+                              "subject requirement type"),
+                          input.minimumGrade(),
+                          input.minimumPoints(),
+                          input.minimumCount(),
+                          input.weight(),
+                          input.sortOrder());
+                    })
+                .toList());
     java.util.Set<String> groupCodes = new java.util.HashSet<>();
     for (QualificationRequirementGroupInput input :
         qualificationGroups == null
@@ -557,7 +606,27 @@ public class AdmissionsSelectionOfferService {
   private AdmissionRequirementSetSummary requirementSetSummary(
       AdmissionRequirementSet requirementSet) {
     return AdmissionRequirementSetSummary.from(requirementSet)
-        .withQualificationGroups(
+        .withRequirements(
+            subjectRequirementRepository
+                .findAllByRequirementSetIdAndDeletedAtIsNullOrderBySortOrderAsc(
+                    requirementSet.getId())
+                .stream()
+                .map(
+                    requirement ->
+                        new AdmissionRequirementSetSummary.SubjectRequirementSummary(
+                            requirement.getId(),
+                            requirement.getLevel().name(),
+                            requirement.getSubject() == null
+                                ? null
+                                : requirement.getSubject().getId(),
+                            requirement.getSubjectGroupCode(),
+                            requirement.getRequirementType().name(),
+                            requirement.getMinimumGrade(),
+                            requirement.getMinimumPoints(),
+                            requirement.getMinimumCount(),
+                            requirement.getWeight(),
+                            requirement.getSortOrder()))
+                .toList(),
             qualificationGroupRepository
                 .findAllByRequirementSetIdAndDeletedAtIsNullOrderBySortOrderAsc(
                     requirementSet.getId())
@@ -1003,6 +1072,17 @@ public class AdmissionsSelectionOfferService {
       int minimumCount,
       java.math.BigDecimal minimumTotalPoints,
       Integer minimumDurationMonths,
+      int sortOrder) {}
+
+  public record SubjectRequirementInput(
+      String level,
+      UUID subjectId,
+      String subjectGroupCode,
+      String requirementType,
+      String minimumGrade,
+      java.math.BigDecimal minimumPoints,
+      Integer minimumCount,
+      java.math.BigDecimal weight,
       int sortOrder) {}
 
   private static String requiredText(String value, String label) {

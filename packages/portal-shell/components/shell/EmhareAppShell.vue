@@ -5,61 +5,69 @@ import type {
   EmhareNavigationGroup,
   EmhareNavigationItem,
   EmhareNotification,
-  EmhareQuickAction
-} from '../../types/emhare-ui'
+  EmhareQuickAction,
+} from "../../types/emhare-ui";
 
-const props = withDefaults(defineProps<{
-  appName?: string
-  appDescription?: string
-  navigationGroups?: EmhareNavigationGroup[]
-  quickActions?: EmhareQuickAction[]
-  academicPeriods?: EmhareAcademicPeriod[]
-  selectedAcademicPeriodId?: string | null
-  academicPeriodsLoading?: boolean
-  academicPeriodsError?: string
-  showAcademicPeriodSwitcher?: boolean
-  environment?: EmhareEnvironment
-  notifications?: EmhareNotification[]
-  userName?: string
-  userEmail?: string
-  requireAuthentication?: boolean
-}>(), {
-  appName: 'eMhare',
-  appDescription: 'University operations',
-  navigationGroups: () => [],
-  quickActions: () => [],
-  academicPeriods: () => [],
-  selectedAcademicPeriodId: null,
-  academicPeriodsLoading: false,
-  academicPeriodsError: '',
-  showAcademicPeriodSwitcher: false,
-  environment: undefined,
-  notifications: () => [],
-  userName: 'Operator',
-  userEmail: '',
-  requireAuthentication: true
-})
+const props = withDefaults(
+  defineProps<{
+    appName?: string;
+    appDescription?: string;
+    navigationGroups?: EmhareNavigationGroup[];
+    quickActions?: EmhareQuickAction[];
+    academicPeriods?: EmhareAcademicPeriod[];
+    selectedAcademicPeriodId?: string | null;
+    academicPeriodsLoading?: boolean;
+    academicPeriodsError?: string;
+    showAcademicPeriodSwitcher?: boolean;
+    environment?: EmhareEnvironment;
+    notifications?: EmhareNotification[];
+    userName?: string;
+    userEmail?: string;
+    requireAuthentication?: boolean;
+  }>(),
+  {
+    appName: "eMhare",
+    appDescription: "University operations",
+    navigationGroups: () => [],
+    quickActions: () => [],
+    academicPeriods: () => [],
+    selectedAcademicPeriodId: null,
+    academicPeriodsLoading: false,
+    academicPeriodsError: "",
+    showAcademicPeriodSwitcher: false,
+    environment: undefined,
+    notifications: () => [],
+    userName: "Operator",
+    userEmail: "",
+    requireAuthentication: true,
+  },
+);
 
 const emit = defineEmits<{
-  'quick-action': [action: EmhareQuickAction]
-  'period-change': [period: EmhareAcademicPeriod]
-  'notification-select': [notification: EmhareNotification]
-  logout: []
-}>()
+  "quick-action": [action: EmhareQuickAction];
+  "period-change": [period: EmhareAcademicPeriod];
+  "notification-select": [notification: EmhareNotification];
+  logout: [];
+}>();
 
-const route = useRoute()
-const auth = useEmhareAuth()
-const searchOpen = ref(false)
-const search = ref('')
-const selectedPeriodId = ref<string | undefined>()
+const route = useRoute();
+const auth = useEmhareAuth();
+const searchOpen = ref(false);
+const search = ref("");
+const selectedPeriodId = ref<string | undefined>();
 
-const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env
-const resolvedEnvironment = computed<EmhareEnvironment>(() => props.environment ?? {
-  name: env?.NUXT_PUBLIC_ENVIRONMENT_NAME ?? 'Local',
-  tone: (env?.NUXT_PUBLIC_ENVIRONMENT_TONE as EmhareEnvironment['tone']) ?? 'neutral'
-})
+const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
+const resolvedEnvironment = computed<EmhareEnvironment>(
+  () =>
+    props.environment ?? {
+      name: env?.NUXT_PUBLIC_ENVIRONMENT_NAME ?? "Local",
+      tone: (env?.NUXT_PUBLIC_ENVIRONMENT_TONE as EmhareEnvironment["tone"]) ?? "neutral",
+    },
+);
 
-const selectedPeriod = computed(() => props.academicPeriods.find((period) => period.id === selectedPeriodId.value))
+const selectedPeriod = computed(() =>
+  props.academicPeriods.find((period) => period.id === selectedPeriodId.value),
+);
 
 function mapNavigationItem(item: EmhareNavigationItem): EmhareNavigationItem {
   return {
@@ -67,210 +75,238 @@ function mapNavigationItem(item: EmhareNavigationItem): EmhareNavigationItem {
     icon: item.icon,
     to: item.to,
     badge: item.badge,
-    children: item.children?.map(mapNavigationItem)
-  }
+    children: item.children?.map(mapNavigationItem),
+  };
 }
 
-const navigationItems = computed(() => props.navigationGroups.flatMap((group) => {
-  const items = group.items.map(mapNavigationItem)
-  if (!group.label) {
-    return items
-  }
-  return [{
-    label: group.label,
-    icon: group.icon,
-    type: 'trigger' as const,
-    defaultOpen: true,
-    children: items
-  }]
-}))
+const navigationItems = computed(() =>
+  props.navigationGroups.flatMap((group) => {
+    const items = group.items.map(mapNavigationItem);
+    if (!group.label) {
+      return items;
+    }
+    return [
+      {
+        label: group.label,
+        icon: group.icon,
+        type: "trigger" as const,
+        defaultOpen: true,
+        children: items,
+      },
+    ];
+  }),
+);
 
 const breadcrumbs = computed(() => {
-  const segments = route.path.split('/').filter(Boolean)
+  const segments = route.path.split("/").filter(Boolean);
   if (!segments.length) {
-    return [{ label: 'Home', to: '/' }]
+    return [{ label: "Home", to: "/" }];
   }
   return segments.map((segment, index) => ({
     label: segment
-      .split('-')
+      .split("-")
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' '),
-    to: `/${segments.slice(0, index + 1).join('/')}`
-  }))
-})
+      .join(" "),
+    to: `/${segments.slice(0, index + 1).join("/")}`,
+  }));
+});
 
-const searchableItems = computed(() => props.navigationGroups
-  .flatMap((group) => group.items.flatMap((item) => [item, ...(item.children ?? [])]))
-  .filter((item) => item.label.toLowerCase().includes(search.value.toLowerCase())))
+const searchableItems = computed(() =>
+  props.navigationGroups
+    .flatMap((group) => group.items.flatMap((item) => [item, ...(item.children ?? [])]))
+    .filter((item) => item.label.toLowerCase().includes(search.value.toLowerCase())),
+);
 
-const quickActionItems = computed(() => props.quickActions.map((action) => ({
-  label: action.label,
-  icon: action.icon,
-  description: action.description,
-  onSelect: () => handleQuickAction(action)
-})))
+const quickActionItems = computed(() =>
+  props.quickActions.map((action) => ({
+    label: action.label,
+    icon: action.icon,
+    description: action.description,
+    onSelect: () => handleQuickAction(action),
+  })),
+);
 
-const notificationItems = computed(() => props.notifications.length
-  ? props.notifications.map((notification) => ({
-      label: notification.title,
-      description: [notification.description, notification.time].filter(Boolean).join(' · '),
-      icon: notification.readAt ? 'i-lucide-mail-open' : 'i-lucide-mail',
-      onSelect: () => emit('notification-select', notification)
-    }))
-  : [{ label: 'No notifications', disabled: true }]
-)
-const unreadNotificationCount = computed(() => props.notifications.filter((notification) => !notification.readAt).length)
+const notificationItems = computed(() =>
+  props.notifications.length
+    ? props.notifications.map((notification) => ({
+        label: notification.title,
+        description: [notification.description, notification.time].filter(Boolean).join(" · "),
+        icon: notification.readAt ? "i-lucide-mail-open" : "i-lucide-mail",
+        onSelect: () => emit("notification-select", notification),
+      }))
+    : [{ label: "No notifications", disabled: true }],
+);
+const unreadNotificationCount = computed(
+  () => props.notifications.filter((notification) => !notification.readAt).length,
+);
 
-const defaultPrimaryColor = '#20743a'
-const defaultSecondaryColor = '#f8b334'
+const defaultPrimaryColor = "#001f6e";
+const defaultSecondaryColor = "#cb920e";
 const primaryPaletteMixes: Record<string, [number, string]> = {
-  '50': [94, '#ffffff'],
-  '100': [87, '#ffffff'],
-  '200': [72, '#ffffff'],
-  '300': [52, '#ffffff'],
-  '400': [28, '#ffffff'],
-  '500': [10, '#ffffff'],
-  '600': [0, '#ffffff'],
-  '700': [15, '#000000'],
-  '800': [28, '#000000'],
-  '900': [40, '#000000'],
-  '950': [58, '#000000']
-}
+  "50": [94, "#ffffff"],
+  "100": [87, "#ffffff"],
+  "200": [72, "#ffffff"],
+  "300": [52, "#ffffff"],
+  "400": [28, "#ffffff"],
+  "500": [10, "#ffffff"],
+  "600": [0, "#ffffff"],
+  "700": [15, "#000000"],
+  "800": [28, "#000000"],
+  "900": [40, "#000000"],
+  "950": [58, "#000000"],
+};
 const secondaryPaletteMixes: Record<string, [number, string]> = {
-  '50': [94, '#ffffff'],
-  '100': [84, '#ffffff'],
-  '200': [68, '#ffffff'],
-  '300': [45, '#ffffff'],
-  '400': [20, '#ffffff'],
-  '500': [0, '#ffffff'],
-  '600': [18, '#000000'],
-  '700': [32, '#000000'],
-  '800': [44, '#000000'],
-  '900': [55, '#000000'],
-  '950': [68, '#000000']
-}
+  "50": [94, "#ffffff"],
+  "100": [84, "#ffffff"],
+  "200": [68, "#ffffff"],
+  "300": [45, "#ffffff"],
+  "400": [20, "#ffffff"],
+  "500": [0, "#ffffff"],
+  "600": [18, "#000000"],
+  "700": [32, "#000000"],
+  "800": [44, "#000000"],
+  "900": [55, "#000000"],
+  "950": [68, "#000000"],
+};
 
 function normalizedHexColor(value: unknown, fallback: string) {
-  if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.trim())) {
-    return fallback
+  if (typeof value !== "string" || !/^#[0-9a-f]{6}$/i.test(value.trim())) {
+    return fallback;
   }
-  return value.trim().toLowerCase()
+  return value.trim().toLowerCase();
 }
 
 function mixHexColors(baseColor: string, mixColor: string, mixPercentage: number) {
-  const baseChannels = [1, 3, 5].map(index => Number.parseInt(baseColor.slice(index, index + 2), 16))
-  const mixChannels = [1, 3, 5].map(index => Number.parseInt(mixColor.slice(index, index + 2), 16))
-  const mixRatio = mixPercentage / 100
-  return `#${baseChannels.map((channel, index) => Math.round(channel * (1 - mixRatio) + Number(mixChannels[index]) * mixRatio).toString(16).padStart(2, '0')).join('')}`
+  const baseChannels = [1, 3, 5].map((index) =>
+    Number.parseInt(baseColor.slice(index, index + 2), 16),
+  );
+  const mixChannels = [1, 3, 5].map((index) =>
+    Number.parseInt(mixColor.slice(index, index + 2), 16),
+  );
+  const mixRatio = mixPercentage / 100;
+  return `#${baseChannels
+    .map((channel, index) =>
+      Math.round(channel * (1 - mixRatio) + Number(mixChannels[index]) * mixRatio)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 }
 
-function applyColorPalette(variablePrefix: string, baseColor: string, paletteMixes: Record<string, [number, string]>) {
+function applyColorPalette(
+  variablePrefix: string,
+  baseColor: string,
+  paletteMixes: Record<string, [number, string]>,
+) {
   for (const [shade, [mixPercentage, mixColor]] of Object.entries(paletteMixes)) {
     document.documentElement.style.setProperty(
       `${variablePrefix}-${shade}`,
-      mixPercentage === 0 ? baseColor : mixHexColors(baseColor, mixColor, mixPercentage)
-    )
+      mixPercentage === 0 ? baseColor : mixHexColors(baseColor, mixColor, mixPercentage),
+    );
   }
 }
 
 function applyInstitutionBranding(brandingJson?: string) {
-  if (import.meta.server) return
-  let branding: Record<string, unknown> = {}
+  if (import.meta.server) return;
+  let branding: Record<string, unknown> = {};
   try {
-    branding = JSON.parse(brandingJson || '{}') as Record<string, unknown>
+    branding = JSON.parse(brandingJson || "{}") as Record<string, unknown>;
   } catch {
-    branding = {}
+    branding = {};
   }
-  const primaryColor = normalizedHexColor(branding.primaryColor, defaultPrimaryColor)
-  const secondaryColor = normalizedHexColor(branding.secondaryColor, defaultSecondaryColor)
-  applyColorPalette('--color-uzgreen', primaryColor, primaryPaletteMixes)
-  applyColorPalette('--color-uzgold', secondaryColor, secondaryPaletteMixes)
+  const primaryColor = normalizedHexColor(branding.primaryColor, defaultPrimaryColor);
+  const secondaryColor = normalizedHexColor(branding.secondaryColor, defaultSecondaryColor);
+  applyColorPalette("--color-uzazure", primaryColor, primaryPaletteMixes);
+  applyColorPalette("--color-uzorange", secondaryColor, secondaryPaletteMixes);
 }
 
 const periodItems = computed(() => {
   if (props.academicPeriodsLoading) {
-    return [{ label: 'Loading academic periods', icon: 'i-lucide-refresh-cw', disabled: true }]
+    return [{ label: "Loading academic periods", icon: "i-lucide-refresh-cw", disabled: true }];
   }
   if (props.academicPeriodsError) {
-    return [{
-      label: 'Academic periods unavailable',
-      description: props.academicPeriodsError,
-      icon: 'i-lucide-circle-alert',
-      disabled: true
-    }]
+    return [
+      {
+        label: "Academic periods unavailable",
+        description: props.academicPeriodsError,
+        icon: "i-lucide-circle-alert",
+        disabled: true,
+      },
+    ];
   }
   return props.academicPeriods.length
     ? props.academicPeriods.map((period) => ({
-      label: period.label,
-      description: period.description,
-      icon: period.id === selectedPeriodId.value ? 'i-lucide-check' : undefined,
-      onSelect: () => selectPeriod(period)
-    }))
-    : [{ label: 'No academic periods configured', disabled: true }]
-})
+        label: period.label,
+        description: period.description,
+        icon: period.id === selectedPeriodId.value ? "i-lucide-check" : undefined,
+        onSelect: () => selectPeriod(period),
+      }))
+    : [{ label: "No academic periods configured", disabled: true }];
+});
 
 const userMenuItems = computed(() => [
-  [
-    { label: props.userName, description: props.userEmail || 'Signed in', disabled: true }
-  ],
-  [
-    { label: 'Sign out', icon: 'i-lucide-log-out', onSelect: () => emit('logout') }
-  ]
-])
+  [{ label: props.userName, description: props.userEmail || "Signed in", disabled: true }],
+  [{ label: "Sign out", icon: "i-lucide-log-out", onSelect: () => emit("logout") }],
+]);
 
 async function resolveAuthenticatedSession(returnTo = route.fullPath) {
   if (props.requireAuthentication) {
-    await auth.requireUser(returnTo)
-    return
+    await auth.requireUser(returnTo);
+    return;
   }
 
-  await auth.loadUser()
+  await auth.loadUser();
   if (auth.authenticated.value && !auth.currentUserProfile.value) {
-    await auth.syncCoreUser()
+    await auth.syncCoreUser();
   }
 }
 
 onMounted(async () => {
-  await resolveAuthenticatedSession()
-})
+  await resolveAuthenticatedSession();
+});
 
 watch(
   [() => props.selectedAcademicPeriodId, () => props.academicPeriods],
   ([requestedAcademicPeriodId, academicPeriods]) => {
-    const requestedPeriodExists = academicPeriods.some(period => period.id === requestedAcademicPeriodId)
-    const existingSelectionExists = academicPeriods.some(period => period.id === selectedPeriodId.value)
+    const requestedPeriodExists = academicPeriods.some(
+      (period) => period.id === requestedAcademicPeriodId,
+    );
+    const existingSelectionExists = academicPeriods.some(
+      (period) => period.id === selectedPeriodId.value,
+    );
     selectedPeriodId.value = requestedPeriodExists
-      ? requestedAcademicPeriodId ?? undefined
+      ? (requestedAcademicPeriodId ?? undefined)
       : existingSelectionExists
         ? selectedPeriodId.value
-        : academicPeriods.find(period => period.current)?.id ?? academicPeriods[0]?.id
+        : (academicPeriods.find((period) => period.current)?.id ?? academicPeriods[0]?.id);
   },
-  { immediate: true }
-)
-
-watch(() => route.fullPath, async (fullPath) => {
-  if (!props.requireAuthentication) {
-    return
-  }
-  await resolveAuthenticatedSession(fullPath)
-})
+  { immediate: true },
+);
 
 watch(
-  () => auth.currentUserProfile.value?.institutionBrandingJson,
-  applyInstitutionBranding,
-  { immediate: true }
-)
+  () => route.fullPath,
+  async (fullPath) => {
+    if (!props.requireAuthentication) {
+      return;
+    }
+    await resolveAuthenticatedSession(fullPath);
+  },
+);
+
+watch(() => auth.currentUserProfile.value?.institutionBrandingJson, applyInstitutionBranding, {
+  immediate: true,
+});
 
 function handleQuickAction(action: EmhareQuickAction) {
-  emit('quick-action', action)
+  emit("quick-action", action);
   if (action.to) {
-    navigateTo(action.to)
+    navigateTo(action.to);
   }
 }
 
 function selectPeriod(period: EmhareAcademicPeriod) {
-  selectedPeriodId.value = period.id
-  emit('period-change', period)
+  selectedPeriodId.value = period.id;
+  emit("period-change", period);
 }
 </script>
 
@@ -278,28 +314,17 @@ function selectPeriod(period: EmhareAcademicPeriod) {
   <UDashboardGroup>
     <UDashboardSidebar collapsible resizable>
       <template #header="{ collapsed }">
-        <div class="flex min-h-14 items-center gap-3 px-2">
-          <div class="grid size-9 shrink-0 place-items-center rounded-md bg-primary text-inverted font-semibold">
-            e
-          </div>
-          <div v-if="!collapsed" class="min-w-0">
-            <p class="truncate text-sm font-semibold text-highlighted">
-              {{ appName }}
-            </p>
-            <p class="truncate text-xs text-muted">
-              {{ appDescription }}
-            </p>
-          </div>
-        </div>
+        <EmhareProductBrand
+          class="min-h-14 px-2"
+          :label="appName"
+          :description="appDescription"
+          :show-copy="!collapsed"
+        />
       </template>
 
       <template #default="{ collapsed }">
         <div class="space-y-4">
-          <UNavigationMenu
-            :collapsed="collapsed"
-            :items="navigationItems"
-            orientation="vertical"
-          />
+          <UNavigationMenu :collapsed="collapsed" :items="navigationItems" orientation="vertical" />
         </div>
       </template>
 
@@ -333,7 +358,11 @@ function selectPeriod(period: EmhareAcademicPeriod) {
             <UButton
               data-testid="academic-period-switcher"
               icon="i-lucide-calendar-clock"
-              :label="academicPeriodsLoading ? 'Loading periods' : selectedPeriod?.label ?? 'Academic period'"
+              :label="
+                academicPeriodsLoading
+                  ? 'Loading periods'
+                  : (selectedPeriod?.label ?? 'Academic period')
+              "
               :loading="academicPeriodsLoading"
               color="neutral"
               variant="ghost"
@@ -354,7 +383,13 @@ function selectPeriod(period: EmhareAcademicPeriod) {
           </UDropdownMenu>
 
           <UDropdownMenu :items="notificationItems">
-            <UButton icon="i-lucide-bell" color="neutral" variant="ghost" :label="unreadNotificationCount ? String(unreadNotificationCount) : undefined" aria-label="Notifications" />
+            <UButton
+              icon="i-lucide-bell"
+              color="neutral"
+              variant="ghost"
+              :label="unreadNotificationCount ? String(unreadNotificationCount) : undefined"
+              aria-label="Notifications"
+            />
           </UDropdownMenu>
         </div>
       </header>

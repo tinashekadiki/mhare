@@ -1,63 +1,963 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
 import Swal from "sweetalert2";
-import type { InAppNotificationSummary,NotificationChannel,NotificationCategory,NotificationConsentSummary,NotificationDeliveryAttemptSummary,NotificationEventInboxSummary,NotificationProviderCallbackSummary,NotificationRegister,NotificationRequestSummary,NotificationTemplateSummary } from "@emhare/portal-shell/types/notifications";
+import type {
+  InAppNotificationSummary,
+  NotificationChannel,
+  NotificationCategory,
+  NotificationConsentSummary,
+  NotificationDeliveryAttemptSummary,
+  NotificationEventInboxSummary,
+  NotificationProviderCallbackSummary,
+  NotificationRegister,
+  NotificationRequestSummary,
+  NotificationTemplateSummary,
+} from "@emhare/portal-shell/types/notifications";
 
-definePageMeta({ layout:"dashboard" });
-type DrawerMode="template"|"consent"|"request";
-type CoreUser={id:string;displayName:string;email:string;phoneNumber?:string;status:string};
-const api=useEmhareApi();const toast=useToast();const { showError }=useEmhareConfirm();
-const loading=ref(false),saving=ref(false),drawerOpen=ref(false);const loadError=ref("");const activeDataset=ref("requests");const drawerMode=ref<DrawerMode>("template");const editingId=ref<string|null>(null);
-const register=ref<NotificationRegister>({templates:[],consents:[],requests:[],deliveryAttempts:[],eventInbox:[],providerCallbacks:[],inAppNotifications:[]});
-const coreUsers=ref<CoreUser[]>([]);
-const templateForm=reactive({code:"",templateVersion:1,name:"",eventType:"",channel:"EMAIL" as NotificationChannel,category:"TRANSACTIONAL" as NotificationCategory,locale:"en-ZW",subjectTemplate:"",bodyTemplate:"",expectedVersion:0});
-const consentForm=reactive({recipientUserId:"",recipientKey:"",channel:"EMAIL" as NotificationChannel,category:"MARKETING" as NotificationCategory,status:"OPTED_IN",source:"SELF_SERVICE",evidenceReference:"",expectedVersion:null as number|null});
-const requestForm=reactive({idempotencyKey:"",sourceService:"operations-console",sourceEventId:"",eventType:"",templateCode:"",channel:"EMAIL" as NotificationChannel,locale:"en-ZW",recipientUserId:"",recipientKey:"",recipientAddress:"",priority:"NORMAL",scheduledAt:"",maxAttempts:5,variablesJson:"{}"});
-const templateColumns:TableColumn<NotificationTemplateSummary>[]=[{accessorKey:"code",header:"Code"},{accessorKey:"templateVersion",header:"Version"},{accessorKey:"name",header:"Template"},{accessorKey:"eventType",header:"Event"},{accessorKey:"channel",header:"Channel"},{accessorKey:"category",header:"Category"},{accessorKey:"status",header:"Control state"},{accessorKey:"actions",header:""}];
-const consentColumns:TableColumn<NotificationConsentSummary>[]=[{accessorKey:"recipientKey",header:"Recipient"},{accessorKey:"channel",header:"Channel"},{accessorKey:"category",header:"Category"},{accessorKey:"status",header:"Preference"},{accessorKey:"source",header:"Evidence source"},{accessorKey:"effectiveFrom",header:"Effective from"},{accessorKey:"actions",header:""}];
-const requestColumns:TableColumn<NotificationRequestSummary>[]=[{accessorKey:"requestNumber",header:"Request"},{accessorKey:"eventType",header:"Event"},{accessorKey:"recipientAddress",header:"Recipient"},{accessorKey:"channel",header:"Channel"},{accessorKey:"priority",header:"Priority"},{accessorKey:"status",header:"Queue state"},{accessorKey:"providerDeliveryStatus",header:"Provider state"},{accessorKey:"attemptCount",header:"Attempts"},{accessorKey:"scheduledAt",header:"Scheduled"},{accessorKey:"actions",header:""}];
-const attemptColumns:TableColumn<NotificationDeliveryAttemptSummary>[]=[{accessorKey:"notificationRequestId",header:"Request ID"},{accessorKey:"attemptNumber",header:"Attempt"},{accessorKey:"providerCode",header:"Provider"},{accessorKey:"outcome",header:"Outcome"},{accessorKey:"providerMessageId",header:"Provider reference"},{accessorKey:"completedAt",header:"Completed"},{accessorKey:"errorMessage",header:"Failure detail"}];
-const inboxColumns:TableColumn<NotificationEventInboxSummary>[]=[{accessorKey:"sourceService",header:"Source"},{accessorKey:"eventType",header:"Event"},{accessorKey:"status",header:"Processing state"},{accessorKey:"attemptCount",header:"Attempts"},{accessorKey:"receivedAt",header:"Received"},{accessorKey:"nextAttemptAt",header:"Next attempt"},{accessorKey:"processingError",header:"Failure detail"},{accessorKey:"actions",header:""}];
-const callbackColumns:TableColumn<NotificationProviderCallbackSummary>[]=[{accessorKey:"providerCode",header:"Provider"},{accessorKey:"providerEventId",header:"Provider event"},{accessorKey:"providerMessageId",header:"Message reference"},{accessorKey:"deliveryStatus",header:"Delivery evidence"},{accessorKey:"occurredAt",header:"Occurred"},{accessorKey:"receivedAt",header:"Received"},{accessorKey:"errorMessage",header:"Failure detail"}];
-const inAppColumns:TableColumn<InAppNotificationSummary>[]=[{accessorKey:"title",header:"Notification"},{accessorKey:"recipientKey",header:"Recipient"},{accessorKey:"deliveredAt",header:"Delivered"},{accessorKey:"readAt",header:"Read"},{accessorKey:"notificationRequestId",header:"Request ID"}];
-const datasets=computed(()=>[{label:"Delivery queue",value:"requests",icon:"i-lucide-send",badge:register.value.requests.length},{label:"Event inbox",value:"inbox",icon:"i-lucide-inbox",badge:register.value.eventInbox.length},{label:"Templates",value:"templates",icon:"i-lucide-file-code-2",badge:register.value.templates.length},{label:"Consent preferences",value:"consents",icon:"i-lucide-shield-check",badge:register.value.consents.length},{label:"Delivery attempts",value:"attempts",icon:"i-lucide-history",badge:register.value.deliveryAttempts.length},{label:"Provider evidence",value:"callbacks",icon:"i-lucide-webhook",badge:register.value.providerCallbacks.length},{label:"In-app delivery",value:"in-app",icon:"i-lucide-bell",badge:register.value.inAppNotifications.length}]);
-const activeTemplates=computed(()=>register.value.templates.filter(item=>item.status==="ACTIVE").map(item=>({label:`${item.code} v${item.templateVersion} · ${title(item.channel)}`,value:`${item.code}:${item.channel}`,template:item})));
-const recipientUserItems=computed(()=>coreUsers.value.filter(item=>item.status==="ACTIVE").map(item=>({label:`${item.displayName} · ${item.email}`,value:item.id})));
-const queuedCount=computed(()=>register.value.requests.filter(item=>["QUEUED","RETRY_SCHEDULED","PROCESSING"].includes(item.status)).length);const failedCount=computed(()=>register.value.requests.filter(item=>item.status==="FAILED").length);const deadEventCount=computed(()=>register.value.eventInbox.filter(item=>item.status==="DEAD").length);const suppressedCount=computed(()=>register.value.requests.filter(item=>item.status==="SUPPRESSED").length);const sentCount=computed(()=>register.value.requests.filter(item=>item.status==="SENT").length);
-const drawerTitle=computed(()=>editingId.value?`Update ${title(drawerMode.value)}`:drawerMode.value==="request"?"Queue notification":`Create ${title(drawerMode.value)}`);
-watch(()=>requestForm.templateCode,(value)=>{const selected=activeTemplates.value.find(item=>item.value===value)?.template;if(selected){requestForm.channel=selected.channel;requestForm.eventType=selected.eventType;requestForm.locale=selected.locale;}});
-watch([()=>requestForm.recipientUserId,()=>requestForm.channel],()=>applyRequestRecipient());
-watch(()=>consentForm.recipientUserId,()=>{const user=coreUsers.value.find(item=>item.id===consentForm.recipientUserId);if(user&&!editingId.value)consentForm.recipientKey=user.id;});
+definePageMeta({ layout: "dashboard" });
+type DrawerMode = "template" | "consent" | "request";
+type CoreUser = {
+  id: string;
+  displayName: string;
+  email: string;
+  phoneNumber?: string;
+  status: string;
+};
+const api = useEmhareApi();
+const toast = useToast();
+const { showError } = useEmhareConfirm();
+const loading = ref(false),
+  saving = ref(false),
+  drawerOpen = ref(false);
+const loadError = ref("");
+const activeDataset = ref("requests");
+const drawerMode = ref<DrawerMode>("template");
+const editingId = ref<string | null>(null);
+const register = ref<NotificationRegister>({
+  templates: [],
+  consents: [],
+  requests: [],
+  deliveryAttempts: [],
+  eventInbox: [],
+  providerCallbacks: [],
+  inAppNotifications: [],
+});
+const coreUsers = ref<CoreUser[]>([]);
+const templateForm = reactive({
+  code: "",
+  templateVersion: 1,
+  name: "",
+  eventType: "",
+  channel: "EMAIL" as NotificationChannel,
+  category: "TRANSACTIONAL" as NotificationCategory,
+  locale: "en-ZW",
+  subjectTemplate: "",
+  bodyTemplate: "",
+  expectedVersion: 0,
+});
+const consentForm = reactive({
+  recipientUserId: "",
+  recipientKey: "",
+  channel: "EMAIL" as NotificationChannel,
+  category: "MARKETING" as NotificationCategory,
+  status: "OPTED_IN",
+  source: "SELF_SERVICE",
+  evidenceReference: "",
+  expectedVersion: null as number | null,
+});
+const requestForm = reactive({
+  idempotencyKey: "",
+  sourceService: "operations-console",
+  sourceEventId: "",
+  eventType: "",
+  templateCode: "",
+  channel: "EMAIL" as NotificationChannel,
+  locale: "en-ZW",
+  recipientUserId: "",
+  recipientKey: "",
+  recipientAddress: "",
+  priority: "NORMAL",
+  scheduledAt: "",
+  maxAttempts: 5,
+  variablesJson: "{}",
+});
+const templateColumns: TableColumn<NotificationTemplateSummary>[] = [
+  { accessorKey: "code", header: "Code" },
+  { accessorKey: "templateVersion", header: "Version" },
+  { accessorKey: "name", header: "Template" },
+  { accessorKey: "eventType", header: "Event" },
+  { accessorKey: "channel", header: "Channel" },
+  { accessorKey: "category", header: "Category" },
+  { accessorKey: "status", header: "Control state" },
+  { accessorKey: "actions", header: "" },
+];
+const consentColumns: TableColumn<NotificationConsentSummary>[] = [
+  { accessorKey: "recipientKey", header: "Recipient" },
+  { accessorKey: "channel", header: "Channel" },
+  { accessorKey: "category", header: "Category" },
+  { accessorKey: "status", header: "Preference" },
+  { accessorKey: "source", header: "Evidence source" },
+  { accessorKey: "effectiveFrom", header: "Effective from" },
+  { accessorKey: "actions", header: "" },
+];
+const requestColumns: TableColumn<NotificationRequestSummary>[] = [
+  { accessorKey: "requestNumber", header: "Request" },
+  { accessorKey: "eventType", header: "Event" },
+  { accessorKey: "recipientAddress", header: "Recipient" },
+  { accessorKey: "channel", header: "Channel" },
+  { accessorKey: "priority", header: "Priority" },
+  { accessorKey: "status", header: "Queue state" },
+  { accessorKey: "providerDeliveryStatus", header: "Provider state" },
+  { accessorKey: "attemptCount", header: "Attempts" },
+  { accessorKey: "scheduledAt", header: "Scheduled" },
+  { accessorKey: "actions", header: "" },
+];
+const attemptColumns: TableColumn<NotificationDeliveryAttemptSummary>[] = [
+  { accessorKey: "notificationRequestId", header: "Request ID" },
+  { accessorKey: "attemptNumber", header: "Attempt" },
+  { accessorKey: "providerCode", header: "Provider" },
+  { accessorKey: "outcome", header: "Outcome" },
+  { accessorKey: "providerMessageId", header: "Provider reference" },
+  { accessorKey: "completedAt", header: "Completed" },
+  { accessorKey: "errorMessage", header: "Failure detail" },
+];
+const inboxColumns: TableColumn<NotificationEventInboxSummary>[] = [
+  { accessorKey: "sourceService", header: "Source" },
+  { accessorKey: "eventType", header: "Event" },
+  { accessorKey: "status", header: "Processing state" },
+  { accessorKey: "attemptCount", header: "Attempts" },
+  { accessorKey: "receivedAt", header: "Received" },
+  { accessorKey: "nextAttemptAt", header: "Next attempt" },
+  { accessorKey: "processingError", header: "Failure detail" },
+  { accessorKey: "actions", header: "" },
+];
+const callbackColumns: TableColumn<NotificationProviderCallbackSummary>[] = [
+  { accessorKey: "providerCode", header: "Provider" },
+  { accessorKey: "providerEventId", header: "Provider event" },
+  { accessorKey: "providerMessageId", header: "Message reference" },
+  { accessorKey: "deliveryStatus", header: "Delivery evidence" },
+  { accessorKey: "occurredAt", header: "Occurred" },
+  { accessorKey: "receivedAt", header: "Received" },
+  { accessorKey: "errorMessage", header: "Failure detail" },
+];
+const inAppColumns: TableColumn<InAppNotificationSummary>[] = [
+  { accessorKey: "title", header: "Notification" },
+  { accessorKey: "recipientKey", header: "Recipient" },
+  { accessorKey: "deliveredAt", header: "Delivered" },
+  { accessorKey: "readAt", header: "Read" },
+  { accessorKey: "notificationRequestId", header: "Request ID" },
+];
+const datasets = computed(() => [
+  {
+    label: "Delivery queue",
+    value: "requests",
+    icon: "i-lucide-send",
+    badge: register.value.requests.length,
+  },
+  {
+    label: "Event inbox",
+    value: "inbox",
+    icon: "i-lucide-inbox",
+    badge: register.value.eventInbox.length,
+  },
+  {
+    label: "Templates",
+    value: "templates",
+    icon: "i-lucide-file-code-2",
+    badge: register.value.templates.length,
+  },
+  {
+    label: "Consent preferences",
+    value: "consents",
+    icon: "i-lucide-shield-check",
+    badge: register.value.consents.length,
+  },
+  {
+    label: "Delivery attempts",
+    value: "attempts",
+    icon: "i-lucide-history",
+    badge: register.value.deliveryAttempts.length,
+  },
+  {
+    label: "Provider evidence",
+    value: "callbacks",
+    icon: "i-lucide-webhook",
+    badge: register.value.providerCallbacks.length,
+  },
+  {
+    label: "In-app delivery",
+    value: "in-app",
+    icon: "i-lucide-bell",
+    badge: register.value.inAppNotifications.length,
+  },
+]);
+const activeTemplates = computed(() =>
+  register.value.templates
+    .filter((item) => item.status === "ACTIVE")
+    .map((item) => ({
+      label: `${item.code} v${item.templateVersion} · ${title(item.channel)}`,
+      value: `${item.code}:${item.channel}`,
+      template: item,
+    })),
+);
+const recipientUserItems = computed(() =>
+  coreUsers.value
+    .filter((item) => item.status === "ACTIVE")
+    .map((item) => ({ label: `${item.displayName} · ${item.email}`, value: item.id })),
+);
+const queuedCount = computed(
+  () =>
+    register.value.requests.filter((item) =>
+      ["QUEUED", "RETRY_SCHEDULED", "PROCESSING"].includes(item.status),
+    ).length,
+);
+const failedCount = computed(
+  () => register.value.requests.filter((item) => item.status === "FAILED").length,
+);
+const deadEventCount = computed(
+  () => register.value.eventInbox.filter((item) => item.status === "DEAD").length,
+);
+const suppressedCount = computed(
+  () => register.value.requests.filter((item) => item.status === "SUPPRESSED").length,
+);
+const sentCount = computed(
+  () => register.value.requests.filter((item) => item.status === "SENT").length,
+);
+const drawerTitle = computed(() =>
+  editingId.value
+    ? `Update ${title(drawerMode.value)}`
+    : drawerMode.value === "request"
+      ? "Queue notification"
+      : `Create ${title(drawerMode.value)}`,
+);
+watch(
+  () => requestForm.templateCode,
+  (value) => {
+    const selected = activeTemplates.value.find((item) => item.value === value)?.template;
+    if (selected) {
+      requestForm.channel = selected.channel;
+      requestForm.eventType = selected.eventType;
+      requestForm.locale = selected.locale;
+    }
+  },
+);
+watch([() => requestForm.recipientUserId, () => requestForm.channel], () =>
+  applyRequestRecipient(),
+);
+watch(
+  () => consentForm.recipientUserId,
+  () => {
+    const user = coreUsers.value.find((item) => item.id === consentForm.recipientUserId);
+    if (user && !editingId.value) consentForm.recipientKey = user.id;
+  },
+);
 onMounted(load);
-async function load(){loading.value=true;loadError.value="";const [notificationResult,userResult]=await Promise.allSettled([api.request<NotificationRegister>("/api/notifications"),api.request<CoreUser[]>("/api/core/users")]);if(notificationResult.status==="fulfilled")register.value=notificationResult.value;else loadError.value=api.errorMessage(notificationResult.reason,"Notification operations could not be loaded.");coreUsers.value=userResult.status==="fulfilled"?userResult.value:[];loading.value=false;}
-function applyRequestRecipient(){const user=coreUsers.value.find(item=>item.id===requestForm.recipientUserId);if(!user)return;requestForm.recipientKey=user.id;requestForm.recipientAddress=requestForm.channel==="EMAIL"?user.email:requestForm.channel==="SMS"?(user.phoneNumber??""):user.id;}
-function openCreate(mode:DrawerMode){editingId.value=null;drawerMode.value=mode;if(mode==="template")Object.assign(templateForm,{code:"",templateVersion:1,name:"",eventType:"",channel:"EMAIL",category:"TRANSACTIONAL",locale:"en-ZW",subjectTemplate:"",bodyTemplate:"",expectedVersion:0});if(mode==="consent")Object.assign(consentForm,{recipientUserId:"",recipientKey:"",channel:"EMAIL",category:"MARKETING",status:"OPTED_IN",source:"SELF_SERVICE",evidenceReference:"",expectedVersion:null});if(mode==="request")Object.assign(requestForm,{idempotencyKey:crypto.randomUUID(),sourceService:"operations-console",sourceEventId:"",eventType:"",templateCode:activeTemplates.value[0]?.value??"",channel:activeTemplates.value[0]?.template.channel??"EMAIL",locale:activeTemplates.value[0]?.template.locale??"en-ZW",recipientUserId:"",recipientKey:"",recipientAddress:"",priority:"NORMAL",scheduledAt:"",maxAttempts:5,variablesJson:"{}"});drawerOpen.value=true;}
-function editTemplate(item:NotificationTemplateSummary){drawerMode.value="template";editingId.value=item.id;Object.assign(templateForm,{...item,subjectTemplate:item.subjectTemplate??"",expectedVersion:item.version});drawerOpen.value=true;}
-function editConsent(item:NotificationConsentSummary){drawerMode.value="consent";editingId.value=item.id;Object.assign(consentForm,{...item,recipientUserId:item.recipientUserId??"",evidenceReference:item.evidenceReference??"",expectedVersion:item.version});drawerOpen.value=true;}
-async function saveDrawer(){saving.value=true;try{if(drawerMode.value==="template"){if(editingId.value)await api.request(`/api/notifications/templates/${editingId.value}`,{method:"PUT",body:{name:templateForm.name,eventType:templateForm.eventType,category:templateForm.category,subjectTemplate:templateForm.subjectTemplate||null,bodyTemplate:templateForm.bodyTemplate,expectedVersion:templateForm.expectedVersion}});else await api.request("/api/notifications/templates",{method:"POST",body:{...templateForm,subjectTemplate:templateForm.subjectTemplate||null}});}if(drawerMode.value==="consent")await api.request("/api/notifications/consents",{method:"POST",body:{...consentForm,recipientUserId:consentForm.recipientUserId||null,evidenceReference:consentForm.evidenceReference||null}});if(drawerMode.value==="request"){let variables:Record<string,string>;try{variables=JSON.parse(requestForm.variablesJson);}catch{throw new Error("Template variables must be a valid JSON object.");}await api.request("/api/notifications/requests",{method:"POST",body:{...requestForm,templateCode:requestForm.templateCode.split(":")[0],sourceEventId:requestForm.sourceEventId||null,recipientUserId:requestForm.recipientUserId||null,scheduledAt:requestForm.scheduledAt?new Date(requestForm.scheduledAt).toISOString():null,variables}});}drawerOpen.value=false;toast.add({title:"Notification record saved",color:"success",icon:"i-lucide-circle-check"});await load();}catch(error){await showError("Notification record was not saved",api.errorMessage(error));}finally{saving.value=false;}}
-async function transitionTemplate(item:NotificationTemplateSummary,targetStatus:"ACTIVE"|"RETIRED"){const result=await Swal.fire({title:`${title(targetStatus)} notification template`,input:"textarea",inputLabel:"Decision evidence",inputPlaceholder:"Record the review, authority, and reason…",showCancelButton:true,confirmButtonText:title(targetStatus),confirmButtonColor:"#20743a",inputValidator:value=>value.trim()?undefined:"Decision evidence is required."});if(!result.isConfirmed)return;try{await api.request(`/api/notifications/templates/${item.id}/transition`,{method:"POST",body:{targetStatus,reason:result.value,expectedVersion:item.version}});await load();}catch(error){await showError("Template transition failed",api.errorMessage(error));}}
-async function requestAction(item:NotificationRequestSummary,action:"retry"|"cancel"){const result=await Swal.fire({title:`${title(action)} notification`,input:"textarea",inputLabel:"Operational evidence",showCancelButton:true,confirmButtonText:title(action),confirmButtonColor:action==="cancel"?"#b91c1c":"#20743a",inputValidator:value=>value.trim()?undefined:"A reason is required."});if(!result.isConfirmed)return;try{await api.request(`/api/notifications/requests/${item.id}/${action}`,{method:"POST",body:{reason:result.value,expectedVersion:item.version}});await load();}catch(error){await showError("Notification action failed",api.errorMessage(error));}}
-async function retryEvent(item:NotificationEventInboxSummary){const result=await Swal.fire({title:"Retry notification event",input:"textarea",inputLabel:"Operational evidence",inputPlaceholder:"Record the investigation, corrective action, and retry authority…",showCancelButton:true,confirmButtonText:"Retry event",confirmButtonColor:"#20743a",inputValidator:value=>value.trim().length>=10?undefined:"Provide at least 10 characters of retry evidence."});if(!result.isConfirmed)return;try{await api.request(`/api/notifications/event-inbox/${item.id}/retry`,{method:"POST",body:{reason:result.value,expectedVersion:item.version}});await load();}catch(error){await showError("Notification event retry failed",api.errorMessage(error));}}
-function title(value:string){return value.replaceAll("-","_").split("_").map(part=>part.charAt(0).toUpperCase()+part.slice(1).toLowerCase()).join(" ");}function formatDateTime(value:string|null){return value?new Intl.DateTimeFormat("en-ZW",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value)):"—";}function tone(status:string):"success"|"warning"|"error"|"neutral"|"primary"{return ["ACTIVE","SENT","OPTED_IN","PROCESSED","DELIVERED"].includes(status)?"success":["DRAFT","QUEUED","RETRY_SCHEDULED","PROCESSING","ACCEPTED","RECEIVED"].includes(status)?"warning":["FAILED","PERMANENT_FAILURE","OPTED_OUT","DEAD","BOUNCED"].includes(status)?"error":"neutral";}
+async function load() {
+  loading.value = true;
+  loadError.value = "";
+  const [notificationResult, userResult] = await Promise.allSettled([
+    api.request<NotificationRegister>("/api/notifications"),
+    api.request<CoreUser[]>("/api/core/users"),
+  ]);
+  if (notificationResult.status === "fulfilled") register.value = notificationResult.value;
+  else
+    loadError.value = api.errorMessage(
+      notificationResult.reason,
+      "Notification operations could not be loaded.",
+    );
+  coreUsers.value = userResult.status === "fulfilled" ? userResult.value : [];
+  loading.value = false;
+}
+function applyRequestRecipient() {
+  const user = coreUsers.value.find((item) => item.id === requestForm.recipientUserId);
+  if (!user) return;
+  requestForm.recipientKey = user.id;
+  requestForm.recipientAddress =
+    requestForm.channel === "EMAIL"
+      ? user.email
+      : requestForm.channel === "SMS"
+        ? (user.phoneNumber ?? "")
+        : user.id;
+}
+function openCreate(mode: DrawerMode) {
+  editingId.value = null;
+  drawerMode.value = mode;
+  if (mode === "template")
+    Object.assign(templateForm, {
+      code: "",
+      templateVersion: 1,
+      name: "",
+      eventType: "",
+      channel: "EMAIL",
+      category: "TRANSACTIONAL",
+      locale: "en-ZW",
+      subjectTemplate: "",
+      bodyTemplate: "",
+      expectedVersion: 0,
+    });
+  if (mode === "consent")
+    Object.assign(consentForm, {
+      recipientUserId: "",
+      recipientKey: "",
+      channel: "EMAIL",
+      category: "MARKETING",
+      status: "OPTED_IN",
+      source: "SELF_SERVICE",
+      evidenceReference: "",
+      expectedVersion: null,
+    });
+  if (mode === "request")
+    Object.assign(requestForm, {
+      idempotencyKey: crypto.randomUUID(),
+      sourceService: "operations-console",
+      sourceEventId: "",
+      eventType: "",
+      templateCode: activeTemplates.value[0]?.value ?? "",
+      channel: activeTemplates.value[0]?.template.channel ?? "EMAIL",
+      locale: activeTemplates.value[0]?.template.locale ?? "en-ZW",
+      recipientUserId: "",
+      recipientKey: "",
+      recipientAddress: "",
+      priority: "NORMAL",
+      scheduledAt: "",
+      maxAttempts: 5,
+      variablesJson: "{}",
+    });
+  drawerOpen.value = true;
+}
+function editTemplate(item: NotificationTemplateSummary) {
+  drawerMode.value = "template";
+  editingId.value = item.id;
+  Object.assign(templateForm, {
+    ...item,
+    subjectTemplate: item.subjectTemplate ?? "",
+    expectedVersion: item.version,
+  });
+  drawerOpen.value = true;
+}
+function editConsent(item: NotificationConsentSummary) {
+  drawerMode.value = "consent";
+  editingId.value = item.id;
+  Object.assign(consentForm, {
+    ...item,
+    recipientUserId: item.recipientUserId ?? "",
+    evidenceReference: item.evidenceReference ?? "",
+    expectedVersion: item.version,
+  });
+  drawerOpen.value = true;
+}
+async function saveDrawer() {
+  saving.value = true;
+  try {
+    if (drawerMode.value === "template") {
+      if (editingId.value)
+        await api.request(`/api/notifications/templates/${editingId.value}`, {
+          method: "PUT",
+          body: {
+            name: templateForm.name,
+            eventType: templateForm.eventType,
+            category: templateForm.category,
+            subjectTemplate: templateForm.subjectTemplate || null,
+            bodyTemplate: templateForm.bodyTemplate,
+            expectedVersion: templateForm.expectedVersion,
+          },
+        });
+      else
+        await api.request("/api/notifications/templates", {
+          method: "POST",
+          body: { ...templateForm, subjectTemplate: templateForm.subjectTemplate || null },
+        });
+    }
+    if (drawerMode.value === "consent")
+      await api.request("/api/notifications/consents", {
+        method: "POST",
+        body: {
+          ...consentForm,
+          recipientUserId: consentForm.recipientUserId || null,
+          evidenceReference: consentForm.evidenceReference || null,
+        },
+      });
+    if (drawerMode.value === "request") {
+      let variables: Record<string, string>;
+      try {
+        variables = JSON.parse(requestForm.variablesJson);
+      } catch {
+        throw new Error("Template variables must be a valid JSON object.");
+      }
+      await api.request("/api/notifications/requests", {
+        method: "POST",
+        body: {
+          ...requestForm,
+          templateCode: requestForm.templateCode.split(":")[0],
+          sourceEventId: requestForm.sourceEventId || null,
+          recipientUserId: requestForm.recipientUserId || null,
+          scheduledAt: requestForm.scheduledAt
+            ? new Date(requestForm.scheduledAt).toISOString()
+            : null,
+          variables,
+        },
+      });
+    }
+    drawerOpen.value = false;
+    toast.add({
+      title: "Notification record saved",
+      color: "success",
+      icon: "i-lucide-circle-check",
+    });
+    await load();
+  } catch (error) {
+    await showError("Notification record was not saved", api.errorMessage(error));
+  } finally {
+    saving.value = false;
+  }
+}
+async function transitionTemplate(
+  item: NotificationTemplateSummary,
+  targetStatus: "ACTIVE" | "RETIRED",
+) {
+  const result = await Swal.fire({
+    title: `${title(targetStatus)} notification template`,
+    input: "textarea",
+    inputLabel: "Decision evidence",
+    inputPlaceholder: "Record the review, authority, and reason…",
+    showCancelButton: true,
+    confirmButtonText: title(targetStatus),
+    confirmButtonColor: "var(--color-uzazure-600)",
+    inputValidator: (value) => (value.trim() ? undefined : "Decision evidence is required."),
+  });
+  if (!result.isConfirmed) return;
+  try {
+    await api.request(`/api/notifications/templates/${item.id}/transition`, {
+      method: "POST",
+      body: { targetStatus, reason: result.value, expectedVersion: item.version },
+    });
+    await load();
+  } catch (error) {
+    await showError("Template transition failed", api.errorMessage(error));
+  }
+}
+async function requestAction(item: NotificationRequestSummary, action: "retry" | "cancel") {
+  const result = await Swal.fire({
+    title: `${title(action)} notification`,
+    input: "textarea",
+    inputLabel: "Operational evidence",
+    showCancelButton: true,
+    confirmButtonText: title(action),
+    confirmButtonColor: action === "cancel" ? "#b91c1c" : "var(--color-uzazure-600)",
+    inputValidator: (value) => (value.trim() ? undefined : "A reason is required."),
+  });
+  if (!result.isConfirmed) return;
+  try {
+    await api.request(`/api/notifications/requests/${item.id}/${action}`, {
+      method: "POST",
+      body: { reason: result.value, expectedVersion: item.version },
+    });
+    await load();
+  } catch (error) {
+    await showError("Notification action failed", api.errorMessage(error));
+  }
+}
+async function retryEvent(item: NotificationEventInboxSummary) {
+  const result = await Swal.fire({
+    title: "Retry notification event",
+    input: "textarea",
+    inputLabel: "Operational evidence",
+    inputPlaceholder: "Record the investigation, corrective action, and retry authority…",
+    showCancelButton: true,
+    confirmButtonText: "Retry event",
+    confirmButtonColor: "var(--color-uzazure-600)",
+    inputValidator: (value) =>
+      value.trim().length >= 10 ? undefined : "Provide at least 10 characters of retry evidence.",
+  });
+  if (!result.isConfirmed) return;
+  try {
+    await api.request(`/api/notifications/event-inbox/${item.id}/retry`, {
+      method: "POST",
+      body: { reason: result.value, expectedVersion: item.version },
+    });
+    await load();
+  } catch (error) {
+    await showError("Notification event retry failed", api.errorMessage(error));
+  }
+}
+function title(value: string) {
+  return value
+    .replaceAll("-", "_")
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+function formatDateTime(value: string | null) {
+  return value
+    ? new Intl.DateTimeFormat("en-ZW", { dateStyle: "medium", timeStyle: "short" }).format(
+        new Date(value),
+      )
+    : "—";
+}
+function tone(status: string): "success" | "warning" | "error" | "neutral" | "primary" {
+  return ["ACTIVE", "SENT", "OPTED_IN", "PROCESSED", "DELIVERED"].includes(status)
+    ? "success"
+    : ["DRAFT", "QUEUED", "RETRY_SCHEDULED", "PROCESSING", "ACCEPTED", "RECEIVED"].includes(status)
+      ? "warning"
+      : ["FAILED", "PERMANENT_FAILURE", "OPTED_OUT", "DEAD", "BOUNCED"].includes(status)
+        ? "error"
+        : "neutral";
+}
 </script>
 
 <template>
-  <UDashboardPanel id="notifications"><template #header><UDashboardNavbar title="Notifications"><template #leading><UDashboardSidebarCollapse /></template><template #right><UButton label="Refresh" icon="i-lucide-refresh-cw" color="neutral" variant="outline" :loading="loading" @click="load" /></template></UDashboardNavbar></template><template #body><div class="space-y-5">
-    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><EmhareKpiCard label="In delivery queue" :value="queuedCount" icon="i-lucide-send" tone="primary" /><EmhareKpiCard label="Sent" :value="sentCount" icon="i-lucide-circle-check" tone="success" /><EmhareKpiCard label="Failed deliveries" :value="failedCount" icon="i-lucide-circle-alert" :tone="failedCount?'warning':'neutral'" /><EmhareKpiCard label="Dead events" :value="deadEventCount" icon="i-lucide-inbox" :tone="deadEventCount?'error':'neutral'" /><EmhareKpiCard label="Consent suppressed" :value="suppressedCount" icon="i-lucide-shield-off" tone="neutral" /></div>
-    <UAlert color="primary" variant="soft" icon="i-lucide-shield-check" title="Delivery is independent of business state" description="Business workflows enqueue notifications idempotently. Provider failures are retried and audited without silently rolling back or advancing the originating business decision." />
-    <UAlert v-if="loadError" color="error" variant="soft" icon="i-lucide-circle-alert" title="Notifications unavailable" :description="loadError" />
-    <UTabs v-model="activeDataset" :items="datasets" :content="false" color="primary" variant="pill" />
-    <EmhareRegisterPanel v-if="activeDataset==='requests'" title="Notification delivery queue" description="Rendered, recipient-specific delivery records with idempotency, retry, and provider evidence." :record-count="register.requests.length"><template #actions><EmhareGuidedActionButton label="Queue notification" icon="i-lucide-plus" guidance-title="Notification template setup required" :guidance-instructions="activeTemplates.length ? [] : ['Create and activate at least one notification template before queueing a delivery.']" guidance-action-label="Open Templates" @guidance-action="activeDataset='templates'" @click="openCreate('request')" /></template><EmharePaginatedTable :data="register.requests" :columns="requestColumns" :loading="loading"><template #priority-cell="{row}"><EmhareStatusPill :label="title(row.original.priority)" :tone="row.original.priority==='URGENT'?'error':row.original.priority==='HIGH'?'warning':'neutral'" /></template><template #status-cell="{row}"><EmhareStatusPill :label="title(row.original.status)" :tone="tone(row.original.status)" /></template><template #providerDeliveryStatus-cell="{row}"><EmhareStatusPill v-if="row.original.providerDeliveryStatus" :label="title(row.original.providerDeliveryStatus)" :tone="tone(row.original.providerDeliveryStatus)" /><span v-else class="text-muted">—</span></template><template #attemptCount-cell="{row}">{{row.original.attemptCount}} / {{row.original.maxAttempts}}</template><template #scheduledAt-cell="{row}">{{formatDateTime(row.original.scheduledAt)}}</template><template #actions-cell="{row}"><div class="flex justify-end gap-1"><UButton v-if="row.original.status==='FAILED'" label="Retry" size="xs" icon="i-lucide-refresh-cw" @click="requestAction(row.original,'retry')" /><UButton v-if="['QUEUED','RETRY_SCHEDULED','SUPPRESSED','FAILED'].includes(row.original.status)" label="Cancel" size="xs" color="error" variant="ghost" @click="requestAction(row.original,'cancel')" /></div></template></EmharePaginatedTable></EmhareRegisterPanel>
-    <EmhareRegisterPanel v-if="activeDataset==='inbox'" title="Integration event inbox" description="Durable notification intents received from business-service outboxes. Dead events require investigated, audited operator recovery." :record-count="register.eventInbox.length"><EmharePaginatedTable :data="register.eventInbox" :columns="inboxColumns" :loading="loading"><template #status-cell="{row}"><EmhareStatusPill :label="title(row.original.status)" :tone="tone(row.original.status)" /></template><template #attemptCount-cell="{row}">{{row.original.attemptCount}} / {{row.original.maxAttempts}}</template><template #receivedAt-cell="{row}">{{formatDateTime(row.original.receivedAt)}}</template><template #nextAttemptAt-cell="{row}">{{formatDateTime(row.original.nextAttemptAt)}}</template><template #actions-cell="{row}"><div class="flex justify-end"><UButton v-if="row.original.status==='DEAD'" label="Retry" size="xs" icon="i-lucide-refresh-cw" @click="retryEvent(row.original)" /></div></template></EmharePaginatedTable></EmhareRegisterPanel>
-    <EmhareRegisterPanel v-if="activeDataset==='templates'" title="Notification templates" description="Versioned channel templates with independent maker-checker activation." :record-count="register.templates.length"><template #actions><UButton label="Prepare template" icon="i-lucide-plus" @click="openCreate('template')" /></template><EmharePaginatedTable :data="register.templates" :columns="templateColumns" :loading="loading"><template #channel-cell="{row}">{{title(row.original.channel)}}</template><template #category-cell="{row}">{{title(row.original.category)}}</template><template #status-cell="{row}"><EmhareStatusPill :label="title(row.original.status)" :tone="tone(row.original.status)" /></template><template #actions-cell="{row}"><div class="flex justify-end gap-1"><UButton v-if="row.original.status==='DRAFT'" label="Edit" size="xs" icon="i-lucide-pencil" color="neutral" variant="ghost" @click="editTemplate(row.original)" /><UButton v-if="row.original.status==='DRAFT'" label="Activate" size="xs" icon="i-lucide-stamp" @click="transitionTemplate(row.original,'ACTIVE')" /><UButton v-if="row.original.status==='ACTIVE'" label="Retire" size="xs" icon="i-lucide-archive" color="neutral" variant="ghost" @click="transitionTemplate(row.original,'RETIRED')" /></div></template></EmharePaginatedTable></EmhareRegisterPanel>
-    <EmhareRegisterPanel v-if="activeDataset==='consents'" title="Consent preferences" description="Recipient, channel, and category-specific evidence. Marketing requires explicit opt-in." :record-count="register.consents.length"><template #actions><UButton label="Record preference" icon="i-lucide-plus" @click="openCreate('consent')" /></template><EmharePaginatedTable :data="register.consents" :columns="consentColumns" :loading="loading"><template #channel-cell="{row}">{{title(row.original.channel)}}</template><template #category-cell="{row}">{{title(row.original.category)}}</template><template #status-cell="{row}"><EmhareStatusPill :label="title(row.original.status)" :tone="tone(row.original.status)" /></template><template #effectiveFrom-cell="{row}">{{formatDateTime(row.original.effectiveFrom)}}</template><template #actions-cell="{row}"><UButton label="Update" size="xs" icon="i-lucide-pencil" color="neutral" variant="ghost" @click="editConsent(row.original)" /></template></EmharePaginatedTable></EmhareRegisterPanel>
-    <EmhareRegisterPanel v-if="activeDataset==='attempts'" title="Delivery attempt evidence" description="Append-only provider attempts retained for operational audit and failure analysis." :record-count="register.deliveryAttempts.length"><EmharePaginatedTable :data="register.deliveryAttempts" :columns="attemptColumns" :loading="loading"><template #outcome-cell="{row}"><EmhareStatusPill :label="title(row.original.outcome)" :tone="tone(row.original.outcome)" /></template><template #completedAt-cell="{row}">{{formatDateTime(row.original.completedAt)}}</template></EmharePaginatedTable></EmhareRegisterPanel>
-    <EmhareRegisterPanel v-if="activeDataset==='callbacks'" title="Provider delivery evidence" description="Signature-verified, append-only callbacks linked to the original notification request without rewriting its originating business workflow." :record-count="register.providerCallbacks.length"><EmharePaginatedTable :data="register.providerCallbacks" :columns="callbackColumns" :loading="loading"><template #deliveryStatus-cell="{row}"><EmhareStatusPill :label="title(row.original.deliveryStatus)" :tone="tone(row.original.deliveryStatus)" /></template><template #occurredAt-cell="{row}">{{formatDateTime(row.original.occurredAt)}}</template><template #receivedAt-cell="{row}">{{formatDateTime(row.original.receivedAt)}}</template></EmharePaginatedTable></EmhareRegisterPanel>
-    <EmhareRegisterPanel v-if="activeDataset==='in-app'" title="In-app delivery register" description="Recipient-owned messages delivered to the authenticated user inbox with read evidence and optimistic locking." :record-count="register.inAppNotifications.length"><EmharePaginatedTable :data="register.inAppNotifications" :columns="inAppColumns" :loading="loading"><template #deliveredAt-cell="{row}">{{formatDateTime(row.original.deliveredAt)}}</template><template #readAt-cell="{row}"><EmhareStatusPill v-if="row.original.readAt" label="Read" tone="success" /><EmhareStatusPill v-else label="Unread" tone="warning" /></template></EmharePaginatedTable></EmhareRegisterPanel>
-  </div></template></UDashboardPanel>
-  <EmhareRecordDrawer v-model:open="drawerOpen" presentation="page" :title="drawerTitle" description="Complete the controlled record. State changes preserve optimistic-lock and audit evidence." :busy="saving" @submit="saveDrawer">
-    <div v-if="drawerMode==='template'" class="grid gap-4 sm:grid-cols-2"><UAlert color="warning" variant="soft" icon="i-lucide-shield-check" title="Maker-checker controlled" description="A different authorised operator must activate this template." class="sm:col-span-2" /><UFormField label="Code" required><UInput v-model="templateForm.code" :readonly="!!editingId" class="w-full" /></UFormField><UFormField label="Version" required><UInput v-model.number="templateForm.templateVersion" type="number" min="1" :readonly="!!editingId" class="w-full" /></UFormField><UFormField label="Name" required class="sm:col-span-2"><UInput v-model="templateForm.name" class="w-full" /></UFormField><UFormField label="Event type" required><UInput v-model="templateForm.eventType" class="w-full" /></UFormField><UFormField label="Locale" required><UInput v-model="templateForm.locale" :readonly="!!editingId" class="w-full" /></UFormField><UFormField label="Channel" required><USelect v-model="templateForm.channel" :items="['EMAIL','SMS','IN_APP'].map(value=>({label:title(value),value}))" value-key="value" :disabled="!!editingId" class="w-full" /></UFormField><UFormField label="Category" required><USelect v-model="templateForm.category" :items="['TRANSACTIONAL','WORKFLOW','SECURITY','MARKETING'].map(value=>({label:title(value),value}))" value-key="value" class="w-full" /></UFormField><UFormField label="Subject template" hint="Email only" class="sm:col-span-2"><UInput v-model="templateForm.subjectTemplate" class="w-full" /></UFormField><UFormField label="Body template" description="Use {{variableName}} placeholders. Every placeholder must be supplied by the event." required class="sm:col-span-2"><UTextarea v-model="templateForm.bodyTemplate" :rows="8" class="w-full font-mono" /></UFormField></div>
-    <div v-else-if="drawerMode==='consent'" class="grid gap-4 sm:grid-cols-2"><EmhareFormField v-model="consentForm.recipientUserId" type="searchable-select" label="Recipient user" :items="recipientUserItems" :disabled="!!editingId" description="Select a governed user when this preference belongs to an eMhare identity." class="sm:col-span-2" /><UFormField label="Recipient key" required class="sm:col-span-2"><UInput v-model="consentForm.recipientKey" :readonly="!!editingId" class="w-full" placeholder="email, phone, or user key" /></UFormField><UFormField label="Channel" required><USelect v-model="consentForm.channel" :items="['EMAIL','SMS','IN_APP'].map(value=>({label:title(value),value}))" value-key="value" :disabled="!!editingId" class="w-full" /></UFormField><UFormField label="Category" required><USelect v-model="consentForm.category" :items="['TRANSACTIONAL','WORKFLOW','SECURITY','MARKETING'].map(value=>({label:title(value),value}))" value-key="value" :disabled="!!editingId" class="w-full" /></UFormField><UFormField label="Preference" required><USelect v-model="consentForm.status" :items="['OPTED_IN','OPTED_OUT','NOT_REQUIRED'].map(value=>({label:title(value),value}))" value-key="value" class="w-full" /></UFormField><UFormField label="Evidence source" required><UInput v-model="consentForm.source" class="w-full" /></UFormField><UFormField label="Evidence reference" class="sm:col-span-2"><UInput v-model="consentForm.evidenceReference" class="w-full" /></UFormField></div>
-    <div v-else class="grid gap-4 sm:grid-cols-2"><EmhareFormField v-model="requestForm.templateCode" type="searchable-select" label="Active template" :items="activeTemplates" required class="sm:col-span-2" /><EmhareFormField v-model="requestForm.recipientUserId" type="searchable-select" label="Recipient user" :items="recipientUserItems" :required="requestForm.channel==='IN_APP'" description="Selecting a governed user fills the stable recipient key and channel address." class="sm:col-span-2" /><UFormField label="Recipient key" required><UInput v-model="requestForm.recipientKey" class="w-full" /></UFormField><UFormField label="Delivery address" required><UInput v-model="requestForm.recipientAddress" class="w-full" /></UFormField><UFormField label="Priority" required><USelect v-model="requestForm.priority" :items="['LOW','NORMAL','HIGH','URGENT'].map(value=>({label:title(value),value}))" value-key="value" class="w-full" /></UFormField><UFormField label="Scheduled at"><UInput v-model="requestForm.scheduledAt" type="datetime-local" class="w-full" /></UFormField><UFormField label="Idempotency key" required class="sm:col-span-2"><UInput v-model="requestForm.idempotencyKey" class="w-full font-mono" /></UFormField><UFormField label="Template variables (JSON)" required class="sm:col-span-2"><UTextarea v-model="requestForm.variablesJson" :rows="7" class="w-full font-mono" /></UFormField></div>
+  <UDashboardPanel id="notifications"
+    ><template #header
+      ><UDashboardNavbar title="Notifications"
+        ><template #leading><UDashboardSidebarCollapse /></template
+        ><template #right
+          ><UButton
+            label="Refresh"
+            icon="i-lucide-refresh-cw"
+            color="neutral"
+            variant="outline"
+            :loading="loading"
+            @click="load" /></template></UDashboardNavbar></template
+    ><template #body
+      ><div class="space-y-5">
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <EmhareKpiCard
+            label="In delivery queue"
+            :value="queuedCount"
+            icon="i-lucide-send"
+            tone="primary"
+          /><EmhareKpiCard
+            label="Sent"
+            :value="sentCount"
+            icon="i-lucide-circle-check"
+            tone="success"
+          /><EmhareKpiCard
+            label="Failed deliveries"
+            :value="failedCount"
+            icon="i-lucide-circle-alert"
+            :tone="failedCount ? 'warning' : 'neutral'"
+          /><EmhareKpiCard
+            label="Dead events"
+            :value="deadEventCount"
+            icon="i-lucide-inbox"
+            :tone="deadEventCount ? 'error' : 'neutral'"
+          /><EmhareKpiCard
+            label="Consent suppressed"
+            :value="suppressedCount"
+            icon="i-lucide-shield-off"
+            tone="neutral"
+          />
+        </div>
+        <UAlert
+          color="primary"
+          variant="soft"
+          icon="i-lucide-shield-check"
+          title="Delivery is independent of business state"
+          description="Business workflows enqueue notifications idempotently. Provider failures are retried and audited without silently rolling back or advancing the originating business decision."
+        />
+        <UAlert
+          v-if="loadError"
+          color="error"
+          variant="soft"
+          icon="i-lucide-circle-alert"
+          title="Notifications unavailable"
+          :description="loadError"
+        />
+        <UTabs
+          v-model="activeDataset"
+          :items="datasets"
+          :content="false"
+          color="primary"
+          variant="pill"
+        />
+        <EmhareRegisterPanel
+          v-if="activeDataset === 'requests'"
+          title="Notification delivery queue"
+          description="Rendered, recipient-specific delivery records with idempotency, retry, and provider evidence."
+          :record-count="register.requests.length"
+          ><template #actions
+            ><EmhareGuidedActionButton
+              label="Queue notification"
+              icon="i-lucide-plus"
+              guidance-title="Notification template setup required"
+              :guidance-instructions="
+                activeTemplates.length
+                  ? []
+                  : [
+                      'Create and activate at least one notification template before queueing a delivery.',
+                    ]
+              "
+              guidance-action-label="Open Templates"
+              @guidance-action="activeDataset = 'templates'"
+              @click="openCreate('request')" /></template
+          ><EmharePaginatedTable
+            :data="register.requests"
+            :columns="requestColumns"
+            :loading="loading"
+            ><template #priority-cell="{ row }"
+              ><EmhareStatusPill
+                :label="title(row.original.priority)"
+                :tone="
+                  row.original.priority === 'URGENT'
+                    ? 'error'
+                    : row.original.priority === 'HIGH'
+                      ? 'warning'
+                      : 'neutral'
+                " /></template
+            ><template #status-cell="{ row }"
+              ><EmhareStatusPill
+                :label="title(row.original.status)"
+                :tone="tone(row.original.status)" /></template
+            ><template #providerDeliveryStatus-cell="{ row }"
+              ><EmhareStatusPill
+                v-if="row.original.providerDeliveryStatus"
+                :label="title(row.original.providerDeliveryStatus)"
+                :tone="tone(row.original.providerDeliveryStatus)"
+              /><span v-else class="text-muted">—</span></template
+            ><template #attemptCount-cell="{ row }"
+              >{{ row.original.attemptCount }} / {{ row.original.maxAttempts }}</template
+            ><template #scheduledAt-cell="{ row }">{{
+              formatDateTime(row.original.scheduledAt)
+            }}</template
+            ><template #actions-cell="{ row }"
+              ><div class="flex justify-end gap-1">
+                <UButton
+                  v-if="row.original.status === 'FAILED'"
+                  label="Retry"
+                  size="xs"
+                  icon="i-lucide-refresh-cw"
+                  @click="requestAction(row.original, 'retry')"
+                /><UButton
+                  v-if="
+                    ['QUEUED', 'RETRY_SCHEDULED', 'SUPPRESSED', 'FAILED'].includes(
+                      row.original.status,
+                    )
+                  "
+                  label="Cancel"
+                  size="xs"
+                  color="error"
+                  variant="ghost"
+                  @click="requestAction(row.original, 'cancel')"
+                /></div></template></EmharePaginatedTable
+        ></EmhareRegisterPanel>
+        <EmhareRegisterPanel
+          v-if="activeDataset === 'inbox'"
+          title="Integration event inbox"
+          description="Durable notification intents received from business-service outboxes. Dead events require investigated, audited operator recovery."
+          :record-count="register.eventInbox.length"
+          ><EmharePaginatedTable
+            :data="register.eventInbox"
+            :columns="inboxColumns"
+            :loading="loading"
+            ><template #status-cell="{ row }"
+              ><EmhareStatusPill
+                :label="title(row.original.status)"
+                :tone="tone(row.original.status)" /></template
+            ><template #attemptCount-cell="{ row }"
+              >{{ row.original.attemptCount }} / {{ row.original.maxAttempts }}</template
+            ><template #receivedAt-cell="{ row }">{{
+              formatDateTime(row.original.receivedAt)
+            }}</template
+            ><template #nextAttemptAt-cell="{ row }">{{
+              formatDateTime(row.original.nextAttemptAt)
+            }}</template
+            ><template #actions-cell="{ row }"
+              ><div class="flex justify-end">
+                <UButton
+                  v-if="row.original.status === 'DEAD'"
+                  label="Retry"
+                  size="xs"
+                  icon="i-lucide-refresh-cw"
+                  @click="retryEvent(row.original)"
+                /></div></template></EmharePaginatedTable
+        ></EmhareRegisterPanel>
+        <EmhareRegisterPanel
+          v-if="activeDataset === 'templates'"
+          title="Notification templates"
+          description="Versioned channel templates with independent maker-checker activation."
+          :record-count="register.templates.length"
+          ><template #actions
+            ><UButton
+              label="Prepare template"
+              icon="i-lucide-plus"
+              @click="openCreate('template')" /></template
+          ><EmharePaginatedTable
+            :data="register.templates"
+            :columns="templateColumns"
+            :loading="loading"
+            ><template #channel-cell="{ row }">{{ title(row.original.channel) }}</template
+            ><template #category-cell="{ row }">{{ title(row.original.category) }}</template
+            ><template #status-cell="{ row }"
+              ><EmhareStatusPill
+                :label="title(row.original.status)"
+                :tone="tone(row.original.status)" /></template
+            ><template #actions-cell="{ row }"
+              ><div class="flex justify-end gap-1">
+                <UButton
+                  v-if="row.original.status === 'DRAFT'"
+                  label="Edit"
+                  size="xs"
+                  icon="i-lucide-pencil"
+                  color="neutral"
+                  variant="ghost"
+                  @click="editTemplate(row.original)"
+                /><UButton
+                  v-if="row.original.status === 'DRAFT'"
+                  label="Activate"
+                  size="xs"
+                  icon="i-lucide-stamp"
+                  @click="transitionTemplate(row.original, 'ACTIVE')"
+                /><UButton
+                  v-if="row.original.status === 'ACTIVE'"
+                  label="Retire"
+                  size="xs"
+                  icon="i-lucide-archive"
+                  color="neutral"
+                  variant="ghost"
+                  @click="transitionTemplate(row.original, 'RETIRED')"
+                /></div></template></EmharePaginatedTable
+        ></EmhareRegisterPanel>
+        <EmhareRegisterPanel
+          v-if="activeDataset === 'consents'"
+          title="Consent preferences"
+          description="Recipient, channel, and category-specific evidence. Marketing requires explicit opt-in."
+          :record-count="register.consents.length"
+          ><template #actions
+            ><UButton
+              label="Record preference"
+              icon="i-lucide-plus"
+              @click="openCreate('consent')" /></template
+          ><EmharePaginatedTable
+            :data="register.consents"
+            :columns="consentColumns"
+            :loading="loading"
+            ><template #channel-cell="{ row }">{{ title(row.original.channel) }}</template
+            ><template #category-cell="{ row }">{{ title(row.original.category) }}</template
+            ><template #status-cell="{ row }"
+              ><EmhareStatusPill
+                :label="title(row.original.status)"
+                :tone="tone(row.original.status)" /></template
+            ><template #effectiveFrom-cell="{ row }">{{
+              formatDateTime(row.original.effectiveFrom)
+            }}</template
+            ><template #actions-cell="{ row }"
+              ><UButton
+                label="Update"
+                size="xs"
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                @click="editConsent(row.original)" /></template></EmharePaginatedTable
+        ></EmhareRegisterPanel>
+        <EmhareRegisterPanel
+          v-if="activeDataset === 'attempts'"
+          title="Delivery attempt evidence"
+          description="Append-only provider attempts retained for operational audit and failure analysis."
+          :record-count="register.deliveryAttempts.length"
+          ><EmharePaginatedTable
+            :data="register.deliveryAttempts"
+            :columns="attemptColumns"
+            :loading="loading"
+            ><template #outcome-cell="{ row }"
+              ><EmhareStatusPill
+                :label="title(row.original.outcome)"
+                :tone="tone(row.original.outcome)" /></template
+            ><template #completedAt-cell="{ row }">{{
+              formatDateTime(row.original.completedAt)
+            }}</template></EmharePaginatedTable
+          ></EmhareRegisterPanel
+        >
+        <EmhareRegisterPanel
+          v-if="activeDataset === 'callbacks'"
+          title="Provider delivery evidence"
+          description="Signature-verified, append-only callbacks linked to the original notification request without rewriting its originating business workflow."
+          :record-count="register.providerCallbacks.length"
+          ><EmharePaginatedTable
+            :data="register.providerCallbacks"
+            :columns="callbackColumns"
+            :loading="loading"
+            ><template #deliveryStatus-cell="{ row }"
+              ><EmhareStatusPill
+                :label="title(row.original.deliveryStatus)"
+                :tone="tone(row.original.deliveryStatus)" /></template
+            ><template #occurredAt-cell="{ row }">{{
+              formatDateTime(row.original.occurredAt)
+            }}</template
+            ><template #receivedAt-cell="{ row }">{{
+              formatDateTime(row.original.receivedAt)
+            }}</template></EmharePaginatedTable
+          ></EmhareRegisterPanel
+        >
+        <EmhareRegisterPanel
+          v-if="activeDataset === 'in-app'"
+          title="In-app delivery register"
+          description="Recipient-owned messages delivered to the authenticated user inbox with read evidence and optimistic locking."
+          :record-count="register.inAppNotifications.length"
+          ><EmharePaginatedTable
+            :data="register.inAppNotifications"
+            :columns="inAppColumns"
+            :loading="loading"
+            ><template #deliveredAt-cell="{ row }">{{
+              formatDateTime(row.original.deliveredAt)
+            }}</template
+            ><template #readAt-cell="{ row }"
+              ><EmhareStatusPill
+                v-if="row.original.readAt"
+                label="Read"
+                tone="success" /><EmhareStatusPill
+                v-else
+                label="Unread"
+                tone="warning" /></template></EmharePaginatedTable
+        ></EmhareRegisterPanel></div></template
+  ></UDashboardPanel>
+  <EmhareRecordDrawer
+    v-model:open="drawerOpen"
+    presentation="page"
+    :title="drawerTitle"
+    description="Complete the controlled record. State changes preserve optimistic-lock and audit evidence."
+    :busy="saving"
+    @submit="saveDrawer"
+  >
+    <div v-if="drawerMode === 'template'" class="grid gap-4 sm:grid-cols-2">
+      <UAlert
+        color="warning"
+        variant="soft"
+        icon="i-lucide-shield-check"
+        title="Maker-checker controlled"
+        description="A different authorised operator must activate this template."
+        class="sm:col-span-2"
+      /><UFormField label="Code" required
+        ><UInput v-model="templateForm.code" :readonly="!!editingId" class="w-full" /></UFormField
+      ><UFormField label="Version" required
+        ><UInput
+          v-model.number="templateForm.templateVersion"
+          type="number"
+          min="1"
+          :readonly="!!editingId"
+          class="w-full" /></UFormField
+      ><UFormField label="Name" required class="sm:col-span-2"
+        ><UInput v-model="templateForm.name" class="w-full" /></UFormField
+      ><UFormField label="Event type" required
+        ><UInput v-model="templateForm.eventType" class="w-full" /></UFormField
+      ><UFormField label="Locale" required
+        ><UInput v-model="templateForm.locale" :readonly="!!editingId" class="w-full" /></UFormField
+      ><UFormField label="Channel" required
+        ><USelect
+          v-model="templateForm.channel"
+          :items="['EMAIL', 'SMS', 'IN_APP'].map((value) => ({ label: title(value), value }))"
+          value-key="value"
+          :disabled="!!editingId"
+          class="w-full" /></UFormField
+      ><UFormField label="Category" required
+        ><USelect
+          v-model="templateForm.category"
+          :items="
+            ['TRANSACTIONAL', 'WORKFLOW', 'SECURITY', 'MARKETING'].map((value) => ({
+              label: title(value),
+              value,
+            }))
+          "
+          value-key="value"
+          class="w-full" /></UFormField
+      ><UFormField label="Subject template" hint="Email only" class="sm:col-span-2"
+        ><UInput v-model="templateForm.subjectTemplate" class="w-full" /></UFormField
+      ><UFormField
+        label="Body template"
+        description="Use {{variableName}} placeholders. Every placeholder must be supplied by the event."
+        required
+        class="sm:col-span-2"
+        ><UTextarea v-model="templateForm.bodyTemplate" :rows="8" class="w-full font-mono"
+      /></UFormField>
+    </div>
+    <div v-else-if="drawerMode === 'consent'" class="grid gap-4 sm:grid-cols-2">
+      <EmhareFormField
+        v-model="consentForm.recipientUserId"
+        type="searchable-select"
+        label="Recipient user"
+        :items="recipientUserItems"
+        :disabled="!!editingId"
+        description="Select a governed user when this preference belongs to an eMhare identity."
+        class="sm:col-span-2"
+      /><UFormField label="Recipient key" required class="sm:col-span-2"
+        ><UInput
+          v-model="consentForm.recipientKey"
+          :readonly="!!editingId"
+          class="w-full"
+          placeholder="email, phone, or user key" /></UFormField
+      ><UFormField label="Channel" required
+        ><USelect
+          v-model="consentForm.channel"
+          :items="['EMAIL', 'SMS', 'IN_APP'].map((value) => ({ label: title(value), value }))"
+          value-key="value"
+          :disabled="!!editingId"
+          class="w-full" /></UFormField
+      ><UFormField label="Category" required
+        ><USelect
+          v-model="consentForm.category"
+          :items="
+            ['TRANSACTIONAL', 'WORKFLOW', 'SECURITY', 'MARKETING'].map((value) => ({
+              label: title(value),
+              value,
+            }))
+          "
+          value-key="value"
+          :disabled="!!editingId"
+          class="w-full" /></UFormField
+      ><UFormField label="Preference" required
+        ><USelect
+          v-model="consentForm.status"
+          :items="
+            ['OPTED_IN', 'OPTED_OUT', 'NOT_REQUIRED'].map((value) => ({
+              label: title(value),
+              value,
+            }))
+          "
+          value-key="value"
+          class="w-full" /></UFormField
+      ><UFormField label="Evidence source" required
+        ><UInput v-model="consentForm.source" class="w-full" /></UFormField
+      ><UFormField label="Evidence reference" class="sm:col-span-2"
+        ><UInput v-model="consentForm.evidenceReference" class="w-full"
+      /></UFormField>
+    </div>
+    <div v-else class="grid gap-4 sm:grid-cols-2">
+      <EmhareFormField
+        v-model="requestForm.templateCode"
+        type="searchable-select"
+        label="Active template"
+        :items="activeTemplates"
+        required
+        class="sm:col-span-2"
+      /><EmhareFormField
+        v-model="requestForm.recipientUserId"
+        type="searchable-select"
+        label="Recipient user"
+        :items="recipientUserItems"
+        :required="requestForm.channel === 'IN_APP'"
+        description="Selecting a governed user fills the stable recipient key and channel address."
+        class="sm:col-span-2"
+      /><UFormField label="Recipient key" required
+        ><UInput v-model="requestForm.recipientKey" class="w-full" /></UFormField
+      ><UFormField label="Delivery address" required
+        ><UInput v-model="requestForm.recipientAddress" class="w-full" /></UFormField
+      ><UFormField label="Priority" required
+        ><USelect
+          v-model="requestForm.priority"
+          :items="
+            ['LOW', 'NORMAL', 'HIGH', 'URGENT'].map((value) => ({ label: title(value), value }))
+          "
+          value-key="value"
+          class="w-full" /></UFormField
+      ><UFormField label="Scheduled at"
+        ><UInput
+          v-model="requestForm.scheduledAt"
+          type="datetime-local"
+          class="w-full" /></UFormField
+      ><UFormField label="Idempotency key" required class="sm:col-span-2"
+        ><UInput v-model="requestForm.idempotencyKey" class="w-full font-mono" /></UFormField
+      ><UFormField label="Template variables (JSON)" required class="sm:col-span-2"
+        ><UTextarea v-model="requestForm.variablesJson" :rows="7" class="w-full font-mono"
+      /></UFormField>
+    </div>
   </EmhareRecordDrawer>
 </template>

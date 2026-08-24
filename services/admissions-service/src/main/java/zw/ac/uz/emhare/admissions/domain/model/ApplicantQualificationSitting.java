@@ -45,11 +45,21 @@ public class ApplicantQualificationSitting extends AuditableEntity {
   @Column(name = "year_written")
   private Integer yearWritten;
 
+  @Column(name = "duration_months")
+  private Integer durationMonths;
+
   @Column(name = "country_id")
   private UUID countryId;
 
   @Column(name = "document_id")
   private UUID documentId;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "award_type_code", length = 30)
+  private QualificationAwardType awardType;
+
+  @Column(name = "qualification_name", length = 200)
+  private String qualificationName;
 
   @Column(name = "legacy_source_table", length = 100)
   private String legacySourceTable;
@@ -111,7 +121,8 @@ public class ApplicantQualificationSitting extends AuditableEntity {
       String candidateNumber,
       Integer yearWritten,
       UUID countryId,
-      UUID documentId) {
+      UUID documentId,
+      Integer durationMonths) {
     requireEditable();
     this.examBody = examBody;
     this.institutionName = optional(institutionName);
@@ -120,8 +131,15 @@ public class ApplicantQualificationSitting extends AuditableEntity {
     this.yearWritten = yearWritten;
     this.countryId = countryId;
     this.documentId = documentId;
+    this.durationMonths = requireDuration(durationMonths);
     this.verificationStatus = QualificationResultStatus.CAPTURED;
     this.rejectionReason = null;
+  }
+
+  public void updateAwardDetails(QualificationAwardType awardType, String qualificationName) {
+    requireEditable();
+    this.awardType = awardType;
+    this.qualificationName = optional(qualificationName);
   }
 
   public void verify(UUID actorUserId, Instant now) {
@@ -181,12 +199,36 @@ public class ApplicantQualificationSitting extends AuditableEntity {
     return yearWritten;
   }
 
+  public Integer getDurationMonths() {
+    return durationMonths;
+  }
+
+  public boolean requiresSubjectResultsForVerification() {
+    return level == QualificationLevel.O_LEVEL || level == QualificationLevel.A_LEVEL;
+  }
+
+  public boolean hasCompleteEvidence(long subjectResultCount) {
+    if (documentId == null) return false;
+    if (requiresSubjectResultsForVerification()) {
+      return subjectResultCount > 0;
+    }
+    return durationMonths != null && institutionName != null && qualificationName != null;
+  }
+
   public UUID getCountryId() {
     return countryId;
   }
 
   public UUID getDocumentId() {
     return documentId;
+  }
+
+  public QualificationAwardType getAwardType() {
+    return awardType;
+  }
+
+  public String getQualificationName() {
+    return qualificationName;
   }
 
   public QualificationResultStatus getVerificationStatus() {
@@ -207,5 +249,12 @@ public class ApplicantQualificationSitting extends AuditableEntity {
 
   private static String optional(String value) {
     return value == null || value.isBlank() ? null : value.trim();
+  }
+
+  private static Integer requireDuration(Integer durationMonths) {
+    if (durationMonths != null && durationMonths < 1) {
+      throw new IllegalArgumentException("Qualification duration must be at least one month.");
+    }
+    return durationMonths;
   }
 }

@@ -454,7 +454,7 @@ async function loginWithKeycloak(page: Page, fixture: AcademicUiFixture) {
   await page.locator("#username").fill(fixture.username);
   await page.locator("#password").fill(testPassword);
   await page.locator("#kc-login").click();
-  await page.waitForURL(/http:\/\/localhost:3000\/operations\/academic-structure.*/, {
+  await page.waitForURL(/\/operations\/academic-structure.*/, {
     timeout: 30_000,
   });
   await page.waitForLoadState("networkidle");
@@ -1244,7 +1244,7 @@ test.describe("Academic Setup operational UI", () => {
       await page.locator("#username").fill(fixture.username);
       await page.locator("#password").fill(testPassword);
       await page.locator("#kc-login").click();
-      await page.waitForURL(/http:\/\/localhost:3000\/operations\/programmes.*/, {
+      await page.waitForURL(/\/operations\/programmes.*/, {
         timeout: 30_000,
       });
       await page.waitForLoadState("networkidle");
@@ -1327,7 +1327,7 @@ test.describe("Academic Setup operational UI", () => {
       await page.locator("#username").fill(fixture.username);
       await page.locator("#password").fill(testPassword);
       await page.locator("#kc-login").click();
-      await page.waitForURL(/http:\/\/localhost:3000\/operations\/modules.*/, { timeout: 30_000 });
+      await page.waitForURL(/\/operations\/modules.*/, { timeout: 30_000 });
       await page.waitForLoadState("networkidle");
       await expect(page.getByRole("heading", { name: "Module catalogue" })).toBeVisible();
 

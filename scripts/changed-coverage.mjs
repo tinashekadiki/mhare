@@ -2,8 +2,9 @@
 
 // Author: Tinashe K
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
@@ -78,8 +79,13 @@ export function parseUnifiedDiff(diffText) {
 
   function recordCurrentHunk() {
     if (!currentHunk || !currentFile || !isProductionSource(currentFile)) return;
-    const removedWithoutWhitespace = currentHunk.removedLines.join("").replaceAll(/\s/g, "");
-    const addedWithoutWhitespace = currentHunk.addedLines.join("").replaceAll(/\s/g, "");
+    const normalizeFormatterText = (lines) =>
+      lines
+        .join("")
+        .replaceAll(/\s/g, "")
+        .replaceAll(/,([\])}])/g, "$1");
+    const removedWithoutWhitespace = normalizeFormatterText(currentHunk.removedLines);
+    const addedWithoutWhitespace = normalizeFormatterText(currentHunk.addedLines);
     const isFormattingOnly =
       currentHunk.removedLines.length > 0 &&
       currentHunk.addedLines.length > 0 &&
@@ -145,9 +151,34 @@ export function parseWordDiff(diffText) {
   const changedLinesByFile = new Map();
   let currentFile = null;
   let currentLineNumber = null;
+  let removedSegments = [];
+  let addedSegments = [];
+
+  const normalizeFormatterSegments = (segments) =>
+    segments
+      .join("")
+      .replaceAll(/\s/g, "")
+      .replaceAll("'", '"')
+      .replaceAll(";", "")
+      .replaceAll(",", "");
+
+  function recordCurrentLine() {
+    if (
+      currentFile &&
+      currentLineNumber !== null &&
+      isProductionSource(currentFile) &&
+      addedSegments.length > 0 &&
+      normalizeFormatterSegments(addedSegments) !== normalizeFormatterSegments(removedSegments)
+    ) {
+      changedLinesByFile.get(currentFile).add(currentLineNumber);
+    }
+    removedSegments = [];
+    addedSegments = [];
+  }
 
   for (const line of diffText.split(/\r?\n/)) {
     if (line.startsWith("+++ ")) {
+      recordCurrentLine();
       currentFile = normalizedDiffPath(line.slice(4));
       if (currentFile && isProductionSource(currentFile) && !changedLinesByFile.has(currentFile)) {
         changedLinesByFile.set(currentFile, new Set());
@@ -156,11 +187,13 @@ export function parseWordDiff(diffText) {
       continue;
     }
     if (line.startsWith("@@")) {
+      recordCurrentLine();
       const hunk = line.match(/\+(\d+)(?:,(\d+))?\s/);
       currentLineNumber = hunk ? Number(hunk[1]) : null;
       continue;
     }
     if (line === "~") {
+      recordCurrentLine();
       if (currentLineNumber !== null) currentLineNumber += 1;
       continue;
     }
@@ -171,9 +204,19 @@ export function parseWordDiff(diffText) {
       line.startsWith("+") &&
       !line.startsWith("+++")
     ) {
-      changedLinesByFile.get(currentFile).add(currentLineNumber);
+      addedSegments.push(line.slice(1));
+    } else if (
+      currentFile &&
+      currentLineNumber !== null &&
+      isProductionSource(currentFile) &&
+      line.startsWith("-") &&
+      !line.startsWith("---")
+    ) {
+      removedSegments.push(line.slice(1));
     }
   }
+
+  recordCurrentLine();
 
   for (const [filePath, changedLines] of changedLinesByFile) {
     if (changedLines.size === 0) changedLinesByFile.delete(filePath);
@@ -209,6 +252,119 @@ function runGit(repositoryRoot, argumentsList) {
   return result.stdout;
 }
 
+function formatFrontendSource(filePath, sourceText) {
+  const result = spawnSync("npx", ["--no-install", "prettier", "--stdin-filepath", filePath], {
+    cwd: REPOSITORY_ROOT,
+    encoding: "utf8",
+    input: sourceText,
+    maxBuffer: 64 * 1024 * 1024,
+    shell: process.platform === "win32",
+  });
+  if (result.status !== 0) {
+    throw new Error(result.stderr.trim() || `Prettier could not normalize ${filePath}`);
+  }
+  return result.stdout;
+}
+
+function formatBackendSource(filePath, sourceText) {
+  const mavenRepository = join(homedir(), ".m2", "repository");
+  const formatterClasspath = [
+    join(
+      mavenRepository,
+      "com/google/googlejavaformat/google-java-format/1.24.0/google-java-format-1.24.0.jar",
+    ),
+    join(mavenRepository, "com/google/guava/guava/32.1.3-jre/guava-32.1.3-jre.jar"),
+    join(mavenRepository, "com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar"),
+  ];
+  const missingDependency = formatterClasspath.find((dependency) => !existsSync(dependency));
+  if (missingDependency) {
+    throw new Error(
+      `Google Java Format dependency is missing after the Maven verification gate: ${missingDependency}`,
+    );
+  }
+  const compilerExports = ["api", "code", "file", "parser", "tree", "util"].map(
+    (packageName) => `--add-exports=jdk.compiler/com.sun.tools.javac.${packageName}=ALL-UNNAMED`,
+  );
+  const result = spawnSync(
+    "java",
+    [
+      ...compilerExports,
+      "-cp",
+      formatterClasspath.join(delimiter),
+      "com.google.googlejavaformat.java.Main",
+      "--assume-filename",
+      filePath,
+      "-",
+    ],
+    {
+      cwd: REPOSITORY_ROOT,
+      encoding: "utf8",
+      input: sourceText,
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
+  if (result.status !== 0) {
+    throw new Error(result.stderr.trim() || `Google Java Format could not normalize ${filePath}`);
+  }
+  return result.stdout;
+}
+
+function collectFormattedFrontendLines(repositoryRoot, baseReference, filePath) {
+  const baseSource = runGit(repositoryRoot, ["show", `${baseReference}:${filePath}`]);
+  const currentSource = readFileSync(resolve(repositoryRoot, filePath), "utf8");
+  const formattedBaseSource = formatFrontendSource(filePath, baseSource);
+  const formattedCurrentSource = formatFrontendSource(filePath, currentSource);
+  if (formattedBaseSource === formattedCurrentSource) return new Set();
+
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), "emhare-semantic-diff-"));
+  const basePath = join(temporaryDirectory, "base");
+  const currentPath = join(temporaryDirectory, "current");
+  try {
+    writeFileSync(basePath, formattedBaseSource);
+    writeFileSync(currentPath, formattedCurrentSource);
+    const result = spawnSync("git", ["diff", "--no-index", "--", basePath, currentPath], {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    if (result.status !== 0 && result.status !== 1) {
+      throw new Error(result.stderr.trim() || `Semantic diff failed for ${filePath}`);
+    }
+    const semanticDiff = result.stdout.replace(/^\+\+\+ .+$/m, `+++ b/${filePath}`);
+    return parseUnifiedDiff(semanticDiff).get(filePath) ?? new Set();
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
+function collectFormattedBackendLines(repositoryRoot, baseReference, filePath) {
+  const baseSource = runGit(repositoryRoot, ["show", `${baseReference}:${filePath}`]);
+  const currentSource = readFileSync(resolve(repositoryRoot, filePath), "utf8");
+  const formattedBaseSource = formatBackendSource(filePath, baseSource);
+  const formattedCurrentSource = formatBackendSource(filePath, currentSource);
+  if (formattedBaseSource === formattedCurrentSource) return new Set();
+
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), "emhare-java-semantic-diff-"));
+  const basePath = join(temporaryDirectory, "base.java");
+  const currentPath = join(temporaryDirectory, "current.java");
+  try {
+    writeFileSync(basePath, formattedBaseSource);
+    writeFileSync(currentPath, formattedCurrentSource);
+    const result = spawnSync("git", ["diff", "--no-index", "--", basePath, currentPath], {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    if (result.status !== 0 && result.status !== 1) {
+      throw new Error(result.stderr.trim() || `Semantic diff failed for ${filePath}`);
+    }
+    const semanticDiff = result.stdout.replace(/^\+\+\+ .+$/m, `+++ b/${filePath}`);
+    return parseUnifiedDiff(semanticDiff).get(filePath) ?? new Set();
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
 export function collectChangedLines(repositoryRoot, baseReference) {
   runGit(repositoryRoot, ["rev-parse", "--verify", `${baseReference}^{commit}`]);
   const diffText = runGit(repositoryRoot, [
@@ -223,6 +379,18 @@ export function collectChangedLines(repositoryRoot, baseReference) {
     "--",
   ]);
   const changedLinesByFile = parseWordDiff(diffText);
+  for (const filePath of [...changedLinesByFile.keys()]) {
+    const absoluteFile = resolve(repositoryRoot, filePath);
+    if (!existsSync(absoluteFile)) continue;
+    const semanticChangedLines = isFrontendProductionSource(filePath)
+      ? collectFormattedFrontendLines(repositoryRoot, baseReference, filePath)
+      : isBackendProductionSource(filePath)
+        ? collectFormattedBackendLines(repositoryRoot, baseReference, filePath)
+        : null;
+    if (semanticChangedLines === null) continue;
+    if (semanticChangedLines.size === 0) changedLinesByFile.delete(filePath);
+    else changedLinesByFile.set(filePath, semanticChangedLines);
+  }
   const untrackedFiles = runGit(repositoryRoot, ["ls-files", "--others", "--exclude-standard"])
     .split(/\r?\n/)
     .filter(Boolean);

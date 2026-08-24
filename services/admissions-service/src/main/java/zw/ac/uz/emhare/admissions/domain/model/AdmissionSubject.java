@@ -41,6 +41,12 @@ public class AdmissionSubject extends AuditableEntity {
   @Column(name = "is_science_subject", nullable = false)
   private boolean scienceSubject;
 
+  @Column(name = "is_mathematics_subject", nullable = false)
+  private boolean mathematicsSubject;
+
+  @Column(name = "is_english_subject", nullable = false)
+  private boolean englishSubject;
+
   @Column(name = "legacy_olevel_subject_code", length = 50)
   private String legacyOlevelSubjectCode;
 
@@ -55,11 +61,31 @@ public class AdmissionSubject extends AuditableEntity {
       SubjectLevel level,
       String subjectGroupCode,
       boolean scienceSubject) {
+    this(
+        code,
+        name,
+        level,
+        subjectGroupCode,
+        scienceSubject,
+        "MATHEMATICS".equalsIgnoreCase(subjectGroupCode),
+        "ENGLISH".equalsIgnoreCase(subjectGroupCode));
+  }
+
+  public AdmissionSubject(
+      String code,
+      String name,
+      SubjectLevel level,
+      String subjectGroupCode,
+      boolean scienceSubject,
+      boolean mathematicsSubject,
+      boolean englishSubject) {
     this.code = code;
     this.name = name;
     this.level = level;
     this.subjectGroupCode = subjectGroupCode;
     this.scienceSubject = scienceSubject;
+    this.mathematicsSubject = mathematicsSubject;
+    this.englishSubject = englishSubject;
     this.active = true;
   }
 
@@ -92,19 +118,27 @@ public class AdmissionSubject extends AuditableEntity {
   }
 
   public boolean isMathematicsSubject() {
-    return "MATHEMATICS".equalsIgnoreCase(subjectGroupCode);
+    return mathematicsSubject;
   }
 
   public boolean isEnglishSubject() {
-    return "ENGLISH".equalsIgnoreCase(subjectGroupCode);
+    return englishSubject;
   }
 
   public void updateReference(
-      String code, String name, String subjectGroupCode, boolean scienceSubject, boolean active) {
+      String code,
+      String name,
+      String subjectGroupCode,
+      boolean scienceSubject,
+      boolean mathematicsSubject,
+      boolean englishSubject,
+      boolean active) {
     this.code = code;
     this.name = name;
     this.subjectGroupCode = subjectGroupCode;
     this.scienceSubject = scienceSubject;
+    this.mathematicsSubject = mathematicsSubject;
+    this.englishSubject = englishSubject;
     this.active = active;
   }
 }

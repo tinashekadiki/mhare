@@ -105,9 +105,27 @@ public class AdmissionsSelectionOfferController {
         request.maleCutoffPoints(),
         request.femaleCutoffPoints(),
         request.requiresEnglish(),
+        request.requiresMathematics(),
+        request.requiresScience(),
         request.requiresMathematicsOrScience(),
         request.advancedRules(),
         request.advancedRulesVersion(),
+        request.subjectRequirements() == null
+            ? java.util.List.of()
+            : request.subjectRequirements().stream()
+                .map(
+                    subject ->
+                        new AdmissionsSelectionOfferService.SubjectRequirementInput(
+                            subject.level(),
+                            subject.subjectId(),
+                            subject.subjectGroupCode(),
+                            subject.requirementType(),
+                            subject.minimumGrade(),
+                            subject.minimumPoints(),
+                            subject.minimumCount(),
+                            subject.weight(),
+                            subject.sortOrder()))
+                .toList(),
         request.qualificationGroups() == null
             ? java.util.List.of()
             : request.qualificationGroups().stream()

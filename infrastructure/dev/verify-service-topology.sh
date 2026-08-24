@@ -11,7 +11,7 @@ discovery_username="${EUREKA_USERNAME:-emhare-discovery}"
 discovery_password="${EUREKA_PASSWORD:-emhare-discovery-dev}"
 request_timeout_seconds="${EMHARE_HEALTH_TIMEOUT_SECONDS:-5}"
 health_probe_attempts="${EMHARE_HEALTH_PROBE_ATTEMPTS:-3}"
-registry_probe_attempts="${EMHARE_REGISTRY_PROBE_ATTEMPTS:-10}"
+registry_probe_attempts="${EMHARE_REGISTRY_PROBE_ATTEMPTS:-45}"
 failed_service_count=0
 
 services=(
@@ -28,6 +28,7 @@ services=(
   "Dining|8089"
   "Documents and Reporting|8090"
   "Notifications|8091"
+  "Communications|8092"
 )
 
 probe_health() {
@@ -85,6 +86,7 @@ expected_registry_service_ids=(
   "dining-service"
   "documents-reporting-service"
   "notifications-service"
+  "communications-service"
 )
 
 registry_response=""

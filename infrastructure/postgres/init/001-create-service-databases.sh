@@ -55,4 +55,7 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'emhare_documents_repo
 
 SELECT format('CREATE DATABASE %I OWNER %I', 'emhare_notifications', '${service_user}')
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'emhare_notifications')\gexec
+
+SELECT format('CREATE DATABASE %I OWNER %I', 'emhare_communications', '${service_user}')
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'emhare_communications')\gexec
 EOSQL

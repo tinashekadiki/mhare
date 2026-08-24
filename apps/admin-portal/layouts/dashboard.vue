@@ -67,6 +67,10 @@ const navigationAccessByGroupLabel: Record<
     roleCodes: ["NOTIFICATIONS_OFFICER"],
     permissionPrefixes: ["NOTIFICATIONS_"],
   },
+  Communications: {
+    roleCodes: ["COMMUNICATIONS_AUTHOR", "COMMUNICATIONS_APPROVER"],
+    permissionPrefixes: ["COMMUNICATIONS_"],
+  },
 };
 
 const navigationGroups = [
@@ -374,6 +378,17 @@ const navigationGroups = [
     ],
   },
   {
+    label: "Communications",
+    icon: "i-lucide-megaphone",
+    items: [
+      {
+        label: "Public content",
+        icon: "i-lucide-newspaper",
+        to: "/operations/communications",
+      },
+    ],
+  },
+  {
     label: "Notifications",
     icon: "i-lucide-send",
     items: [
@@ -503,11 +518,7 @@ const quickActions = [
 ];
 
 function canAccessNavigationGroup(groupLabel?: string) {
-  if (
-    !groupLabel ||
-    groupLabel === "Operations" ||
-    auth.isSystemAdministrator.value
-  ) {
+  if (!groupLabel || groupLabel === "Operations" || auth.isSystemAdministrator.value) {
     return true;
   }
   if (groupLabel === "Core and Identity") {
@@ -534,10 +545,7 @@ const visibleQuickActions = computed(() =>
     const matchingNavigationGroup = navigationGroups.find((group) =>
       group.items.some((item) => item.to === action.to),
     );
-    return (
-      !matchingNavigationGroup ||
-      canAccessNavigationGroup(matchingNavigationGroup.label)
-    );
+    return !matchingNavigationGroup || canAccessNavigationGroup(matchingNavigationGroup.label);
   }),
 );
 
@@ -563,14 +571,12 @@ const academicPeriodScopedRoutes = new Set([
   "/operations/dining-operations",
   "/operations/documents",
 ]);
-const showAcademicPeriodSwitcher = computed(() =>
-  academicPeriodScopedRoutes.has(route.path),
-);
+const showAcademicPeriodSwitcher = computed(() => academicPeriodScopedRoutes.has(route.path));
 
 const academicPeriods = computed<EmhareAcademicPeriod[]>(() => {
-  const periods = [
-    ...(academicSetup.overview.value?.academicPeriods ?? []),
-  ].sort((left, right) => right.startDate.localeCompare(left.startDate));
+  const periods = [...(academicSetup.overview.value?.academicPeriods ?? [])].sort((left, right) =>
+    right.startDate.localeCompare(left.startDate),
+  );
   const recommendedAcademicPeriodId = recommendedAcademicPeriod(periods)?.id;
   return periods.map((period) => ({
     id: period.id,
@@ -587,8 +593,7 @@ watch(
       return;
     }
     const selectedPeriodExists = periods.some(
-      (period) =>
-        period.id === academicPeriodContext.selectedAcademicPeriodId.value,
+      (period) => period.id === academicPeriodContext.selectedAcademicPeriodId.value,
     );
     if (!selectedPeriodExists) {
       academicPeriodContext.selectAcademicPeriod(
@@ -613,10 +618,7 @@ function recommendedAcademicPeriod(periods: AcademicPeriodSummary[]) {
         period.startDate <= todayIsoDate &&
         period.endDate >= todayIsoDate,
     ) ??
-    periods.find(
-      (period) =>
-        period.startDate <= todayIsoDate && period.endDate >= todayIsoDate,
-    ) ??
+    periods.find((period) => period.startDate <= todayIsoDate && period.endDate >= todayIsoDate) ??
     periods.find((period) => period.status === "OPEN") ??
     periods[0]
   );
@@ -668,9 +670,7 @@ async function handleNotificationSelection(notification: EmhareNotification) {
       body: { expectedVersion: notification.version },
     },
   );
-  const index = inAppNotifications.value.findIndex(
-    (item) => item.id === updated.id,
-  );
+  const index = inAppNotifications.value.findIndex((item) => item.id === updated.id);
   if (index >= 0) inAppNotifications.value[index] = updated;
 }
 
@@ -685,9 +685,7 @@ onMounted(() => {
     :navigation-groups="visibleNavigationGroups"
     :quick-actions="visibleQuickActions"
     :academic-periods="academicPeriods"
-    :selected-academic-period-id="
-      academicPeriodContext.selectedAcademicPeriodId.value
-    "
+    :selected-academic-period-id="academicPeriodContext.selectedAcademicPeriodId.value"
     :academic-periods-loading="academicSetup.loading.value"
     :academic-periods-error="academicSetup.loadError.value"
     :show-academic-period-switcher="showAcademicPeriodSwitcher"

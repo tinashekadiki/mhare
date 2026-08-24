@@ -269,10 +269,12 @@ class AdmissionsPipelineReportRepositoryPostgresqlTest {
                     id, applicant_id, application_type_id, application_number, payment_required,
                     application_fee_policy_status, status, created_at, updated_at, version,
                     intake_id, intake_code, intake_name,
-                    intake_starts_on, intake_ends_on, maximum_programme_choices
+                    intake_starts_on, intake_ends_on, maximum_programme_choices,
+                    official_first_name, official_last_name
                 ) VALUES (?, ?, ?, ?, true, 'LEGACY_UNSNAPSHOTTED', 'DRAFT', now(), now(), 0,
                           ?, 'AUG-2026', 'August 2026',
-                          DATE '2026-08-01', DATE '2026-08-31', 3)
+                          DATE '2026-08-01', DATE '2026-08-31', 3,
+                          'Test', 'Applicant')
                 """,
         applicationId,
         applicantId,

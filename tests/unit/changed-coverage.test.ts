@@ -132,7 +132,87 @@ diff --git a/apps/admin-portal/pages/removed.vue b/apps/admin-portal/pages/remov
 
     const changedLines = collectChangedLines(repositoryRoot, "HEAD");
 
-    expect(changedLines.get(sourcePath)).toEqual(new Set([1]));
+    expect(changedLines.get(sourcePath)).toEqual(new Set([2]));
+  });
+
+  it("does not count formatter-only line wrapping collected from git", () => {
+    const repositoryRoot = mkdtempSync(join(tmpdir(), "emhare-formatting-diff-"));
+    temporaryDirectories.push(repositoryRoot);
+    const sourcePath = "packages/example/composables/useFormatting.ts";
+    mkdirSync(join(repositoryRoot, "packages/example/composables"), { recursive: true });
+    execFileSync("git", ["init", "--quiet"], { cwd: repositoryRoot });
+    execFileSync("git", ["config", "user.name", "Coverage Test"], { cwd: repositoryRoot });
+    execFileSync("git", ["config", "user.email", "coverage@example.test"], {
+      cwd: repositoryRoot,
+    });
+    writeFileSync(
+      join(repositoryRoot, sourcePath),
+      "export const formatted = resolve(longArgument, anotherArgument);\n",
+    );
+    execFileSync("git", ["add", sourcePath], { cwd: repositoryRoot });
+    execFileSync("git", ["commit", "--quiet", "-m", "baseline"], { cwd: repositoryRoot });
+    writeFileSync(
+      join(repositoryRoot, sourcePath),
+      "export const formatted = resolve(\n  longArgument,\n  anotherArgument,\n);\n",
+    );
+
+    const changedLines = collectChangedLines(repositoryRoot, "HEAD");
+
+    expect(changedLines.has(sourcePath)).toBe(false);
+  });
+
+  it("does not count Java formatter rewrites collected from git", () => {
+    const repositoryRoot = mkdtempSync(join(tmpdir(), "emhare-java-formatting-diff-"));
+    temporaryDirectories.push(repositoryRoot);
+    const sourcePath = "services/example/src/main/java/example/Formatting.java";
+    mkdirSync(join(repositoryRoot, "services/example/src/main/java/example"), {
+      recursive: true,
+    });
+    execFileSync("git", ["init", "--quiet"], { cwd: repositoryRoot });
+    execFileSync("git", ["config", "user.name", "Coverage Test"], { cwd: repositoryRoot });
+    execFileSync("git", ["config", "user.email", "coverage@example.test"], {
+      cwd: repositoryRoot,
+    });
+    writeFileSync(
+      join(repositoryRoot, sourcePath),
+      'package example; public class Formatting { public String value() { return "same"; } }\n',
+    );
+    execFileSync("git", ["add", sourcePath], { cwd: repositoryRoot });
+    execFileSync("git", ["commit", "--quiet", "-m", "baseline"], { cwd: repositoryRoot });
+    writeFileSync(
+      join(repositoryRoot, sourcePath),
+      'package example;\n\npublic class Formatting {\n  public String value() {\n    return "same";\n  }\n}\n',
+    );
+
+    const changedLines = collectChangedLines(repositoryRoot, "HEAD");
+
+    expect(changedLines.has(sourcePath)).toBe(false);
+  });
+
+  it("keeps only semantic lines when formatting and behaviour change together", () => {
+    const repositoryRoot = mkdtempSync(join(tmpdir(), "emhare-semantic-formatting-diff-"));
+    temporaryDirectories.push(repositoryRoot);
+    const sourcePath = "packages/example/composables/useFormatting.ts";
+    mkdirSync(join(repositoryRoot, "packages/example/composables"), { recursive: true });
+    execFileSync("git", ["init", "--quiet"], { cwd: repositoryRoot });
+    execFileSync("git", ["config", "user.name", "Coverage Test"], { cwd: repositoryRoot });
+    execFileSync("git", ["config", "user.email", "coverage@example.test"], {
+      cwd: repositoryRoot,
+    });
+    writeFileSync(
+      join(repositoryRoot, sourcePath),
+      "export const formatted = resolve(longArgument, anotherArgument)\nexport const colour = '#20743a'\n",
+    );
+    execFileSync("git", ["add", sourcePath], { cwd: repositoryRoot });
+    execFileSync("git", ["commit", "--quiet", "-m", "baseline"], { cwd: repositoryRoot });
+    writeFileSync(
+      join(repositoryRoot, sourcePath),
+      'export const formatted = resolve(\n  longArgument,\n  anotherArgument,\n);\nexport const colour = "var(--color-uzazure-600)";\n',
+    );
+
+    const changedLines = collectChangedLines(repositoryRoot, "HEAD");
+
+    expect(changedLines.get(sourcePath)).toEqual(new Set([2]));
   });
 });
 

@@ -1,16 +1,20 @@
 <script setup lang="ts">
+import Swal from "sweetalert2";
 import type {
   ApplicantApplicationWorkspace,
   ApplicantEmploymentHistory,
   ApplicantNextOfKin,
   ApplicantQualificationResult,
   ApplicantQualificationSitting,
+  ApplicantDocumentPrefill,
   ApplicantReferee,
   ApplicationWorkspaceSection,
   ApplicationDocumentRequirementState,
   ApplicationStartOptions,
   AdmissionOfferSummary,
   QualificationReferenceData,
+  IdentityName,
+  IdentityNameCorrectionSummary,
 } from "@emhare/portal-shell/types/admissions";
 import type {
   UploadedDocumentDownload,
@@ -59,6 +63,8 @@ const { openingOfferId, openOfferLetter } = useApplicantOfferLetter();
 const applicationId = computed(() => String(route.params.applicationId));
 
 const workspace = ref<ApplicantApplicationWorkspace | null>(null);
+const identityNameMismatch = ref<IdentityNameCorrectionSummary | null>(null);
+const identityNameCorrectionWorking = ref(false);
 const applicationOffer = ref<AdmissionOfferSummary | null>(null);
 const startOptions = ref<ApplicationStartOptions | null>(null);
 const qualificationReferences = ref<QualificationReferenceData | null>(null);
@@ -87,6 +93,7 @@ const paymentCheckoutFrame = ref<HTMLIFrameElement | null>(null);
 const paymentCheckoutPanel = ref<HTMLElement | null>(null);
 let paymentCheckoutRequestPosted = false;
 let pendingPaymentReconciliationChecked = false;
+const hydratedIdentityDocumentIds = new Set<string>();
 let profileSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let applyingWorkspace = false;
 
@@ -143,14 +150,19 @@ const refereeForm = reactive({
   expectedVersion: 0,
 });
 const qualificationForm = reactive({
+  kind: "O_LEVEL",
   level: "O_LEVEL",
   examBodyId: "",
   institutionName: "",
   centreNumber: "",
   candidateNumber: "",
   yearWritten: new Date().getFullYear(),
+  durationMonths: null as number | null,
   countryId: "",
   documentId: "",
+  awardTypeCode: "" as
+    "" | "DIPLOMA" | "CERTIFICATE" | "DEGREE" | "MASTERS" | "PROFESSIONAL" | "OTHER",
+  qualificationName: "",
   expectedVersion: 0,
 });
 const resultForms = ref<QualificationResultDraft[]>([]);
@@ -175,7 +187,34 @@ const oLevelGradeItems = ["A", "B", "C"];
 const aLevelGradeItems = ["A", "B", "C", "D", "E"];
 
 const isDraft = computed(() => workspace.value?.application.status === "DRAFT");
-const workspaceSections = computed(() => workspace.value?.sections ?? []);
+const allDocumentRequirements = computed(() => workspace.value?.documents.requirements ?? []);
+const personalEvidenceRequirements = computed(() =>
+  allDocumentRequirements.value.filter(
+    (requirement) =>
+      requirement.captureSectionCode === "PERSONAL_DETAILS" ||
+      ["NATIONAL_ID", "BIRTH_CERTIFICATE", "PASSPORT", "IDENTITY_DOCUMENT"].includes(
+        requirement.requirementCode,
+      ),
+  ),
+);
+const supportingDocumentRequirements = computed(() =>
+  allDocumentRequirements.value.filter(
+    (requirement) => requirement.captureSectionCode === "SUPPORTING_DOCUMENTS",
+  ),
+);
+const personalEvidenceReady = computed(
+  () =>
+    personalEvidenceRequirements.value.length === 0 ||
+    personalEvidenceRequirements.value.every(
+      (requirement) => !requirement.required || ["PENDING", "VERIFIED"].includes(requirement.state),
+    ),
+);
+const personalFieldsDisabled = computed(() => !isDraft.value || !personalEvidenceReady.value);
+const workspaceSections = computed(() =>
+  (workspace.value?.sections ?? []).filter(
+    (section) => section.code !== "DOCUMENTS" || supportingDocumentRequirements.value.length > 0,
+  ),
+);
 const activeSection = computed(
   () => workspaceSections.value.find((section) => section.code === activeSectionCode.value) ?? null,
 );
@@ -210,7 +249,7 @@ const profileReadyForAutosave = computed(() =>
 );
 const completedSectionCount = computed(
   () =>
-    workspace.value?.sections.filter((section) => ["COMPLETE", "VERIFIED"].includes(section.status))
+    workspaceSections.value.filter((section) => ["COMPLETE", "VERIFIED"].includes(section.status))
       .length ?? 0,
 );
 const preDraftJourneySteps = computed(() => [
@@ -293,6 +332,17 @@ const resultBatchReady = computed(
     resultForms.value.every((result) => Boolean(result.subjectId && result.grade)) &&
     new Set(resultForms.value.map((result) => result.subjectId)).size === resultForms.value.length,
 );
+const schoolQualification = computed(() => ["O_LEVEL", "A_LEVEL"].includes(qualificationForm.kind));
+const qualificationAggregateReady = computed(
+  () =>
+    Boolean(qualificationForm.documentId) &&
+    Boolean(qualificationForm.yearWritten) &&
+    (schoolQualification.value
+      ? Boolean(qualificationForm.examBodyId) && resultBatchReady.value
+      : Boolean(qualificationForm.qualificationName) &&
+        Boolean(qualificationForm.institutionName) &&
+        Boolean(qualificationForm.durationMonths)),
+);
 const eligibleProgrammes = computed(() => selectedRoute.value?.programmes ?? []);
 const programmeItems = computed(() =>
   eligibleProgrammes.value.map((programme) => ({
@@ -331,7 +381,7 @@ const subjectItems = computed(() => {
 });
 const uploadableRequirements = computed(
   () =>
-    workspace.value?.documents.requirements
+    supportingDocumentRequirements.value
       .filter((requirement) => ["MISSING", "REJECTED"].includes(requirement.state))
       .map((requirement) => ({
         label: `${requirement.requirementName}${requirement.required ? " · Required" : ""}`,
@@ -375,6 +425,43 @@ watch(paymentCheckoutOpen, (open) => {
   paymentCheckoutRequestPosted = false;
 });
 
+watch(
+  () => qualificationForm.kind,
+  (kind, previousKind) => {
+    const mapping: Record<
+      string,
+      { level: string; awardTypeCode: typeof qualificationForm.awardTypeCode }
+    > = {
+      O_LEVEL: { level: "O_LEVEL", awardTypeCode: "" },
+      A_LEVEL: { level: "A_LEVEL", awardTypeCode: "" },
+      DIPLOMA: { level: "DIPLOMA", awardTypeCode: "DIPLOMA" },
+      CERTIFICATE: { level: "OTHER", awardTypeCode: "CERTIFICATE" },
+      DEGREE: { level: "DEGREE", awardTypeCode: "DEGREE" },
+      MASTERS: { level: "DEGREE", awardTypeCode: "MASTERS" },
+      PROFESSIONAL: { level: "PROFESSIONAL", awardTypeCode: "PROFESSIONAL" },
+      OTHER: { level: "OTHER", awardTypeCode: "OTHER" },
+    };
+    const selected = mapping[kind] ?? mapping.OTHER!;
+    qualificationForm.level = selected.level;
+    qualificationForm.awardTypeCode = selected.awardTypeCode;
+    if (!editingId.value && ["O_LEVEL", "A_LEVEL"].includes(kind) && kind !== previousKind) {
+      resultForms.value = Array.from({ length: kind === "O_LEVEL" ? 8 : 3 }, () =>
+        createResultDraft(),
+      );
+    } else if (!["O_LEVEL", "A_LEVEL"].includes(kind)) {
+      resultForms.value = [];
+    }
+  },
+);
+
+watch(
+  () => paymentProofForm.file,
+  (value) => {
+    const file = Array.isArray(value) ? value[0] : value;
+    if (file && !working.value) void uploadPaymentProof();
+  },
+);
+
 async function loadWorkspace(loadReferences = false) {
   loading.value = true;
   loadError.value = "";
@@ -407,6 +494,7 @@ async function loadWorkspace(loadReferences = false) {
       }
     }
     applyWorkspace(currentWorkspace);
+    await hydrateExistingIdentityNameMismatch(currentWorkspace);
     await loadPaymentDetails();
     prepareInlineEditorForSection(activeSectionCode.value);
   } catch (error) {
@@ -639,6 +727,9 @@ function applyWorkspace(value: ApplicantApplicationWorkspace) {
   applyingWorkspace = true;
   const sections = normaliseWorkspaceSections(value);
   workspace.value = { ...value, sections };
+  if (value.identityNameCorrection || identityNameMismatch.value?.id) {
+    identityNameMismatch.value = value.identityNameCorrection;
+  }
   const profile = value.profile;
   Object.assign(profileForm, {
     applicantCategoryCode: profile.applicantCategoryCode,
@@ -716,9 +807,16 @@ function normaliseWorkspaceSections(
   value: ApplicantApplicationWorkspace,
 ): ApplicationWorkspaceSection[] {
   const sections = Array.isArray(value.sections) ? value.sections : [];
+  const hasGeneralSupportingDocuments = value.documents.requirements.some(
+    (requirement) => requirement.captureSectionCode === "SUPPORTING_DOCUMENTS",
+  );
   if (sections.length) {
     return sections
-      .filter((section) => section.code !== "PAYMENT" || value.application.paymentRequired)
+      .filter(
+        (section) =>
+          (section.code !== "PAYMENT" || value.application.paymentRequired) &&
+          (section.code !== "DOCUMENTS" || hasGeneralSupportingDocuments),
+      )
       .sort((left, right) => left.sortOrder - right.sortOrder);
   }
   const configuredSections = startOptions.value?.applicationTypes.find(
@@ -728,7 +826,11 @@ function normaliseWorkspaceSections(
     ? configuredSections
     : fallbackApplicationSections(value);
   return sourceSections
-    .filter((section) => section.code !== "PAYMENT" || value.application.paymentRequired)
+    .filter(
+      (section) =>
+        (section.code !== "PAYMENT" || value.application.paymentRequired) &&
+        (section.code !== "DOCUMENTS" || hasGeneralSupportingDocuments),
+    )
     .sort((left, right) => left.sortOrder - right.sortOrder)
     .map((section) => ({
       id: `fallback-${section.code}`,
@@ -1090,32 +1192,46 @@ function openReferee(record?: ApplicantReferee) {
 
 function openQualification(record?: ApplicantQualificationSitting) {
   editingId.value = record?.id ?? null;
+  const kind = record?.awardTypeCode ?? record?.level ?? "O_LEVEL";
   Object.assign(
     qualificationForm,
     record
       ? {
+          kind,
           level: record.level,
           examBodyId: record.examBody?.id ?? "",
           institutionName: record.institutionName ?? "",
           centreNumber: record.centreNumber ?? "",
           candidateNumber: record.candidateNumber ?? "",
           yearWritten: record.yearWritten ?? new Date().getFullYear(),
+          durationMonths: record.durationMonths ?? null,
           countryId: record.countryId ?? "",
           documentId: record.documentId ?? "",
+          awardTypeCode: record.awardTypeCode ?? "",
+          qualificationName: record.qualificationName ?? "",
           expectedVersion: record.version,
         }
       : {
+          kind: "O_LEVEL",
           level: "O_LEVEL",
           examBodyId: "",
           institutionName: "",
           centreNumber: "",
           candidateNumber: "",
           yearWritten: new Date().getFullYear(),
+          durationMonths: null,
           countryId: "",
           documentId: "",
+          awardTypeCode: "",
+          qualificationName: "",
           expectedVersion: 0,
         },
   );
+  resultForms.value = record?.results.length
+    ? record.results.map((result) => createResultDraft(result))
+    : Array.from({ length: kind === "A_LEVEL" ? 3 : kind === "O_LEVEL" ? 8 : 0 }, () =>
+        createResultDraft(),
+      );
   inlineEditor.value = "qualification";
   focusInlineEditor(record != null);
 }
@@ -1145,6 +1261,7 @@ function createResultDraft(record?: ApplicantQualificationResult): Qualification
 }
 
 function addResultDraft() {
+  if (resultForms.value.length >= 20) return;
   resultForms.value.push(createResultDraft());
 }
 
@@ -1155,12 +1272,6 @@ function removeResultDraft(index: number) {
 
 function subjectItemsForResultDraft(index: number) {
   const currentSubjectId = resultForms.value[index]?.subjectId;
-  const alreadyCapturedSubjectIds = new Set(
-    selectedResultSitting.value?.results
-      .filter((result) => result.id !== editingId.value)
-      .map((result) => result.subject?.id)
-      .filter((subjectId): subjectId is string => Boolean(subjectId)) ?? [],
-  );
   const otherDraftSubjectIds = new Set(
     resultForms.value
       .filter((_, resultIndex) => resultIndex !== index)
@@ -1168,10 +1279,227 @@ function subjectItemsForResultDraft(index: number) {
       .filter(Boolean),
   );
   return subjectItems.value.filter(
-    (item) =>
-      item.value === currentSubjectId ||
-      (!alreadyCapturedSubjectIds.has(item.value) && !otherDraftSubjectIds.has(item.value)),
+    (item) => item.value === currentSubjectId || !otherDraftSubjectIds.has(item.value),
   );
+}
+
+function qualificationEvidenceTypeCode() {
+  return qualificationForm.kind;
+}
+
+function normalizeExtractedPersonalValue(field: string, value: string) {
+  const normalized = value.trim();
+  if (field === "genderCode") {
+    const gender = normalized.toUpperCase();
+    if (gender === "M" || gender === "MALE") return "MALE";
+    if (gender === "F" || gender === "FEMALE") return "FEMALE";
+  }
+  if (field === "dateOfBirth") {
+    const dateParts = normalized.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+    if (dateParts) {
+      return `${dateParts[3]}-${dateParts[2]!.padStart(2, "0")}-${dateParts[1]!.padStart(2, "0")}`;
+    }
+  }
+  if (field === "nationalIdNumber" || field === "passportNumber") {
+    return normalized.toUpperCase();
+  }
+  return normalized;
+}
+
+async function applyDocumentPrefill(documentId: string, qualificationLevel?: string) {
+  try {
+    const query = qualificationLevel
+      ? `?qualificationLevel=${encodeURIComponent(qualificationLevel)}`
+      : "";
+    const prefill = await api.request<ApplicantDocumentPrefill>(
+      `/api/admissions/applications/${applicationId.value}/documents/${documentId}/prefill${query}`,
+      { cache: "no-store" },
+    );
+    if (qualificationLevel) {
+      if (prefill.qualificationResults.length) {
+        resultForms.value = prefill.qualificationResults.slice(0, 20).map((proposal) => ({
+          clientId: nextResultDraftId++,
+          subjectId: proposal.confirmationRequired ? "" : (proposal.subjectId ?? ""),
+          grade: gradeItemsForQualificationLevel(qualificationLevel).includes(proposal.grade)
+            ? proposal.grade
+            : "",
+          principalSubject: qualificationLevel === "A_LEVEL",
+          expectedVersion: 0,
+        }));
+      }
+    } else {
+      identityNameMismatch.value = prefill.identityNameMismatch;
+      const fields = prefill.personalFields;
+      const assignableFields = [
+        "middleNames",
+        "dateOfBirth",
+        "genderCode",
+        "nationalIdNumber",
+        "passportNumber",
+        "placeOfBirth",
+      ] as const;
+      for (const field of assignableFields) {
+        const proposal = fields[field];
+        if (typeof proposal === "string" && proposal && !profileForm[field]) {
+          profileForm[field] = normalizeExtractedPersonalValue(field, proposal);
+        }
+      }
+    }
+    if (prefill.warnings.length) {
+      toast.add({
+        title: "Check the extracted details",
+        description: prefill.warnings.join(" "),
+        color: "warning",
+        icon: "i-lucide-triangle-alert",
+      });
+    }
+  } catch (error) {
+    toast.add({
+      title: "Enter the details manually",
+      description: api.errorMessage(
+        error,
+        "The uploaded file is safe, but no prefill is available.",
+      ),
+      color: "warning",
+      icon: "i-lucide-pencil-line",
+    });
+  }
+}
+
+async function hydrateExistingIdentityNameMismatch(value: ApplicantApplicationWorkspace) {
+  if (value.identityNameCorrection) return;
+  const identityDocument = value.documents.requirements.find(
+    (requirement) =>
+      requirement.documentId &&
+      (requirement.captureSectionCode === "PERSONAL_DETAILS" ||
+        ["NATIONAL_ID", "BIRTH_CERTIFICATE", "PASSPORT", "IDENTITY_DOCUMENT"].includes(
+          requirement.requirementCode,
+        )),
+  );
+  if (!identityDocument?.documentId || hydratedIdentityDocumentIds.has(identityDocument.documentId))
+    return;
+  hydratedIdentityDocumentIds.add(identityDocument.documentId);
+  await applyDocumentPrefill(identityDocument.documentId);
+}
+
+function handlePersonalEvidenceUploaded(
+  requirement: ApplicationDocumentRequirementState,
+  document: UploadedDocumentSummary,
+) {
+  if (identityNameMismatch.value?.documentId !== document.id) {
+    identityNameMismatch.value = null;
+  }
+  requirement.state = "PENDING";
+  requirement.documentId = document.id;
+  requirement.fileName = document.originalFileName;
+  requirement.mimeType = document.mimeType;
+  requirement.checksumSha256 = document.checksumSha256;
+  requirement.documentVersion = document.version;
+}
+
+function replaceIdentityDocument() {
+  const correction = identityNameMismatch.value;
+  if (!correction) return;
+  const evidenceRegion = document.querySelector<HTMLElement>(
+    `[data-evidence-document-id="${correction.documentId}"]`,
+  );
+  evidenceRegion?.scrollIntoView({ behavior: "smooth", block: "center" });
+  evidenceRegion?.querySelector<HTMLInputElement>('input[type="file"]')?.click();
+}
+
+async function correctIdentityOcrReading(name: IdentityName) {
+  const correction = identityNameMismatch.value;
+  if (!correction) return;
+  identityNameCorrectionWorking.value = true;
+  try {
+    const savedCorrection = await api.request<IdentityNameCorrectionSummary>(
+      `/api/admissions/applications/${applicationId.value}/identity-name-correction/ocr-reading`,
+      {
+        method: "PUT",
+        body: {
+          documentId: correction.documentId,
+          firstName: name.firstName,
+          middleNames: name.middleNames,
+          lastName: name.lastName,
+        },
+      },
+    );
+    const registered = savedCorrection.registeredName;
+    const documentReading = savedCorrection.documentName;
+    const namesMatch =
+      registered.firstName.trim().toLocaleUpperCase() ===
+        documentReading.firstName.trim().toLocaleUpperCase() &&
+      registered.lastName.trim().toLocaleUpperCase() ===
+        documentReading.lastName.trim().toLocaleUpperCase();
+    identityNameMismatch.value = namesMatch ? null : savedCorrection;
+    await showSuccess(
+      "OCR reading corrected",
+      "The document reading was saved without changing your registered account name.",
+    );
+  } catch (error) {
+    await showError("OCR reading could not be saved", api.errorMessage(error));
+  } finally {
+    identityNameCorrectionWorking.value = false;
+  }
+}
+
+async function requestOfficialNameCorrection(name: IdentityName) {
+  const correction = identityNameMismatch.value;
+  if (!correction) return;
+  const result = await Swal.fire({
+    title: "Request an official-name correction?",
+    text: "Admissions will compare the registered account name with the uploaded identity document before changing either record.",
+    input: "textarea",
+    inputLabel: "Reason for the correction",
+    inputPlaceholder: "Explain why the registered name needs to be corrected",
+    inputAttributes: { maxlength: "1000" },
+    inputValidator: (value) =>
+      value.trim().length >= 10
+        ? undefined
+        : "Enter at least 10 characters explaining the correction.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Submit correction request",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "var(--color-uzazure-600)",
+  });
+  if (!result.isConfirmed) return;
+  identityNameCorrectionWorking.value = true;
+  try {
+    identityNameMismatch.value = await api.request<IdentityNameCorrectionSummary>(
+      `/api/admissions/applications/${applicationId.value}/identity-name-correction/request`,
+      {
+        method: "POST",
+        body: {
+          documentId: correction.documentId,
+          firstName: name.firstName,
+          middleNames: name.middleNames,
+          lastName: name.lastName,
+          reason: result.value.trim(),
+        },
+      },
+    );
+    await showSuccess(
+      "Official-name correction requested",
+      "You may continue completing this draft while Admissions reviews the identity evidence.",
+    );
+  } catch (error) {
+    await showError("Correction request could not be submitted", api.errorMessage(error));
+  } finally {
+    identityNameCorrectionWorking.value = false;
+  }
+}
+
+async function handlePersonalExtractionReady(extraction: { documentId: string }) {
+  await applyDocumentPrefill(extraction.documentId);
+}
+
+function handleQualificationEvidenceUploaded(document: UploadedDocumentSummary) {
+  qualificationForm.documentId = document.id;
+}
+
+async function handleQualificationExtractionReady(extraction: { documentId: string }) {
+  await applyDocumentPrefill(extraction.documentId, qualificationForm.level);
 }
 
 function focusInlineEditor(shouldFocus: boolean) {
@@ -1204,8 +1532,26 @@ async function saveInlineRecord() {
       path = `/api/admissions/applications/${applicationId.value}/referees${editingId.value ? `/${editingId.value}` : ""}`;
       body = nullableBody(refereeForm);
     } else if (inlineEditor.value === "qualification") {
-      path = `/api/admissions/applications/${applicationId.value}/qualifications${editingId.value ? `/${editingId.value}` : ""}`;
-      body = nullableBody(qualificationForm);
+      path = `/api/admissions/applications/${applicationId.value}/qualification-aggregates${editingId.value ? `/${editingId.value}` : ""}`;
+      body = {
+        level: qualificationForm.level,
+        examBodyId: nullableString(qualificationForm.examBodyId),
+        institutionName: nullableString(qualificationForm.institutionName),
+        centreNumber: nullableString(qualificationForm.centreNumber),
+        candidateNumber: nullableString(qualificationForm.candidateNumber),
+        yearWritten: Number(qualificationForm.yearWritten),
+        durationMonths: qualificationForm.durationMonths,
+        countryId: nullableString(qualificationForm.countryId),
+        documentId: qualificationForm.documentId,
+        awardTypeCode: nullableString(qualificationForm.awardTypeCode),
+        qualificationName: nullableString(qualificationForm.qualificationName),
+        expectedVersion: Number(qualificationForm.expectedVersion),
+        results: resultForms.value.map((result) => ({
+          subjectId: result.subjectId,
+          grade: result.grade,
+          principalSubject: result.principalSubject,
+        })),
+      };
     } else if (inlineEditor.value === "result" && selectedSittingId.value) {
       if (editingId.value) {
         path = `/api/admissions/applications/${applicationId.value}/qualifications/${selectedSittingId.value}/results/${editingId.value}`;
@@ -1621,7 +1967,7 @@ function formatStatus(value: string) {
           <div class="mb-4 rounded-xl border border-slate-200 bg-white p-4">
             <div class="flex items-center justify-between text-sm">
               <span class="font-semibold text-slate-700">Progress</span>
-              <span class="font-semibold text-uzgreen-700">{{ progressPercentage }}%</span>
+              <span class="font-semibold text-uzazure-700">{{ progressPercentage }}%</span>
             </div>
             <UProgress class="mt-2" :model-value="progressPercentage" color="primary" size="sm" />
             <p class="mt-2 text-xs text-slate-500">
@@ -1647,10 +1993,10 @@ function formatStatus(value: string) {
             <div>
               <p
                 data-testid="application-context"
-                class="mb-1 text-xs font-bold tracking-[0.14em] text-uzgreen-700 uppercase"
+                class="mb-1 text-xs font-bold tracking-[0.14em] text-uzazure-700 uppercase"
               >
                 {{ workspace.application.applicationTypeName }}
-                <span class="mx-1 text-uzgold-600" aria-hidden="true">·</span>
+                <span class="mx-1 text-uzorange-600" aria-hidden="true">·</span>
                 {{ workspace.application.intakeCode }}
               </p>
               <div class="flex items-center gap-2">
@@ -1674,6 +2020,57 @@ function formatStatus(value: string) {
 
           <div class="p-6 sm:p-8">
             <div v-if="activeSectionCode === 'PERSONAL_DETAILS'" class="space-y-8">
+              <section v-if="personalEvidenceRequirements.length" class="space-y-4">
+                <div>
+                  <h2 class="text-base font-semibold text-slate-900">Identity evidence</h2>
+                  <p class="mt-1 text-sm text-slate-500">
+                    Upload the applicable identity documents first. Each upload starts immediately;
+                    review or correct any extracted details below.
+                  </p>
+                </div>
+                <div class="grid gap-4 lg:grid-cols-2">
+                  <div
+                    v-for="requirement in personalEvidenceRequirements"
+                    :key="requirement.requirementCode"
+                    :data-evidence-document-id="requirement.documentId"
+                  >
+                    <EmhareEvidenceUploader
+                      :application-id="applicationId"
+                      :document-type-code="requirement.requirementCode"
+                      :label="requirement.requirementName"
+                      :required="requirement.required"
+                      :existing-document-id="requirement.documentId"
+                      :existing-state="requirement.state"
+                      link-to-requirement
+                      :disabled="!isDraft"
+                      @uploaded="
+                        (document) => handlePersonalEvidenceUploaded(requirement, document)
+                      "
+                      @extraction-ready="handlePersonalExtractionReady"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <EmhareIdentityNameMismatchPanel
+                v-if="identityNameMismatch"
+                :correction="identityNameMismatch"
+                :loading="identityNameCorrectionWorking"
+                :editable="isDraft"
+                @replace="replaceIdentityDocument"
+                @corrected="correctIdentityOcrReading"
+                @request="requestOfficialNameCorrection"
+              />
+
+              <UAlert
+                v-if="!personalEvidenceReady"
+                color="primary"
+                variant="soft"
+                icon="i-lucide-lock-keyhole"
+                title="Upload the required identity evidence to continue"
+                description="Personal data entry opens as soon as all applicable files are stored. OCR completion is not required."
+              />
+
               <UAlert
                 color="primary"
                 variant="soft"
@@ -1686,159 +2083,166 @@ function formatStatus(value: string) {
                 "
               />
 
-              <EmhareFormSection
-                title="Identity"
-                description="Names and identifying details as they will appear on official documents."
+              <div
+                :inert="personalFieldsDisabled"
+                :aria-disabled="personalFieldsDisabled"
+                :class="personalFieldsDisabled ? 'pointer-events-none opacity-60' : ''"
+                class="space-y-8"
               >
-                <EmhareFormField
-                  v-model="profileForm.applicantCategoryCode"
-                  type="select"
-                  label="Applicant category"
-                  :items="[
-                    { label: 'Local', value: 'LOCAL' },
-                    { label: 'SADC', value: 'SADC' },
-                    { label: 'International', value: 'INTERNATIONAL' },
-                    { label: 'Credit transfer', value: 'CLE' },
-                  ]"
-                  required
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-model="profileForm.titleCode"
-                  type="select"
-                  label="Title"
-                  :items="['Mr', 'Mrs', 'Ms', 'Miss', 'Dr', 'Prof']"
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-model="profileForm.firstName"
-                  label="First name"
-                  description="Taken from your registered account."
-                  required
-                  readonly
-                />
-                <EmhareFormField
-                  v-model="profileForm.lastName"
-                  label="Last name"
-                  description="Taken from your registered account."
-                  required
-                  readonly
-                />
-                <EmhareFormField
-                  v-model="profileForm.middleNames"
-                  label="Middle names"
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-model="profileForm.dateOfBirth"
-                  type="date"
-                  label="Date of birth"
-                  required
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-model="profileForm.genderCode"
-                  type="select"
-                  label="Gender"
-                  :items="['FEMALE', 'MALE', 'OTHER', 'PREFER_NOT_TO_SAY']"
-                  required
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-model="profileForm.maritalStatusCode"
-                  type="select"
-                  label="Marital status"
-                  :items="['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED']"
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-if="profileForm.applicantCategoryCode === 'LOCAL'"
-                  v-model="profileForm.nationalIdNumber"
-                  label="National ID number"
-                  description="Checked for duplicate applications in this intake."
-                  required
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-else
-                  v-model="profileForm.passportNumber"
-                  label="Passport number"
-                  required
-                  :disabled="!isDraft"
-                />
-              </EmhareFormSection>
+                <EmhareFormSection
+                  title="Identity"
+                  description="Names and identifying details as they will appear on official documents."
+                >
+                  <EmhareFormField
+                    v-model="profileForm.applicantCategoryCode"
+                    type="select"
+                    label="Applicant category"
+                    :items="[
+                      { label: 'Local', value: 'LOCAL' },
+                      { label: 'SADC', value: 'SADC' },
+                      { label: 'International', value: 'INTERNATIONAL' },
+                      { label: 'Credit transfer', value: 'CLE' },
+                    ]"
+                    required
+                    disabled
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.titleCode"
+                    type="select"
+                    label="Title"
+                    :items="['Mr', 'Mrs', 'Ms', 'Miss', 'Dr', 'Prof']"
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.firstName"
+                    label="First name"
+                    description="Taken from your registered account."
+                    required
+                    readonly
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.lastName"
+                    label="Last name"
+                    description="Taken from your registered account."
+                    required
+                    readonly
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.middleNames"
+                    label="Middle names"
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.dateOfBirth"
+                    type="date"
+                    label="Date of birth"
+                    required
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.genderCode"
+                    type="select"
+                    label="Gender"
+                    :items="['FEMALE', 'MALE', 'OTHER', 'PREFER_NOT_TO_SAY']"
+                    required
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.maritalStatusCode"
+                    type="select"
+                    label="Marital status"
+                    :items="['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED']"
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-if="profileForm.applicantCategoryCode === 'LOCAL'"
+                    v-model="profileForm.nationalIdNumber"
+                    label="National ID number"
+                    description="Checked for duplicate applications in this intake."
+                    required
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-else
+                    v-model="profileForm.passportNumber"
+                    label="Passport number"
+                    required
+                    :disabled="!isDraft"
+                  />
+                </EmhareFormSection>
 
-              <EmhareFormSection
-                title="Residency and contact"
-                description="Where the applicant lives and how Admissions can reach them."
-              >
-                <EmhareFormField
-                  v-model="profileForm.countryId"
-                  type="searchable-select"
-                  label="Country of residence"
-                  :items="countryItems"
-                  required
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-model="profileForm.nationalityCountryId"
-                  type="searchable-select"
-                  label="Nationality"
-                  :items="countryItems"
-                  required
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-model="profileForm.primaryEmail"
-                  type="email"
-                  label="Email"
-                  required
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-model="profileForm.primaryPhone"
-                  type="phone"
-                  label="Phone number"
-                  required
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-model="profileForm.residentialAddress"
-                  type="textarea"
-                  label="Residential address"
-                  required
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-model="profileForm.postalAddress"
-                  type="textarea"
-                  label="Postal address"
-                  :disabled="!isDraft"
-                />
-              </EmhareFormSection>
+                <EmhareFormSection
+                  title="Residency and contact"
+                  description="Where the applicant lives and how Admissions can reach them."
+                >
+                  <EmhareFormField
+                    v-model="profileForm.countryId"
+                    type="searchable-select"
+                    label="Country of residence"
+                    :items="countryItems"
+                    required
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.nationalityCountryId"
+                    type="searchable-select"
+                    label="Nationality"
+                    :items="countryItems"
+                    required
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.primaryEmail"
+                    type="email"
+                    label="Email"
+                    required
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.primaryPhone"
+                    type="phone"
+                    label="Phone number"
+                    required
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.residentialAddress"
+                    type="textarea"
+                    label="Residential address"
+                    required
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-model="profileForm.postalAddress"
+                    type="textarea"
+                    label="Postal address"
+                    :disabled="!isDraft"
+                  />
+                </EmhareFormSection>
 
-              <EmhareFormSection
-                title="Additional information"
-                description="Only needed where it applies to the applicant."
-              >
-                <EmhareFormField
-                  v-model="profileForm.disabilityStatusCode"
-                  type="select"
-                  label="Disability status"
-                  :items="[
-                    { label: 'None', value: 'NONE' },
-                    { label: 'Declared', value: 'DECLARED' },
-                  ]"
-                  :disabled="!isDraft"
-                />
-                <EmhareFormField
-                  v-if="profileForm.disabilityStatusCode === 'DECLARED'"
-                  v-model="profileForm.specialNeeds"
-                  type="textarea"
-                  label="Support requirements"
-                  :disabled="!isDraft"
-                />
-              </EmhareFormSection>
+                <EmhareFormSection
+                  title="Additional information"
+                  description="Only needed where it applies to the applicant."
+                >
+                  <EmhareFormField
+                    v-model="profileForm.disabilityStatusCode"
+                    type="select"
+                    label="Disability status"
+                    :items="[
+                      { label: 'None', value: 'NONE' },
+                      { label: 'Declared', value: 'DECLARED' },
+                    ]"
+                    :disabled="!isDraft"
+                  />
+                  <EmhareFormField
+                    v-if="profileForm.disabilityStatusCode === 'DECLARED'"
+                    v-model="profileForm.specialNeeds"
+                    type="textarea"
+                    label="Support requirements"
+                    :disabled="!isDraft"
+                  />
+                </EmhareFormSection>
+              </div>
             </div>
 
             <div v-else-if="activeSectionCode === 'NEXT_OF_KIN'" class="space-y-4">
@@ -2279,136 +2683,172 @@ function formatStatus(value: string) {
             <div v-else-if="activeSectionCode === 'QUALIFICATIONS'" class="space-y-5">
               <EmhareInlineRecordForm
                 v-if="isDraft && inlineEditor === 'qualification'"
-                :title="editingId ? 'Edit qualification sitting' : 'Qualification sitting'"
-                description="Capture the examination sitting before adding its subject results."
+                :title="editingId ? 'Edit qualification' : 'Add qualification'"
+                description="Upload the evidence first, review the extracted details, then save the qualification and all subjects together."
                 :show-cancel="Boolean(editingId)"
                 :busy="working"
+                :submit-disabled="!qualificationAggregateReady"
                 @cancel="openQualification()"
                 @submit="saveInlineRecord"
               >
-                <div class="grid gap-4 md:grid-cols-2">
+                <div class="space-y-5">
                   <EmhareFormField
-                    v-model="qualificationForm.level"
+                    v-model="qualificationForm.kind"
                     type="select"
-                    label="Qualification level"
+                    label="Qualification type"
                     :items="[
                       { label: 'O Level', value: 'O_LEVEL' },
                       { label: 'A Level', value: 'A_LEVEL' },
                       { label: 'Diploma', value: 'DIPLOMA' },
+                      { label: 'Certificate', value: 'CERTIFICATE' },
                       { label: 'Degree', value: 'DEGREE' },
+                      { label: 'Masters', value: 'MASTERS' },
+                      { label: 'Professional qualification', value: 'PROFESSIONAL' },
                       { label: 'Other', value: 'OTHER' },
                     ]"
                     required
+                    :disabled="Boolean(editingId)"
                   />
-                  <EmhareFormField
-                    v-model="qualificationForm.examBodyId"
-                    type="searchable-select"
-                    label="Exam body"
-                    :items="examBodyItems"
-                    :required="['O_LEVEL', 'A_LEVEL'].includes(qualificationForm.level)"
-                  />
-                  <EmhareFormField
-                    v-model="qualificationForm.institutionName"
-                    label="School or institution"
-                  />
-                  <EmhareFormField
-                    v-model="qualificationForm.yearWritten"
-                    type="number"
-                    label="Year written"
-                    :min="1900"
-                    :max="2200"
-                    required
-                  />
-                  <EmhareFormField v-model="qualificationForm.centreNumber" label="Centre number" />
-                  <EmhareFormField
-                    v-model="qualificationForm.candidateNumber"
-                    label="Candidate number"
-                  />
-                  <EmhareFormField
-                    v-model="qualificationForm.countryId"
-                    type="searchable-select"
-                    label="Country"
-                    :items="countryItems"
-                  />
-                </div>
-              </EmhareInlineRecordForm>
-
-              <EmhareInlineRecordForm
-                v-else-if="isDraft && inlineEditor === 'result'"
-                :title="editingId ? 'Edit subject result' : 'Add subject results'"
-                :description="
-                  selectedResultSitting
-                    ? `${formatStatus(selectedResultSitting.level)} · ${selectedResultSitting.yearWritten}. Add all subjects for this sitting, then save them together.`
-                    : 'Capture managed subjects and grades.'
-                "
-                :submit-label="
-                  editingId
-                    ? 'Save result'
-                    : `Save ${resultForms.length} subject${resultForms.length === 1 ? '' : 's'}`
-                "
-                :show-cancel="true"
-                :submit-disabled="!resultBatchReady"
-                cancel-label="Back to qualification sitting"
-                :busy="working"
-                @cancel="openQualification()"
-                @submit="saveInlineRecord"
-              >
-                <div class="space-y-4">
-                  <div
-                    v-for="(result, resultIndex) in resultForms"
-                    :key="result.clientId"
-                    class="rounded-lg border border-muted bg-default p-4"
-                  >
-                    <div class="mb-4 flex items-center justify-between gap-3">
-                      <p class="font-medium text-highlighted">Subject {{ resultIndex + 1 }}</p>
-                      <UButton
-                        v-if="!editingId && resultForms.length > 1"
-                        :aria-label="`Remove subject ${resultIndex + 1}`"
-                        icon="i-lucide-trash-2"
-                        color="error"
-                        variant="ghost"
-                        @click="removeResultDraft(resultIndex)"
-                      />
-                    </div>
-                    <div class="grid gap-4 md:grid-cols-2">
-                      <EmhareFormField
-                        v-model="result.subjectId"
-                        type="searchable-select"
-                        label="Managed subject"
-                        :items="subjectItemsForResultDraft(resultIndex)"
-                        required
-                      />
-                      <EmhareFormField
-                        v-model="result.grade"
-                        type="select"
-                        label="Grade"
-                        :items="resultGradeItems"
-                        required
-                      />
-                      <EmhareFormField
-                        v-if="resultQualificationLevel === 'A_LEVEL'"
-                        v-model="result.principalSubject"
-                        type="toggle"
-                        label="Principal subject"
-                      />
-                    </div>
-                  </div>
-
-                  <UButton
-                    v-if="!editingId"
-                    label="Add another subject"
-                    icon="i-lucide-plus"
-                    color="neutral"
-                    variant="outline"
-                    @click="addResultDraft"
+                  <EmhareEvidenceUploader
+                    :application-id="applicationId"
+                    :document-type-code="qualificationEvidenceTypeCode()"
+                    label="Qualification evidence"
+                    description="Upload the result slip, certificate, or transcript for this qualification."
+                    :existing-document-id="qualificationForm.documentId || null"
+                    :existing-state="qualificationForm.documentId ? 'PENDING' : 'MISSING'"
+                    @uploaded="handleQualificationEvidenceUploaded"
+                    @extraction-ready="handleQualificationExtractionReady"
                   />
 
                   <UAlert
-                    color="info"
+                    v-if="!qualificationForm.documentId"
+                    color="primary"
                     variant="soft"
-                    title="ZIMSEC points are automatic"
-                    description="A Level grades are calculated on submission: A = 5, B = 4, C = 3, D = 2, E = 1."
+                    icon="i-lucide-lock-keyhole"
+                    title="Upload evidence to continue"
+                    description="The editable qualification form opens as soon as the file is stored. OCR is optional and never blocks manual entry."
                   />
+
+                  <div v-else class="grid gap-4 md:grid-cols-2">
+                    <EmhareFormField
+                      v-if="schoolQualification"
+                      v-model="qualificationForm.examBodyId"
+                      type="searchable-select"
+                      label="Exam body"
+                      :items="examBodyItems"
+                      required
+                    />
+                    <EmhareFormField
+                      v-else
+                      v-model="qualificationForm.qualificationName"
+                      label="Qualification title"
+                      required
+                    />
+                    <EmhareFormField
+                      v-model="qualificationForm.institutionName"
+                      label="School or institution"
+                    />
+                    <EmhareFormField
+                      v-model="qualificationForm.yearWritten"
+                      type="number"
+                      label="Year written"
+                      :min="1900"
+                      :max="2200"
+                      required
+                    />
+                    <EmhareFormField
+                      v-if="!schoolQualification"
+                      v-model="qualificationForm.durationMonths"
+                      type="number"
+                      label="Qualification duration (months)"
+                      :min="1"
+                      required
+                    />
+                    <EmhareFormField
+                      v-model="qualificationForm.centreNumber"
+                      label="Centre number"
+                    />
+                    <EmhareFormField
+                      v-model="qualificationForm.candidateNumber"
+                      label="Candidate number"
+                    />
+                    <EmhareFormField
+                      v-model="qualificationForm.countryId"
+                      type="searchable-select"
+                      label="Country"
+                      :items="countryItems"
+                    />
+                  </div>
+
+                  <div v-if="schoolQualification && qualificationForm.documentId" class="space-y-4">
+                    <div class="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 class="font-semibold text-highlighted">Subject results</h3>
+                        <p class="text-sm text-muted">
+                          {{ qualificationForm.kind === "O_LEVEL" ? "Eight" : "Three" }} rows are
+                          ready by default. Add or remove rows to match the evidence.
+                        </p>
+                      </div>
+                      <UBadge
+                        :label="`${resultForms.length}/20`"
+                        color="primary"
+                        variant="subtle"
+                      />
+                    </div>
+                    <div
+                      v-for="(result, resultIndex) in resultForms"
+                      :key="result.clientId"
+                      class="rounded-lg border border-muted bg-default p-4"
+                    >
+                      <div class="mb-4 flex items-center justify-between gap-3">
+                        <p class="font-medium text-highlighted">Subject {{ resultIndex + 1 }}</p>
+                        <UButton
+                          v-if="resultForms.length > 1"
+                          :aria-label="`Remove subject ${resultIndex + 1}`"
+                          icon="i-lucide-trash-2"
+                          color="error"
+                          variant="ghost"
+                          @click="removeResultDraft(resultIndex)"
+                        />
+                      </div>
+                      <div class="grid gap-4 md:grid-cols-2">
+                        <EmhareFormField
+                          v-model="result.subjectId"
+                          type="searchable-select"
+                          label="Managed subject"
+                          :items="subjectItemsForResultDraft(resultIndex)"
+                          required
+                        />
+                        <EmhareFormField
+                          v-model="result.grade"
+                          type="select"
+                          label="Grade"
+                          :items="resultGradeItems"
+                          required
+                        />
+                        <EmhareFormField
+                          v-if="qualificationForm.kind === 'A_LEVEL'"
+                          v-model="result.principalSubject"
+                          type="toggle"
+                          label="Principal subject"
+                        />
+                      </div>
+                    </div>
+                    <UButton
+                      v-if="resultForms.length < 20"
+                      label="Add another subject"
+                      icon="i-lucide-plus"
+                      color="neutral"
+                      variant="outline"
+                      @click="addResultDraft"
+                    />
+                    <UAlert
+                      color="info"
+                      variant="soft"
+                      title="Managed subjects and grades"
+                      description="Exact OCR matches are selected automatically. Ambiguous subjects stay blank until you confirm them. A Level points are calculated by Admissions."
+                    />
+                  </div>
                 </div>
               </EmhareInlineRecordForm>
 
@@ -2459,11 +2899,6 @@ function formatStatus(value: string) {
                           color="neutral"
                           variant="ghost"
                           @click="openQualification(sitting)"
-                        /><UButton
-                          v-if="isDraft"
-                          icon="i-lucide-plus"
-                          label="Add result"
-                          @click="openResult(sitting)"
                         />
                       </div>
                     </header>
@@ -2482,14 +2917,6 @@ function formatStatus(value: string) {
                             ></span
                           >
                         </div>
-                        <UButton
-                          v-if="isDraft"
-                          icon="i-lucide-pencil"
-                          label="Edit"
-                          color="neutral"
-                          variant="ghost"
-                          @click="openResult(sitting, result)"
-                        />
                       </div>
                       <p v-if="!sitting.results.length" class="p-4 text-sm text-muted">
                         No subject results captured.
@@ -2590,71 +3017,29 @@ function formatStatus(value: string) {
             </div>
 
             <div v-else-if="activeSectionCode === 'DOCUMENTS'" class="space-y-4">
-              <template v-if="workspace.documents.requirements.length">
-                <EmhareInlineRecordForm
-                  v-if="isDraft && uploadableRequirements.length && inlineEditor === 'document'"
-                  title="Upload supporting evidence"
-                  description="Select a requirement and attach its evidence directly in this section."
-                  submit-label="Upload evidence"
-                  submit-icon="i-lucide-upload"
-                  :busy="working"
-                  @submit="uploadDocument"
-                >
-                  <div class="grid gap-4 md:grid-cols-2">
-                    <EmhareFormField
-                      v-model="documentForm.requirementCode"
-                      type="select"
-                      label="Document requirement"
-                      :items="uploadableRequirements"
-                      required
-                    />
-                    <EmhareFormField
-                      v-model="documentForm.file"
-                      type="drop-file"
-                      label="Document file"
-                      required
-                    />
-                  </div>
-                </EmhareInlineRecordForm>
-                <h2 class="pt-2 text-base font-semibold text-highlighted">Document requirements</h2>
-                <div class="space-y-3">
-                  <div
-                    v-for="requirement in workspace.documents.requirements"
+              <template v-if="supportingDocumentRequirements.length">
+                <UAlert
+                  color="primary"
+                  variant="soft"
+                  icon="i-lucide-folder-check"
+                  title="General supporting evidence"
+                  description="Choose or drop a file on its requirement card. Uploading and document reading start automatically."
+                />
+                <div class="grid gap-4 lg:grid-cols-2">
+                  <EmhareEvidenceUploader
+                    v-for="requirement in supportingDocumentRequirements"
                     :key="requirement.requirementCode"
-                    class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-muted p-4"
-                  >
-                    <div>
-                      <p class="font-medium">
-                        {{ requirement.requirementName }}
-                        <span v-if="requirement.required" class="text-error">*</span>
-                      </p>
-                      <p class="text-sm text-muted">
-                        {{ requirement.fileName ?? "No file uploaded"
-                        }}<template v-if="requirement.rejectionReason">
-                          · {{ requirement.rejectionReason }}</template
-                        >
-                      </p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <EmhareStatusPill
-                        :label="formatStatus(requirement.state)"
-                        :tone="
-                          requirement.state === 'VERIFIED'
-                            ? 'success'
-                            : requirement.state === 'PENDING'
-                              ? 'warning'
-                              : 'error'
-                        "
-                      /><UButton
-                        v-if="isDraft && ['MISSING', 'REJECTED'].includes(requirement.state)"
-                        label="Upload"
-                        icon="i-lucide-upload"
-                        color="neutral"
-                        variant="outline"
-                        @click="openDocumentUpload(requirement)"
-                      />
-                    </div>
-                  </div>
+                    :application-id="applicationId"
+                    :document-type-code="requirement.requirementCode"
+                    :label="requirement.requirementName"
+                    :required="requirement.required"
+                    :description="requirement.rejectionReason ?? undefined"
+                    :existing-document-id="requirement.documentId"
+                    :existing-state="requirement.state"
+                    link-to-requirement
+                    :disabled="!isDraft"
+                    @uploaded="(document) => handlePersonalEvidenceUploaded(requirement, document)"
+                  />
                 </div>
               </template>
               <EmhareFeedbackState
@@ -2906,23 +3291,14 @@ function formatStatus(value: string) {
                           </div>
                         </div>
                       </div>
-                      <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                      <div class="grid gap-3">
                         <EmhareFormField
                           v-model="paymentProofForm.file"
                           type="drop-file"
                           label="Proof of payment"
-                          description="PDF, PNG, or JPEG"
+                          description="PDF, PNG, or JPEG · upload starts immediately"
                           accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
                           required
-                        />
-                        <UButton
-                          class="sm:mb-px"
-                          size="lg"
-                          icon="i-lucide-upload"
-                          label="Upload proof"
-                          :loading="working"
-                          :disabled="!paymentProofForm.file"
-                          @click="uploadPaymentProof"
                         />
                       </div>
                     </div>
@@ -3760,7 +4136,7 @@ function formatStatus(value: string) {
               trailing-icon="i-lucide-arrow-right"
               @click="activateNextSection"
             />
-            <p v-else class="text-sm font-medium text-uzgreen-800">
+            <p v-else class="text-sm font-medium text-uzazure-800">
               Review the declaration and submit when every requirement is complete.
             </p>
           </footer>

@@ -10,6 +10,7 @@ const keycloakBaseUrl = process.env.KEYCLOAK_URL ?? "http://localhost:8099";
 const keycloakRealm = process.env.KEYCLOAK_REALM ?? "emhare";
 const keycloakAdminUsername = process.env.KEYCLOAK_ADMIN_USERNAME ?? "admin";
 const keycloakAdminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD ?? "admin";
+const adminPortalUrl = process.env.ADMIN_PORTAL_URL ?? "http://localhost:3000";
 const applicantPortalUrl = process.env.APPLICANT_PORTAL_URL ?? "http://localhost:3001";
 const testPassword = "Passw0rd!234";
 
@@ -191,7 +192,7 @@ async function useFixtureAcademicPeriod(
     {
       name: "emhare-academic-period-id",
       value: academicPeriodId,
-      url: "http://localhost:3000",
+      url: adminPortalUrl,
     },
   ]);
   await page.route("**/api/academic/overview", async (route) => {
@@ -287,9 +288,12 @@ test.describe("Core Identity authentication and RBAC", () => {
     await loginWithKeycloak(page, username);
 
     await expect(page).toHaveURL(
-      new RegExp(`^${applicantPortalUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/?`),
+      (url) => url.origin !== new URL(adminPortalUrl).origin && url.pathname === "/",
       { timeout: 15_000 },
     );
+    await expect(
+      page.getByRole("heading", { name: "University of Zimbabwe admissions" }),
+    ).toBeVisible();
     expect(coreUsersRequests).toHaveLength(0);
   });
 
@@ -413,7 +417,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       const firstLoginContext = await browser.newContext();
       try {
         const firstLoginPage = await firstLoginContext.newPage();
-        await firstLoginPage.goto("http://localhost:3000/operations");
+        await firstLoginPage.goto(`${adminPortalUrl}/operations`);
         await firstLoginPage.getByLabel(/email|username/i).fill(provisionedEmail);
         await firstLoginPage
           .getByRole("textbox", { name: "Password" })
@@ -618,7 +622,7 @@ test.describe("Core Identity authentication and RBAC", () => {
     await programmeMappings.click();
     await expect(page.getByRole("listbox")).not.toBeVisible();
     await expect(routeConfigurationDrawer.getByLabel("Document code").first()).toHaveValue(
-      "IDENTITY_DOCUMENT",
+      "NATIONAL_ID",
     );
     await routeConfigurationDrawer.getByLabel("Activate application route").click();
     const routeChangeReason = routeConfigurationDrawer.getByLabel("Change reason");
@@ -645,7 +649,7 @@ test.describe("Core Identity authentication and RBAC", () => {
       (configuredRouteRequest?.documents as Array<Record<string, unknown>>)
         .filter((document) => document.required)
         .map((document) => document.code),
-    ).toEqual(["IDENTITY_DOCUMENT", "ACADEMIC_QUALIFICATIONS"]);
+    ).toEqual(["NATIONAL_ID", "BIRTH_CERTIFICATE", "PASSPORT"]);
     await expect(postgraduateRow.getByText("Active", { exact: true })).toBeVisible();
   });
 
@@ -1162,10 +1166,17 @@ test.describe("Core Identity authentication and RBAC", () => {
     await expect(page.getByRole("heading", { name: "Requirement-set versions" })).toBeVisible();
     await expect(page.getByText("BACC-2027.1")).toBeVisible();
     await expect(page.getByText("BACC · Bachelor of Accountancy")).toBeVisible();
-    await expect(page.getByRole("button", { name: "New requirement set" })).toBeVisible();
-    await page.getByRole("button", { name: "New requirement set" }).click();
+    await expect(page.getByRole("link", { name: "View full details" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Add programme requirement" }).first(),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Add programme requirement" }).first().click();
     await expect(page.getByLabel("Programme", { exact: true })).toBeVisible();
     await expect(page.getByLabel(/Application type/)).toBeVisible();
+    await expect(page.getByLabel("Apply requirement to all intakes")).toBeChecked();
+    await expect(
+      page.getByText("All intakes — no intake restriction will be saved."),
+    ).toBeVisible();
     await expect(page.getByLabel("Minimum total points", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save draft requirements" })).toBeVisible();
 
@@ -3561,6 +3572,10 @@ test.describe("Core Identity authentication and RBAC", () => {
       }),
     ).toBeVisible();
     await expect(page.getByText("Student R260000V", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open application" })).toHaveAttribute(
+      "href",
+      `/operations/admissions/${applicationId}`,
+    );
     await expect(page.getByRole("button", { name: "Print offer letter" })).toBeVisible();
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))

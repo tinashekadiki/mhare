@@ -1,9 +1,5 @@
 package zw.ac.uz.emhare.admissions.api.model;
 
-import zw.ac.uz.emhare.admissions.domain.model.Applicant;
-
-import zw.ac.uz.emhare.admissions.*;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
@@ -15,135 +11,131 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import zw.ac.uz.emhare.admissions.*;
 
 /** Applicant-workspace request contracts. @author Tinashe K */
 public final class ApplicantWorkspaceRequests {
-    private ApplicantWorkspaceRequests() {
-    }
+  private ApplicantWorkspaceRequests() {}
 
-    public record SaveOwnProfileRequest(
-            @NotBlank @Size(max = 30) String applicantCategoryCode,
-            @Size(max = 30) String titleCode,
-            @Size(max = 150) String middleNames,
-            @Past LocalDate dateOfBirth,
-            @Size(max = 30) String genderCode,
-            @Size(max = 30) String maritalStatusCode,
-            @Size(max = 50) String nationalIdNumber,
-            @Size(max = 50) String passportNumber,
-            UUID countryId,
-            UUID nationalityCountryId,
-            @Size(max = 150) String placeOfBirth,
-            @Size(max = 30) String disabilityStatusCode,
-            @Size(max = 1000) String specialNeeds,
-            @Size(max = 30) String sponsorTypeCode,
-            @NotBlank @Email @Size(max = 200) String primaryEmail,
-            @Size(max = 50) String primaryPhone,
-            @Size(max = 500) String postalAddress,
-            @Size(max = 500) String residentialAddress,
-            @Min(0) long expectedVersion) {
-    }
+  public record SaveOwnProfileRequest(
+      @NotBlank @Size(max = 30) String applicantCategoryCode,
+      @Size(max = 30) String titleCode,
+      @Size(max = 150) String middleNames,
+      @Past LocalDate dateOfBirth,
+      @Size(max = 30) String genderCode,
+      @Size(max = 30) String maritalStatusCode,
+      @Size(max = 50) String nationalIdNumber,
+      @Size(max = 50) String passportNumber,
+      UUID countryId,
+      UUID nationalityCountryId,
+      @Size(max = 150) String placeOfBirth,
+      @Size(max = 30) String disabilityStatusCode,
+      @Size(max = 1000) String specialNeeds,
+      @Size(max = 30) String sponsorTypeCode,
+      @NotBlank @Email @Size(max = 200) String primaryEmail,
+      @Size(max = 50) String primaryPhone,
+      @Size(max = 500) String postalAddress,
+      @Size(max = 500) String residentialAddress,
+      @Min(0) long expectedVersion) {}
 
-    public record SaveNextOfKinRequest(
-            @NotBlank @Size(max = 200) String fullName,
-            @NotBlank @Size(max = 50) String relationshipCode,
-            @NotBlank @Size(max = 50) String phoneNumber,
-            @Email @Size(max = 200) String email,
-            @Size(max = 500) String address,
-            boolean primary,
-            @Min(0) long expectedVersion) {
-    }
+  public record SaveNextOfKinRequest(
+      @NotBlank @Size(max = 200) String fullName,
+      @NotBlank @Size(max = 50) String relationshipCode,
+      @NotBlank @Size(max = 50) String phoneNumber,
+      @Email @Size(max = 200) String email,
+      @Size(max = 500) String address,
+      boolean primary,
+      @Min(0) long expectedVersion) {}
 
-    public record SaveEmploymentRequest(
-            @NotBlank @Size(max = 200) String employerName,
-            @NotBlank @Size(max = 150) String positionTitle,
-            @NotNull LocalDate startedOn,
-            LocalDate endedOn,
-            boolean current,
-            @Size(max = 2000) String responsibilities,
-            @Min(0) long expectedVersion) {
-    }
+  public record SaveEmploymentRequest(
+      @NotBlank @Size(max = 200) String employerName,
+      @NotBlank @Size(max = 150) String positionTitle,
+      @NotNull LocalDate startedOn,
+      LocalDate endedOn,
+      boolean current,
+      @Size(max = 2000) String responsibilities,
+      @Min(0) long expectedVersion) {}
 
-    public record SaveRefereeRequest(
-            @NotBlank @Size(max = 200) String fullName,
-            @Size(max = 100) String title,
-            @NotBlank @Size(max = 200) String organisation,
-            @NotBlank @Size(max = 150) String positionTitle,
-            @NotBlank @Size(max = 500) String expertise,
-            @NotBlank @Size(max = 200) String relationshipToApplicant,
-            @NotBlank @Email @Size(max = 200) String email,
-            @Size(max = 50) String phoneNumber,
-            @Min(0) long expectedVersion) {
-    }
+  public record SaveRefereeRequest(
+      @NotBlank @Size(max = 200) String fullName,
+      @Size(max = 100) String title,
+      @NotBlank @Size(max = 200) String organisation,
+      @NotBlank @Size(max = 150) String positionTitle,
+      @NotBlank @Size(max = 500) String expertise,
+      @NotBlank @Size(max = 200) String relationshipToApplicant,
+      @NotBlank @Email @Size(max = 200) String email,
+      @Size(max = 50) String phoneNumber,
+      @Min(0) long expectedVersion) {}
 
-    public record SavePriorUzDeclarationRequest(
-            boolean previouslyStudiedAtUz,
-            @Size(max = 80) String registrationNumber,
-            LocalDate enrolmentStartedOn,
-            LocalDate enrolmentEndedOn,
-            Boolean previouslyAcceptedOffer,
-            Boolean previouslyTookUpPlace) {
-    }
+  public record SavePriorUzDeclarationRequest(
+      boolean previouslyStudiedAtUz,
+      @Size(max = 80) String registrationNumber,
+      LocalDate enrolmentStartedOn,
+      LocalDate enrolmentEndedOn,
+      Boolean previouslyAcceptedOffer,
+      Boolean previouslyTookUpPlace) {}
 
-    public record ReplaceProfessionalAchievementsRequest(
-            boolean declaredNone,
-            @NotNull @Size(max = 100) List<@Valid ProfessionalAchievementInput> achievements) {
-    }
+  public record ReplaceProfessionalAchievementsRequest(
+      boolean declaredNone,
+      @NotNull @Size(max = 100) List<@Valid ProfessionalAchievementInput> achievements) {}
 
-    public record ProfessionalAchievementInput(
-            @NotBlank @Size(max = 30) String type,
-            @NotBlank @Size(max = 250) String title,
-            @Size(max = 200) String organisation,
-            LocalDate achievedOn,
-            @Size(max = 2000) String description) {
-    }
+  public record ProfessionalAchievementInput(
+      @NotBlank @Size(max = 30) String type,
+      @NotBlank @Size(max = 250) String title,
+      @Size(max = 200) String organisation,
+      LocalDate achievedOn,
+      @Size(max = 2000) String description) {}
 
-    public record SaveQualificationSittingRequest(
-            @NotBlank @Size(max = 30) String level,
-            UUID examBodyId,
-            @Size(max = 200) String institutionName,
-            @Size(max = 50) String centreNumber,
-            @Size(max = 50) String candidateNumber,
-            @Min(1900) @Max(2200) Integer yearWritten,
-            UUID countryId,
-            UUID documentId,
-            @Min(0) long expectedVersion) {
-    }
+  public record SaveQualificationSittingRequest(
+      @NotBlank @Size(max = 30) String level,
+      UUID examBodyId,
+      @Size(max = 200) String institutionName,
+      @Size(max = 50) String centreNumber,
+      @Size(max = 50) String candidateNumber,
+      @Min(1900) @Max(2200) Integer yearWritten,
+      @jakarta.validation.constraints.Positive Integer durationMonths,
+      UUID countryId,
+      UUID documentId,
+      @Min(0) long expectedVersion) {}
 
-    public record SaveQualificationResultRequest(
-            @NotNull UUID subjectId,
-            @NotBlank @Size(max = 20) String grade,
-            Boolean principalSubject,
-            @Min(0) long expectedVersion) {
-    }
+  public record SaveQualificationResultRequest(
+      @NotNull UUID subjectId,
+      @NotBlank @Size(max = 20) String grade,
+      Boolean principalSubject,
+      @Min(0) long expectedVersion) {}
 
-    public record AddQualificationResultsRequest(
-            @NotNull @Size(min = 1, max = 20) List<@Valid AddQualificationResultItemRequest> results) {
-    }
+  public record AddQualificationResultsRequest(
+      @NotNull @Size(min = 1, max = 20) List<@Valid AddQualificationResultItemRequest> results) {}
 
-    public record AddQualificationResultItemRequest(
-            @NotNull UUID subjectId,
-            @NotBlank @Size(max = 20) String grade,
-            Boolean principalSubject) {
-    }
+  public record AddQualificationResultItemRequest(
+      @NotNull UUID subjectId, @NotBlank @Size(max = 20) String grade, Boolean principalSubject) {}
 
-    public record ReplaceProgrammeChoicesRequest(
-            @Size(min = 1, max = 20) List<@NotNull UUID> programmeIds,
-            @Size(min = 1, max = 20) List<@Valid ProgrammeChoiceInput> choices,
-            @Size(min = 10, max = 500) String changeReason) {
-    }
+  public record SaveQualificationAggregateRequest(
+      @NotBlank @Size(max = 30) String level,
+      @Size(max = 30) String awardTypeCode,
+      @Size(max = 200) String qualificationName,
+      UUID examBodyId,
+      @Size(max = 200) String institutionName,
+      @Size(max = 50) String centreNumber,
+      @Size(max = 50) String candidateNumber,
+      @Min(1900) @Max(2200) Integer yearWritten,
+      @jakarta.validation.constraints.Positive Integer durationMonths,
+      UUID countryId,
+      @NotNull UUID documentId,
+      @NotNull @Size(max = 20) List<@Valid AddQualificationResultItemRequest> results,
+      @Min(0) long expectedVersion) {}
 
-    public record ProgrammeChoiceInput(
-            @NotNull UUID programmeId,
-            @NotNull @Size(max = 100) List<@NotNull UUID> entryOptionIds) { }
+  public record ReplaceProgrammeChoicesRequest(
+      @Size(min = 1, max = 20) List<@NotNull UUID> programmeIds,
+      @Size(min = 1, max = 20) List<@Valid ProgrammeChoiceInput> choices,
+      @Size(min = 10, max = 500) String changeReason) {}
 
-    public record AcceptDeclarationRequest(
-            boolean accepted,
-            @NotBlank @Size(max = 50) String declarationVersion) {
-    }
+  public record ProgrammeChoiceInput(
+      @NotNull UUID programmeId, @NotNull @Size(max = 100) List<@NotNull UUID> entryOptionIds) {}
 
-    public record QualificationDecisionRequest(
-            @NotBlank String decision,
-            @Size(max = 1000) String reason,
-            @Min(0) long expectedVersion) {
-    }
+  public record AcceptDeclarationRequest(
+      boolean accepted, @NotBlank @Size(max = 50) String declarationVersion) {}
+
+  public record QualificationDecisionRequest(
+      @NotBlank String decision, @Size(max = 1000) String reason, @Min(0) long expectedVersion) {}
 }

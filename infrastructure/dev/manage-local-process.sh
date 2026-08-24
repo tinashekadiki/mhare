@@ -76,18 +76,25 @@ screen_session_exists() {
   [[ "${screen_sessions}" == *".${screen_session_name}"* ]]
 }
 
+is_repo_owned_command() {
+  local command_text="$1"
+  local expected_runtime_jar="${runtime_jar_directory}/${process_name}.jar"
+
+  [[ "${command_text}" == *"${project_root}"* || "${command_text}" == *"${expected_runtime_jar}"* ]]
+}
+
 repo_owned_process_root() {
   local current_pid="$1"
   local current_command parent_pid parent_command
 
   current_command="$(process_command "${current_pid}")"
-  [[ "${current_command}" == *"${project_root}"* ]] || return 1
+  is_repo_owned_command "${current_command}" || return 1
 
   while true; do
     parent_pid="$(ps -p "${current_pid}" -o ppid= 2>/dev/null | tr -d ' ' || true)"
     [[ -n "${parent_pid}" && "${parent_pid}" -gt 1 ]] || break
     parent_command="$(process_command "${parent_pid}")"
-    [[ "${parent_command}" == *"${project_root}"* ]] || break
+    is_repo_owned_command "${parent_command}" || break
     current_pid="${parent_pid}"
   done
 
@@ -227,16 +234,24 @@ start_process() {
       NOTIFICATIONS_DELIVERY_PROVIDER="${NOTIFICATIONS_DELIVERY_PROVIDER:-local-log}" \
       java "${jvm_arguments[@]}" -jar "${runtime_service_jar}"
   else
-    local npm_script
+    local npm_script portal_kind
     case "${process_name}" in
-      admin-portal) npm_script="admin:dev" ;;
-      applicant-portal) npm_script="applicant:dev" ;;
-      student-portal) npm_script="student:dev" ;;
+      admin-portal) npm_script="admin:dev"; portal_kind="staff" ;;
+      applicant-portal) npm_script="applicant:dev"; portal_kind="applicant" ;;
+      student-portal) npm_script="student:dev"; portal_kind="student" ;;
       *) printf 'Unknown frontend: %s\n' "${process_name}" >&2; exit 2 ;;
     esac
     screen -dmS "${screen_session_name}" bash -c \
       'working_directory="$1"; log_path="$2"; shift 2; cd "${working_directory}"; exec "$@" >"${log_path}" 2>&1' \
-      _ "${project_root}" "${log_file}" npm run "${npm_script}"
+      _ "${project_root}" "${log_file}" env \
+      VITE_EMHARE_PORTAL_KIND="${portal_kind}" \
+      VITE_EMHARE_STAFF_PORTAL_URL="${EMHARE_ADMIN_PORTAL_URL:-http://localhost:3100}" \
+      VITE_EMHARE_APPLICANT_PORTAL_URL="${EMHARE_APPLICANT_PORTAL_URL:-http://localhost:3001}" \
+      VITE_EMHARE_STUDENT_PORTAL_URL="${EMHARE_STUDENT_PORTAL_URL:-http://localhost:3002}" \
+      NUXT_PUBLIC_STAFF_PORTAL_URL="${EMHARE_ADMIN_PORTAL_URL:-http://localhost:3100}" \
+      NUXT_PUBLIC_APPLICANT_PORTAL_URL="${EMHARE_APPLICANT_PORTAL_URL:-http://localhost:3001}" \
+      NUXT_PUBLIC_STUDENT_PORTAL_URL="${EMHARE_STUDENT_PORTAL_URL:-http://localhost:3002}" \
+      npm run "${npm_script}" -- --port "${process_port}"
   fi
 }
 

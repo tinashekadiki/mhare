@@ -63,6 +63,15 @@ public class Application extends AuditableEntity {
   @Column(name = "application_number", nullable = false, length = 50)
   private String applicationNumber;
 
+  @Column(name = "official_first_name", nullable = false, length = 100)
+  private String officialFirstName;
+
+  @Column(name = "official_middle_names", length = 150)
+  private String officialMiddleNames;
+
+  @Column(name = "official_last_name", nullable = false, length = 100)
+  private String officialLastName;
+
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
@@ -136,6 +145,7 @@ public class Application extends AuditableEntity {
     this.applicant = applicant;
     this.applicationType = applicationType;
     this.applicationNumber = applicationNumber;
+    snapshotOfficialName(applicant);
     this.paymentRequired = paymentRequired;
     this.applicationFeePolicySnapshot = ApplicationFeePolicySnapshot.legacyUnsnapshotted();
     this.status = ApplicationStatus.DRAFT;
@@ -173,6 +183,7 @@ public class Application extends AuditableEntity {
     this.applicant = applicant;
     this.applicationType = applicationType;
     this.applicationNumber = applicationNumber;
+    snapshotOfficialName(applicant);
     this.paymentRequired = paymentRequired;
     this.applicationFeePolicySnapshot = ApplicationFeePolicySnapshot.legacyUnsnapshotted();
     this.status = ApplicationStatus.DRAFT;
@@ -210,6 +221,7 @@ public class Application extends AuditableEntity {
     this.applicant = applicant;
     this.applicationType = applicationType;
     this.applicationNumber = applicationNumber;
+    snapshotOfficialName(applicant);
     this.applicationFeePolicySnapshot =
         java.util.Objects.requireNonNull(
             applicationFeePolicySnapshot, "Application fee-policy snapshot is required.");
@@ -517,6 +529,48 @@ public class Application extends AuditableEntity {
 
   public ApplicationStatus getStatus() {
     return status;
+  }
+
+  public String getOfficialFirstName() {
+    return officialFirstName;
+  }
+
+  public String getOfficialMiddleNames() {
+    return officialMiddleNames;
+  }
+
+  public String getOfficialLastName() {
+    return officialLastName;
+  }
+
+  public String getOfficialDisplayName() {
+    return (officialFirstName
+            + " "
+            + (officialMiddleNames == null ? "" : officialMiddleNames + " ")
+            + officialLastName)
+        .trim();
+  }
+
+  public void synchronizeOfficialName(String firstName, String middleNames, String lastName) {
+    officialFirstName = requiredName(firstName, "Official first name");
+    officialMiddleNames = optionalName(middleNames);
+    officialLastName = requiredName(lastName, "Official last name");
+  }
+
+  private void snapshotOfficialName(Applicant sourceApplicant) {
+    officialFirstName = sourceApplicant.getFirstName();
+    officialMiddleNames = sourceApplicant.getMiddleNames();
+    officialLastName = sourceApplicant.getLastName();
+  }
+
+  private String requiredName(String value, String label) {
+    if (value == null || value.isBlank())
+      throw new IllegalArgumentException(label + " is required.");
+    return value.trim();
+  }
+
+  private String optionalName(String value) {
+    return value == null || value.isBlank() ? null : value.trim();
   }
 
   public String getStatusCode() {

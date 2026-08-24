@@ -54,6 +54,37 @@ services:
     volumes:
       - valkey-data:/data
 
+  clamav:
+    image: clamav/clamav-debian:stable
+    container_name: emhare-clamav
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav-data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+  docling-serve:
+    image: ghcr.io/docling-project/docling-serve-cpu:v1.29.0
+    container_name: emhare-docling-serve
+    environment:
+      DOCLING_SERVE_ENABLE_UI: "false"
+      DOCLING_SERVE_ENG_KIND: local
+      DOCLING_SERVE_LOAD_MODELS_AT_BOOT: "true"
+      DOCLING_DEVICE: cpu
+    ports:
+      - "5001:5001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+      interval: 20s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+
   rustfs:
     image: rustfs/rustfs:latest
     container_name: emhare-rustfs
@@ -104,4 +135,5 @@ volumes:
   postgres-data:
   rabbitmq-data:
   valkey-data:
+  clamav-data:
   rustfs-data:

@@ -50,7 +50,7 @@ public record ApplicationSummary(
         application.getId(),
         application.getApplicationNumber(),
         application.getApplicant().getApplicantNumber(),
-        application.getApplicant().getDisplayName(),
+        application.getOfficialDisplayName(),
         application.getIntakeId(),
         application.getIntakeCode(),
         application.getApplicationType().getId(),

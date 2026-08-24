@@ -18,12 +18,20 @@
       "redirectUris": [
         "http://localhost:3000/*",
         "http://localhost:3001/*",
-        "http://localhost:3002/*"
+        "http://localhost:3002/*",
+        "http://localhost:3100/*",
+        "http://localhost:3101/*",
+        "http://localhost:3102/*",
+        "https://emhare.uz.ac.zw/*"
       ],
       "webOrigins": [
         "http://localhost:3000",
         "http://localhost:3001",
-        "http://localhost:3002"
+        "http://localhost:3002",
+        "http://localhost:3100",
+        "http://localhost:3101",
+        "http://localhost:3102",
+        "https://emhare.uz.ac.zw"
       ]
     },
     {
@@ -56,11 +64,7 @@
       "enabled": true,
       "serviceAccountClientId": "emhare-core-identity-provisioner",
       "clientRoles": {
-        "realm-management": [
-          "manage-users",
-          "query-users",
-          "view-users"
-        ]
+        "realm-management": ["manage-users", "query-users", "view-users"]
       }
     }
   ],
@@ -91,12 +95,18 @@
         "composite": false
       },
       {
+        "name": "communications-author",
+        "composite": false
+      },
+      {
+        "name": "communications-approver",
+        "composite": false
+      },
+      {
         "name": "uma_authorization",
         "composite": false
       }
     ]
   },
-  "defaultRoles": [
-    "applicant"
-  ]
+  "defaultRoles": ["applicant"]
 }

@@ -45,10 +45,10 @@ const {
 
     <main class="mx-auto max-w-[80rem] px-4 py-8 sm:px-6 sm:py-10">
       <section v-if="!auth.authenticated.value" class="mx-auto max-w-xl py-16 text-center">
-        <p class="text-xs font-bold uppercase tracking-[0.2em] text-uzgold-700">
+        <p class="text-xs font-bold uppercase tracking-[0.2em] text-uzorange-700">
           Application portal
         </p>
-        <h1 class="mt-4 text-3xl font-semibold tracking-tight text-uzgreen-950">
+        <h1 class="mt-4 text-3xl font-semibold tracking-tight text-uzazure-950">
           Sign in to start an application.
         </h1>
         <p class="mx-auto mt-4 max-w-md text-base leading-7 text-slate-600">
@@ -72,7 +72,7 @@ const {
           <div class="mb-4 rounded-xl border border-slate-200 bg-white p-4">
             <div class="flex items-center justify-between text-sm">
               <span class="font-semibold text-slate-700">Progress</span>
-              <span class="font-semibold text-uzgreen-700"
+              <span class="font-semibold text-uzazure-700"
                 >{{ applicationProgressPercentage }}%</span
               >
             </div>
@@ -105,11 +105,11 @@ const {
           />
 
           <section
-            class="route-prospectus relative overflow-hidden rounded-3xl bg-uzgreen-950 px-6 py-8 text-white shadow-xl shadow-uzgreen-950/10 sm:px-9 sm:py-10"
+            class="route-prospectus relative overflow-hidden rounded-3xl bg-uzazure-950 px-6 py-8 text-white shadow-xl shadow-uzazure-950/10 sm:px-9 sm:py-10"
           >
             <div class="route-prospectus__seal" aria-hidden="true">UZ</div>
             <div class="relative max-w-2xl">
-              <p class="text-xs font-bold tracking-[0.24em] text-uzgold-300 uppercase">
+              <p class="text-xs font-bold tracking-[0.24em] text-uzorange-300 uppercase">
                 University admissions · {{ new Date().getFullYear() }}
               </p>
               <h1
@@ -117,7 +117,7 @@ const {
               >
                 Build your application on the right route.
               </h1>
-              <p class="mt-4 max-w-xl text-sm leading-6 text-uzgreen-100 sm:text-base">
+              <p class="mt-4 max-w-xl text-sm leading-6 text-uzazure-100 sm:text-base">
                 Compare the evidence, open intakes and Programme catalogue before creating your
                 draft. Your selection determines the rest of the application.
               </p>
@@ -129,7 +129,7 @@ const {
             class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
           >
             <div class="border-b border-slate-100 px-6 py-5 sm:px-8">
-              <p class="text-xs font-bold tracking-[0.2em] text-uzgreen-700 uppercase">
+              <p class="text-xs font-bold tracking-[0.2em] text-uzazure-700 uppercase">
                 Step {{ activeStartStepIndex + 1 }} of
                 {{ applicationJourneySteps.length }}
               </p>
@@ -169,10 +169,10 @@ const {
               </div>
 
               <div class="mt-8">
-                <p class="text-xs font-bold tracking-[0.2em] text-uzgold-700 uppercase">
+                <p class="text-xs font-bold tracking-[0.2em] text-uzorange-700 uppercase">
                   Route directory
                 </p>
-                <h2 class="mt-2 font-serif text-2xl font-semibold text-uzgreen-950">
+                <h2 class="mt-2 font-serif text-2xl font-semibold text-uzazure-950">
                   Choose your application route
                 </h2>
                 <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
@@ -194,11 +194,11 @@ const {
                     type="button"
                     :data-testid="`application-route-${applicationType.normalizedCode}`"
                     :aria-pressed="form.applicationTypeId === applicationType.id"
-                    class="route-card group relative min-h-56 overflow-hidden rounded-2xl border p-5 text-left transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-uzgreen-700"
+                    class="route-card group relative min-h-56 overflow-hidden rounded-2xl border p-5 text-left transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-uzazure-700"
                     :class="
                       form.applicationTypeId === applicationType.id
-                        ? 'border-uzgreen-700 bg-uzgreen-950 text-white shadow-lg shadow-uzgreen-950/15'
-                        : 'border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:border-uzgreen-300 hover:shadow-lg hover:shadow-uzgreen-950/8'
+                        ? 'border-uzazure-700 bg-uzazure-950 text-white shadow-lg shadow-uzazure-950/15'
+                        : 'border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:border-uzazure-300 hover:shadow-lg hover:shadow-uzazure-950/8'
                     "
                     @click="selectApplicationType(applicationType.id)"
                   >
@@ -207,8 +207,8 @@ const {
                         class="grid size-11 shrink-0 place-items-center rounded-xl border"
                         :class="
                           form.applicationTypeId === applicationType.id
-                            ? 'border-uzgold-400/50 bg-uzgold-400/10 text-uzgold-300'
-                            : 'border-uzgreen-100 bg-uzgreen-50 text-uzgreen-800'
+                            ? 'border-uzorange-400/50 bg-uzorange-400/10 text-uzorange-300'
+                            : 'border-uzazure-100 bg-uzazure-50 text-uzazure-800'
                         "
                       >
                         <UIcon :name="applicationType.icon" class="size-5" />
@@ -217,7 +217,7 @@ const {
                         class="font-serif text-3xl leading-none"
                         :class="
                           form.applicationTypeId === applicationType.id
-                            ? 'text-uzgold-300'
+                            ? 'text-uzorange-300'
                             : 'text-slate-200'
                         "
                         >{{ applicationType.routeNumber }}</span
@@ -227,8 +227,8 @@ const {
                       class="mt-5 block text-[0.68rem] font-bold tracking-[0.18em] uppercase"
                       :class="
                         form.applicationTypeId === applicationType.id
-                          ? 'text-uzgold-300'
-                          : 'text-uzgreen-700'
+                          ? 'text-uzorange-300'
+                          : 'text-uzazure-700'
                       "
                       >{{ applicationType.code }}</span
                     >
@@ -237,7 +237,7 @@ const {
                       :class="
                         form.applicationTypeId === applicationType.id
                           ? 'text-white'
-                          : 'text-uzgreen-950'
+                          : 'text-uzazure-950'
                       "
                       >{{ applicationType.name }}</span
                     >
@@ -245,7 +245,7 @@ const {
                       class="mt-2 block text-sm leading-5"
                       :class="
                         form.applicationTypeId === applicationType.id
-                          ? 'text-uzgreen-100'
+                          ? 'text-uzazure-100'
                           : 'text-slate-600'
                       "
                       >{{ applicationType.description }}</span
@@ -254,7 +254,7 @@ const {
                       class="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-t pt-4 text-xs font-medium"
                       :class="
                         form.applicationTypeId === applicationType.id
-                          ? 'border-white/15 text-uzgreen-100'
+                          ? 'border-white/15 text-uzazure-100'
                           : 'border-slate-100 text-slate-500'
                       "
                     >
@@ -272,7 +272,7 @@ const {
                     <UIcon
                       v-if="form.applicationTypeId === applicationType.id"
                       name="i-lucide-circle-check-big"
-                      class="absolute right-5 bottom-5 size-5 text-uzgold-300"
+                      class="absolute right-5 bottom-5 size-5 text-uzorange-300"
                     />
                   </button>
                 </div>
@@ -302,13 +302,13 @@ const {
 
               <div
                 v-if="selectedApplicationRouteCard"
-                class="mt-8 grid gap-6 rounded-2xl border border-uzgreen-200 bg-uzgreen-50/70 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.8fr)] lg:p-6"
+                class="mt-8 grid gap-6 rounded-2xl border border-uzazure-200 bg-uzazure-50/70 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.8fr)] lg:p-6"
               >
                 <div data-testid="selected-route-evidence">
-                  <p class="text-xs font-bold tracking-[0.18em] text-uzgreen-700 uppercase">
+                  <p class="text-xs font-bold tracking-[0.18em] text-uzazure-700 uppercase">
                     Prepare before you begin
                   </p>
-                  <h3 class="mt-2 text-base font-semibold text-uzgreen-950">
+                  <h3 class="mt-2 text-base font-semibold text-uzazure-950">
                     Evidence for {{ selectedApplicationRouteCard.name }}
                   </h3>
                   <ul class="mt-4 grid gap-2 sm:grid-cols-2">
@@ -317,7 +317,7 @@ const {
                       :key="evidence"
                       class="flex items-center gap-2 text-sm text-slate-700"
                     >
-                      <UIcon name="i-lucide-check" class="size-4 shrink-0 text-uzgreen-700" />
+                      <UIcon name="i-lucide-check" class="size-4 shrink-0 text-uzazure-700" />
                       {{ evidence }}
                     </li>
                   </ul>
@@ -342,8 +342,8 @@ const {
                       class="text-sm font-semibold"
                       :class="
                         selectedApplicationType?.fee.required
-                          ? 'text-uzgold-800'
-                          : 'text-uzgreen-800'
+                          ? 'text-uzorange-800'
+                          : 'text-uzazure-800'
                       "
                     >
                       {{
@@ -425,7 +425,7 @@ const {
 }
 
 .route-card[aria-pressed="true"] {
-  background: var(--color-uzgreen-950);
+  background: var(--color-uzazure-950);
 }
 
 @media (max-width: 639px) {

@@ -335,9 +335,11 @@ class ApplicationFeeMigrationTest {
                 INSERT INTO applications (
                     id, intake_id, intake_code, intake_name, intake_starts_on, intake_ends_on,
                     maximum_programme_choices, applicant_id, application_type_id, application_number,
-                    payment_required, application_fee_policy_status, status, created_at, updated_at, version
+                    payment_required, application_fee_policy_status, status, created_at, updated_at, version,
+                    official_first_name, official_last_name
                 ) VALUES (?, ?, ?, 'Migration test intake', current_date - 1, current_date + 1,
-                    ?, ?, ?, ?, false, 'LEGACY_UNSNAPSHOTTED', 'DRAFT', now(), now(), 0)
+                    ?, ?, ?, ?, false, 'LEGACY_UNSNAPSHOTTED', 'DRAFT', now(), now(), 0,
+                    'Test', 'Applicant')
                 """)) {
       applicant.setObject(1, applicantId);
       applicant.setObject(2, UUID.randomUUID());

@@ -643,10 +643,19 @@ async function printOfferLetter(offer: AdmissionOfferSummary) {
                           {{ applicationOutcome.application.applicationTypeName }}
                         </p>
                       </div>
-                      <EmhareStatusPill
-                        :label="formatStatus(applicationOutcome.application.status)"
-                        :tone="applicationStatusTone(applicationOutcome.application.status)"
-                      />
+                      <div class="flex flex-wrap items-center justify-end gap-2">
+                        <EmhareStatusPill
+                          :label="formatStatus(applicationOutcome.application.status)"
+                          :tone="applicationStatusTone(applicationOutcome.application.status)"
+                        />
+                        <UButton
+                          label="Open application"
+                          icon="i-lucide-arrow-up-right"
+                          color="neutral"
+                          variant="outline"
+                          :to="`/operations/admissions/${applicationOutcome.application.id}`"
+                        />
+                      </div>
                     </div>
 
                     <div v-if="applicationOutcome.offer" class="mt-4 border-t border-muted pt-4">

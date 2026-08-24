@@ -45,6 +45,7 @@
         <module>services/dining-service</module>
         <module>services/documents-reporting-service</module>
         <module>services/notifications-service</module>
+        <module>services/communications-service</module>
     </modules>
 
     <dependencyManagement>

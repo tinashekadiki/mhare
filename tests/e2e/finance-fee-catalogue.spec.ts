@@ -100,7 +100,7 @@ async function login(
   await page.locator("#username").fill(username);
   await page.locator("#password").fill(password);
   await page.locator("#kc-login").click();
-  await page.waitForURL(/http:\/\/localhost:3000\/operations\/finance-fees.*/, { timeout: 30_000 });
+  await page.waitForURL(/\/operations\/finance-fees.*/, { timeout: 30_000 });
   await page.waitForLoadState("networkidle");
 }
 

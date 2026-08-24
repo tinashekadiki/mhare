@@ -2,6 +2,30 @@
 @import "@nuxt/ui";
 
 @theme static {
+  --color-uzazure-50: #f0f2f6;
+  --color-uzazure-100: #dee2ec;
+  --color-uzazure-200: #b8c0d6;
+  --color-uzazure-300: #8593b9;
+  --color-uzazure-400: #475e97;
+  --color-uzazure-500: #1a357d;
+  --color-uzazure-600: #001f6e;
+  --color-uzazure-700: #001a5e;
+  --color-uzazure-800: #00164f;
+  --color-uzazure-900: #001342;
+  --color-uzazure-950: #000d2e;
+
+  --color-uzorange-50: #fcf8f1;
+  --color-uzorange-100: #f7eed8;
+  --color-uzorange-200: #eedcb2;
+  --color-uzorange-300: #e2c37a;
+  --color-uzorange-400: #d5a83e;
+  --color-uzorange-500: #cb920e;
+  --color-uzorange-600: #a6780b;
+  --color-uzorange-700: #8a630a;
+  --color-uzorange-800: #725208;
+  --color-uzorange-900: #5b4206;
+  --color-uzorange-950: #412f04;
+
   --color-uzgreen-50: #edf8f0;
   --color-uzgreen-100: #d7efde;
   --color-uzgreen-200: #b2dfc0;

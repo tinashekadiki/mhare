@@ -28,6 +28,8 @@ type RouteDocumentConfiguration = {
   name: string;
   required: boolean;
   sortOrder: number;
+  captureSectionCode: "PERSONAL_DETAILS" | "QUALIFICATIONS" | "SUPPORTING_DOCUMENTS";
+  applicantCategoryCodes: string[];
 };
 
 type ApplicationRouteConfiguration = {
@@ -60,9 +62,7 @@ const drawerOpen = ref(false);
 const routeConfigurationDrawerOpen = ref(false);
 const loadingRouteConfiguration = ref(false);
 const savingRouteConfiguration = ref(false);
-const loadedRouteConfiguration = ref<ApplicationRouteConfiguration | null>(
-  null,
-);
+const loadedRouteConfiguration = ref<ApplicationRouteConfiguration | null>(null);
 const searchQuery = ref("");
 const statusFilter = ref<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
 
@@ -108,11 +108,7 @@ const statusItems = [
 
 const feeStructureItems = computed(() =>
   feeStructures.value
-    .filter(
-      (structure) =>
-        structure.feeContext === "APPLICATION" &&
-        structure.status !== "RETIRED",
-    )
+    .filter((structure) => structure.feeContext === "APPLICATION" && structure.status !== "RETIRED")
     .map((structure) => ({
       label: `${structure.code} · ${structure.name}`,
       value: structure.id,
@@ -154,21 +150,13 @@ const filteredApplicationTypes = computed(() => {
 });
 const formGuidance = computed(() => {
   const instructions: string[] = [];
-  if (!applicationTypeForm.code.trim())
-    instructions.push("Enter a stable application type code.");
+  if (!applicationTypeForm.code.trim()) instructions.push("Enter a stable application type code.");
   else if (!/^[A-Za-z0-9_-]+$/.test(applicationTypeForm.code.trim()))
-    instructions.push(
-      "Use only letters, numbers, hyphens, or underscores in the code.",
-    );
+    instructions.push("Use only letters, numbers, hyphens, or underscores in the code.");
   if (!applicationTypeForm.name.trim())
     instructions.push("Enter the applicant-facing application type name.");
-  if (
-    editingApplicationType.value &&
-    applicationTypeForm.changeReason.trim().length < 10
-  ) {
-    instructions.push(
-      "Provide at least 10 characters explaining this audited change.",
-    );
+  if (editingApplicationType.value && applicationTypeForm.changeReason.trim().length < 10) {
+    instructions.push("Provide at least 10 characters explaining this audited change.");
   }
   return instructions;
 });
@@ -178,27 +166,19 @@ const routeConfigurationGuidance = computed(() => {
     instructions.push("Select at least one active Programme.");
   if (
     !routeConfigurationForm.documents.some(
-      (document) =>
-        document.required && document.code.trim() && document.name.trim(),
+      (document) => document.required && document.code.trim() && document.name.trim(),
     )
   ) {
     instructions.push("Define at least one required supporting document.");
   }
-  if (
-    routeConfigurationForm.feeFree &&
-    routeConfigurationForm.feeFreeReason.trim().length < 10
-  ) {
-    instructions.push(
-      "Explain the audited fee-free decision in at least 10 characters.",
-    );
+  if (routeConfigurationForm.feeFree && routeConfigurationForm.feeFreeReason.trim().length < 10) {
+    instructions.push("Explain the audited fee-free decision in at least 10 characters.");
   }
   if (
     loadedRouteConfiguration.value?.feePolicyStatus === "UNCONFIGURED" &&
     !routeConfigurationForm.feeFree
   ) {
-    instructions.push(
-      "Link a Finance fee structure or record an audited fee-free decision.",
-    );
+    instructions.push("Link a Finance fee structure or record an audited fee-free decision.");
   }
   if (routeConfigurationForm.changeReason.trim().length < 10) {
     instructions.push(
@@ -215,18 +195,13 @@ async function loadApplicationTypes() {
   loadError.value = "";
   try {
     const [applicationTypeResult, feeStructureResult] = await Promise.all([
-      api.request<AdmissionsApplicationTypeSummary[]>(
-        "/api/admissions/application-types",
-      ),
+      api.request<AdmissionsApplicationTypeSummary[]>("/api/admissions/application-types"),
       api.request<FinanceFeeStructureRegister>("/api/finance/fee-structures"),
     ]);
     applicationTypes.value = applicationTypeResult;
     feeStructures.value = feeStructureResult.structures;
   } catch (error) {
-    loadError.value = api.errorMessage(
-      error,
-      "Application types could not be loaded.",
-    );
+    loadError.value = api.errorMessage(error, "Application types could not be loaded.");
   } finally {
     loading.value = false;
   }
@@ -267,23 +242,33 @@ function openEditDrawer(applicationType: AdmissionsApplicationTypeSummary) {
 function standardDocumentRequirements(): RouteDocumentConfiguration[] {
   return [
     {
-      code: "IDENTITY_DOCUMENT",
-      name: "Identity document",
+      code: "NATIONAL_ID",
+      name: "National ID",
       required: true,
       sortOrder: 10,
+      captureSectionCode: "PERSONAL_DETAILS",
+      applicantCategoryCodes: ["LOCAL"],
     },
     {
-      code: "ACADEMIC_QUALIFICATIONS",
-      name: "Academic qualification evidence",
+      code: "BIRTH_CERTIFICATE",
+      name: "Birth Certificate",
       required: true,
       sortOrder: 20,
+      captureSectionCode: "PERSONAL_DETAILS",
+      applicantCategoryCodes: ["LOCAL"],
+    },
+    {
+      code: "PASSPORT",
+      name: "Passport",
+      required: true,
+      sortOrder: 30,
+      captureSectionCode: "PERSONAL_DETAILS",
+      applicantCategoryCodes: ["SADC", "INTERNATIONAL"],
     },
   ];
 }
 
-async function openRouteConfiguration(
-  applicationType: AdmissionsApplicationTypeSummary,
-) {
+async function openRouteConfiguration(applicationType: AdmissionsApplicationTypeSummary) {
   routeConfigurationDrawerOpen.value = true;
   loadingRouteConfiguration.value = true;
   loadedRouteConfiguration.value = null;
@@ -297,14 +282,16 @@ async function openRouteConfiguration(
     loadedRouteConfiguration.value = configuration;
     Object.assign(routeConfigurationForm, {
       applicationTypeId: configuration.applicationTypeId,
-      programmeIds: configuration.programmes.map(
-        (programme) => programme.programmeId,
-      ),
+      programmeIds: configuration.programmes.map((programme) => programme.programmeId),
       sections: configuration.sections.map((section) => ({ ...section })),
       documents: (configuration.documents.length
         ? configuration.documents
         : standardDocumentRequirements()
-      ).map((document) => ({ ...document })),
+      ).map((document) => ({
+        ...document,
+        captureSectionCode: document.captureSectionCode ?? "SUPPORTING_DOCUMENTS",
+        applicantCategoryCodes: document.applicantCategoryCodes ?? [],
+      })),
       feeFree: configuration.feePolicyStatus === "FEE_FREE",
       feeFreeReason: "",
       activate: configuration.active,
@@ -313,10 +300,7 @@ async function openRouteConfiguration(
     });
   } catch (error) {
     routeConfigurationDrawerOpen.value = false;
-    await showError(
-      "Route configuration could not be loaded",
-      api.errorMessage(error),
-    );
+    await showError("Route configuration could not be loaded", api.errorMessage(error));
   } finally {
     loadingRouteConfiguration.value = false;
   }
@@ -328,20 +312,15 @@ function addDocumentRequirement() {
     name: "",
     required: true,
     sortOrder: (routeConfigurationForm.documents.length + 1) * 10,
+    captureSectionCode: "SUPPORTING_DOCUMENTS",
+    applicantCategoryCodes: [],
   });
 }
 
 async function saveRouteConfiguration() {
-  if (
-    routeConfigurationGuidance.value.length ||
-    !loadedRouteConfiguration.value
-  )
-    return;
+  if (routeConfigurationGuidance.value.length || !loadedRouteConfiguration.value) return;
   const programmesById = new Map(
-    activeAcademicProgrammes.value.map((programme) => [
-      programme.id,
-      programme,
-    ]),
+    activeAcademicProgrammes.value.map((programme) => [programme.id, programme]),
   );
   savingRouteConfiguration.value = true;
   try {
@@ -353,9 +332,7 @@ async function saveRouteConfiguration() {
           programmes: routeConfigurationForm.programmeIds.map((programmeId) => {
             const programme = programmesById.get(programmeId);
             if (!programme)
-              throw new Error(
-                "A selected Programme is no longer active in Academic Setup.",
-              );
+              throw new Error("A selected Programme is no longer active in Academic Setup.");
             return {
               programmeId,
               programmeCode: programme.code,
@@ -367,14 +344,14 @@ async function saveRouteConfiguration() {
             minimumRecords: Number(section.minimumRecords),
             sortOrder: Number(section.sortOrder),
           })),
-          documents: routeConfigurationForm.documents.map(
-            (document, index) => ({
-              code: document.code.trim().toUpperCase(),
-              name: document.name.trim(),
-              required: document.required,
-              sortOrder: (index + 1) * 10,
-            }),
-          ),
+          documents: routeConfigurationForm.documents.map((document, index) => ({
+            code: document.code.trim().toUpperCase(),
+            name: document.name.trim(),
+            required: document.required,
+            sortOrder: (index + 1) * 10,
+            captureSectionCode: document.captureSectionCode,
+            applicantCategoryCodes: document.applicantCategoryCodes,
+          })),
           feeFree: routeConfigurationForm.feeFree,
           feeFreeReason: routeConfigurationForm.feeFree
             ? routeConfigurationForm.feeFreeReason.trim()
@@ -388,9 +365,7 @@ async function saveRouteConfiguration() {
     await loadApplicationTypes();
     routeConfigurationDrawerOpen.value = false;
     toast.add({
-      title: result.active
-        ? "Application route activated"
-        : "Route configuration saved",
+      title: result.active ? "Application route activated" : "Route configuration saved",
       description: result.active
         ? `${result.name} is available when a mapped Programme intersects an open intake.`
         : `${result.name} remains inactive.`,
@@ -398,10 +373,7 @@ async function saveRouteConfiguration() {
       icon: result.active ? "i-lucide-circle-check-big" : "i-lucide-save",
     });
   } catch (error) {
-    await showError(
-      "Route configuration could not be saved",
-      api.errorMessage(error),
-    );
+    await showError("Route configuration could not be saved", api.errorMessage(error));
   } finally {
     savingRouteConfiguration.value = false;
   }
@@ -415,8 +387,7 @@ async function saveApplicationType() {
     const requestBody = applicationTypeId
       ? {
           name: applicationTypeForm.name.trim(),
-          requiresEmploymentHistory:
-            applicationTypeForm.requiresEmploymentHistory,
+          requiresEmploymentHistory: applicationTypeForm.requiresEmploymentHistory,
           requiresReferees: applicationTypeForm.requiresReferees,
           financeFeeStructureId: selectedFeeStructure.value?.id ?? null,
           financeFeeStructureCode: selectedFeeStructure.value?.code ?? null,
@@ -428,8 +399,7 @@ async function saveApplicationType() {
       : {
           code: applicationTypeForm.code.trim().toUpperCase(),
           name: applicationTypeForm.name.trim(),
-          requiresEmploymentHistory:
-            applicationTypeForm.requiresEmploymentHistory,
+          requiresEmploymentHistory: applicationTypeForm.requiresEmploymentHistory,
           requiresReferees: applicationTypeForm.requiresReferees,
           financeFeeStructureId: selectedFeeStructure.value?.id ?? null,
           financeFeeStructureCode: selectedFeeStructure.value?.code ?? null,
@@ -464,15 +434,13 @@ async function saveApplicationType() {
 
 function requirementLabels(applicationType: AdmissionsApplicationTypeSummary) {
   const labels: string[] = [];
-  if (applicationType.requiresEmploymentHistory)
-    labels.push("Employment history");
+  if (applicationType.requiresEmploymentHistory) labels.push("Employment history");
   if (applicationType.requiresReferees) labels.push("Referees");
   return labels;
 }
 
 function feeStructureLabel(applicationType: AdmissionsApplicationTypeSummary) {
-  return applicationType.financeFeeStructureCode &&
-    applicationType.financeFeeStructureName
+  return applicationType.financeFeeStructureCode && applicationType.financeFeeStructureName
     ? `${applicationType.financeFeeStructureCode} · ${applicationType.financeFeeStructureName}`
     : "No fee structure associated";
 }
@@ -486,9 +454,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
       ? "Stored Finance snapshot"
       : "Applications using this route are treated as fee-free until Finance is linked.";
   }
-  const category = structure.applicantCategoryCode
-    ? ` · ${structure.applicantCategoryCode}`
-    : "";
+  const category = structure.applicantCategoryCode ? ` · ${structure.applicantCategoryCode}` : "";
   return `${structure.programmeLevelCode} · ${structure.status}${category}`;
 }
 </script>
@@ -549,8 +515,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
             label="With additional sections"
             :value="
               applicationTypes.filter(
-                (type) =>
-                  type.requiresEmploymentHistory || type.requiresReferees,
+                (type) => type.requiresEmploymentHistory || type.requiresReferees,
               ).length
             "
             icon="i-lucide-list-checks"
@@ -594,9 +559,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
               sticky
             >
               <template #code-cell="{ row }">
-                <span class="font-mono font-semibold text-primary">{{
-                  row.original.code
-                }}</span>
+                <span class="font-mono font-semibold text-primary">{{ row.original.code }}</span>
               </template>
               <template #feeStructure-cell="{ row }">
                 <div class="max-w-xs">
@@ -615,10 +578,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
                 </div>
               </template>
               <template #requirements-cell="{ row }">
-                <div
-                  v-if="requirementLabels(row.original).length"
-                  class="flex flex-wrap gap-1"
-                >
+                <div v-if="requirementLabels(row.original).length" class="flex flex-wrap gap-1">
                   <UBadge
                     v-for="label in requirementLabels(row.original)"
                     :key="label"
@@ -674,19 +634,13 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
   <EmhareRecordDrawer
     v-model:open="drawerOpen"
     presentation="page"
-    :title="
-      editingApplicationType
-        ? 'Edit application type'
-        : 'Create application type'
-    "
+    :title="editingApplicationType ? 'Edit application type' : 'Create application type'"
     :description="
       editingApplicationType
         ? 'Maintain the applicant route. Every correction is retained in audit history.'
         : 'Define a governed route applicants may use when admissions are open.'
     "
-    :submit-label="
-      editingApplicationType ? 'Save changes' : 'Create application type'
-    "
+    :submit-label="editingApplicationType ? 'Save changes' : 'Create application type'"
     :busy="saving"
     :submit-disabled="formGuidance.length > 0"
     :submit-disabled-reason="formGuidance.join(' ')"
@@ -709,11 +663,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
         title="Start inactive unless this route is ready"
         description="An active type becomes available to applicants while an eligible intake is open."
       />
-      <form
-        id="application-type-form"
-        class="space-y-5"
-        @submit.prevent="saveApplicationType"
-      >
+      <form id="application-type-form" class="space-y-5" @submit.prevent="saveApplicationType">
         <div class="grid gap-4 sm:grid-cols-2">
           <UFormField
             label="Code"
@@ -740,12 +690,9 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
 
         <UCard variant="subtle" :ui="{ body: 'space-y-3' }">
           <div>
-            <h3 class="font-medium text-highlighted">
-              Application fee structure
-            </h3>
+            <h3 class="font-medium text-highlighted">Application fee structure</h3>
             <p class="mt-1 text-sm text-muted">
-              Associate this applicant route with the Finance-governed
-              application fee schedule.
+              Associate this applicant route with the Finance-governed application fee schedule.
             </p>
           </div>
           <UFormField
@@ -774,21 +721,15 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
 
         <UCard variant="subtle" :ui="{ body: 'space-y-4' }">
           <div>
-            <h3 class="font-medium text-highlighted">
-              Required application sections
-            </h3>
+            <h3 class="font-medium text-highlighted">Required application sections</h3>
             <p class="mt-1 text-sm text-muted">
               Turn on only the evidence sections that apply to this route.
             </p>
           </div>
           <div class="flex items-center justify-between gap-4">
             <div>
-              <p class="text-sm font-medium text-highlighted">
-                Employment history
-              </p>
-              <p class="text-xs text-muted">
-                Applicants must provide their relevant work history.
-              </p>
+              <p class="text-sm font-medium text-highlighted">Employment history</p>
+              <p class="text-xs text-muted">Applicants must provide their relevant work history.</p>
             </div>
             <USwitch
               v-model="applicationTypeForm.requiresEmploymentHistory"
@@ -798,28 +739,18 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
           <div class="flex items-center justify-between gap-4">
             <div>
               <p class="text-sm font-medium text-highlighted">Referees</p>
-              <p class="text-xs text-muted">
-                Applicants must provide referee details.
-              </p>
+              <p class="text-xs text-muted">Applicants must provide referee details.</p>
             </div>
-            <USwitch
-              v-model="applicationTypeForm.requiresReferees"
-              aria-label="Require referees"
-            />
+            <USwitch v-model="applicationTypeForm.requiresReferees" aria-label="Require referees" />
           </div>
         </UCard>
 
-        <div
-          class="flex items-center justify-between gap-4 rounded-lg border border-muted p-4"
-        >
+        <div class="flex items-center justify-between gap-4 rounded-lg border border-muted p-4">
           <div>
-            <p class="text-sm font-medium text-highlighted">
-              Active for applications
-            </p>
+            <p class="text-sm font-medium text-highlighted">Active for applications</p>
             <p class="text-xs text-muted">
-              Activation is controlled by the atomic route configuration after
-              programmes, sections, documents, fees, and reference thresholds
-              are ready.
+              Activation is controlled by the atomic route configuration after programmes, sections,
+              documents, fees, and reference thresholds are ready.
             </p>
           </div>
           <EmhareStatusPill
@@ -858,9 +789,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
     description="Map Programmes, confirm applicant evidence, define supporting documents, and activate the route as one audited change."
     submit-label="Save route configuration"
     :busy="savingRouteConfiguration"
-    :submit-disabled="
-      loadingRouteConfiguration || routeConfigurationGuidance.length > 0
-    "
+    :submit-disabled="loadingRouteConfiguration || routeConfigurationGuidance.length > 0"
     :submit-disabled-reason="routeConfigurationGuidance.join(' ')"
     @submit="saveRouteConfiguration"
   >
@@ -877,9 +806,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
         @submit.prevent="saveRouteConfiguration"
       >
         <UAlert
-          :color="
-            loadedRouteConfiguration.readyForActivation ? 'success' : 'warning'
-          "
+          :color="loadedRouteConfiguration.readyForActivation ? 'success' : 'warning'"
           variant="soft"
           :icon="
             loadedRouteConfiguration.readyForActivation
@@ -902,8 +829,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
           <div>
             <h3 class="font-medium text-highlighted">Eligible Programmes</h3>
             <p class="mt-1 text-sm text-muted">
-              Only applicants on this route may select the mapped active
-              Programmes.
+              Only applicants on this route may select the mapped active Programmes.
             </p>
           </div>
           <UFormField
@@ -934,12 +860,10 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
 
         <UCard variant="subtle" :ui="{ body: 'space-y-4' }">
           <div>
-            <h3 class="font-medium text-highlighted">
-              Governed application sections
-            </h3>
+            <h3 class="font-medium text-highlighted">Governed application sections</h3>
             <p class="mt-1 text-sm text-muted">
-              Required sections and record thresholds are snapshotted when an
-              applicant creates a draft.
+              Required sections and record thresholds are snapshotted when an applicant creates a
+              draft.
             </p>
           </div>
           <div class="divide-y divide-muted rounded-lg border border-muted">
@@ -963,14 +887,9 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
                   class="w-full"
                 />
               </UFormField>
-              <div
-                class="flex items-center justify-between gap-3 sm:justify-end"
-              >
+              <div class="flex items-center justify-between gap-3 sm:justify-end">
                 <span class="text-xs text-muted">Required</span>
-                <USwitch
-                  v-model="section.required"
-                  :aria-label="`Require ${section.name}`"
-                />
+                <USwitch v-model="section.required" :aria-label="`Require ${section.name}`" />
               </div>
             </div>
           </div>
@@ -981,8 +900,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
             <div>
               <h3 class="font-medium text-highlighted">Supporting documents</h3>
               <p class="mt-1 text-sm text-muted">
-                At least one required document must be defined before
-                activation.
+                At least one required document must be defined before activation.
               </p>
             </div>
             <UButton
@@ -998,7 +916,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
             <div
               v-for="(document, index) in routeConfigurationForm.documents"
               :key="`${document.code}-${index}`"
-              class="grid gap-3 rounded-lg border border-muted p-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] sm:items-end"
+              class="grid gap-3 rounded-lg border border-muted p-3 lg:grid-cols-2 lg:items-end"
             >
               <UFormField label="Document code" required>
                 <UInput
@@ -1008,14 +926,36 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
                 />
               </UFormField>
               <UFormField label="Applicant-facing name" required>
-                <UInput
-                  v-model="document.name"
+                <UInput v-model="document.name" class="w-full" placeholder="Identity document" />
+              </UFormField>
+              <UFormField label="Capture section" required>
+                <USelect
+                  v-model="document.captureSectionCode"
                   class="w-full"
-                  placeholder="Identity document"
+                  :items="[
+                    { label: 'Personal Details', value: 'PERSONAL_DETAILS' },
+                    { label: 'Qualifications', value: 'QUALIFICATIONS' },
+                    { label: 'General supporting documents', value: 'SUPPORTING_DOCUMENTS' },
+                  ]"
+                />
+              </UFormField>
+              <UFormField label="Applicant categories" hint="None means all categories">
+                <USelectMenu
+                  v-model="document.applicantCategoryCodes"
+                  multiple
+                  class="w-full"
+                  value-key="value"
+                  :items="[
+                    { label: 'Local', value: 'LOCAL' },
+                    { label: 'SADC', value: 'SADC' },
+                    { label: 'International', value: 'INTERNATIONAL' },
+                    { label: 'Credit transfer', value: 'CLE' },
+                  ]"
+                  placeholder="All categories"
                 />
               </UFormField>
               <div
-                class="flex items-center justify-between gap-3 pb-1 sm:justify-end"
+                class="flex items-center justify-between gap-3 pb-1 lg:col-span-2 lg:justify-end"
               >
                 <span class="text-xs text-muted">Required</span>
                 <USwitch
@@ -1039,11 +979,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
             <h3 class="font-medium text-highlighted">Fee policy</h3>
             <p class="mt-1 text-sm text-muted">
               Current policy:
-              {{
-                loadedRouteConfiguration.feePolicyStatus
-                  .replaceAll("_", " ")
-                  .toLowerCase()
-              }}.
+              {{ loadedRouteConfiguration.feePolicyStatus.replaceAll("_", " ").toLowerCase() }}.
             </p>
           </div>
           <div
@@ -1052,9 +988,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
           >
             <div class="flex items-center justify-between gap-4">
               <div>
-                <p class="text-sm font-medium text-highlighted">
-                  Audited fee-free decision
-                </p>
+                <p class="text-sm font-medium text-highlighted">Audited fee-free decision</p>
                 <p class="text-xs text-muted">
                   Use this only when no Finance application fee applies.
                 </p>
@@ -1064,11 +998,7 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
                 aria-label="Record fee-free decision"
               />
             </div>
-            <UFormField
-              v-if="routeConfigurationForm.feeFree"
-              label="Fee-free reason"
-              required
-            >
+            <UFormField v-if="routeConfigurationForm.feeFree" label="Fee-free reason" required>
               <UTextarea
                 v-model="routeConfigurationForm.feeFreeReason"
                 :rows="3"
@@ -1088,16 +1018,11 @@ function feeStructureDetail(applicationType: AdmissionsApplicationTypeSummary) {
           />
         </UCard>
 
-        <div
-          class="flex items-center justify-between gap-4 rounded-lg border border-muted p-4"
-        >
+        <div class="flex items-center justify-between gap-4 rounded-lg border border-muted p-4">
           <div>
-            <p class="text-sm font-medium text-highlighted">
-              Active for applications
-            </p>
+            <p class="text-sm font-medium text-highlighted">Active for applications</p>
             <p class="text-xs text-muted">
-              Activation succeeds only when every server-side readiness rule
-              passes.
+              Activation succeeds only when every server-side readiness rule passes.
             </p>
           </div>
           <USwitch

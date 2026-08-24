@@ -79,7 +79,7 @@ async function login(page: Page) {
   await page.locator("#username").fill(username);
   await page.locator("#password").fill(password);
   await page.locator("#kc-login").click();
-  await page.waitForURL(/http:\/\/localhost:3000\/operations\/exam-setup.*/, { timeout: 30_000 });
+  await page.waitForURL(/\/operations\/exam-setup.*/, { timeout: 30_000 });
   await page.waitForLoadState("networkidle");
 }
 

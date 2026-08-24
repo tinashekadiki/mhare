@@ -247,9 +247,11 @@ class RollingAdmissionsMigrationTest {
                         id, intake_id, intake_code, intake_name, intake_starts_on, intake_ends_on,
                         maximum_programme_choices, applicant_id, application_type_id, application_number,
                         payment_required, application_fee_policy_status, status, sections_complete,
-                        professional_achievements_declared_none, created_at, updated_at, version)
+                        professional_achievements_declared_none, created_at, updated_at, version,
+                        official_first_name, official_last_name)
                     VALUES (?, ?, 'AUG27', 'August 2027', current_date - 30, current_date + 30,
-                        3, ?, ?, ?, false, 'LEGACY_UNSNAPSHOTTED', 'DRAFT', false, false, now(), now(), 0)
+                        3, ?, ?, ?, false, 'LEGACY_UNSNAPSHOTTED', 'DRAFT', false, false, now(), now(), 0,
+                        'Rolling', 'Applicant')
                     """,
           applicationId,
           intakeId,

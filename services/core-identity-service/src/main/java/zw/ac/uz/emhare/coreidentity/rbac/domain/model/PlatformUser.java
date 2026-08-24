@@ -40,6 +40,15 @@ public class PlatformUser extends AuditableEntity {
   @Column(name = "display_name", nullable = false, length = 200)
   private String displayName;
 
+  @Column(name = "first_name", length = 100)
+  private String firstName;
+
+  @Column(name = "middle_names", length = 150)
+  private String middleNames;
+
+  @Column(name = "last_name", length = 100)
+  private String lastName;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 30)
   private UserStatus status;
@@ -64,6 +73,7 @@ public class PlatformUser extends AuditableEntity {
   public void syncFromIdentityProvider(
       UUID identityProviderUserId, String preferredUsername, String primaryEmail, String name) {
     linkIdentityProvider(identityProviderUserId, preferredUsername, primaryEmail, name);
+    if (firstName != null && lastName != null) displayName = officialDisplayName();
     lastLoginAt = Instant.now();
   }
 
@@ -89,6 +99,30 @@ public class PlatformUser extends AuditableEntity {
     status = newStatus;
   }
 
+  public void synchronizeOfficialName(
+      String newFirstName, String newMiddleNames, String newLastName) {
+    firstName = requireName(newFirstName, "First name");
+    middleNames = optionalName(newMiddleNames);
+    lastName = requireName(newLastName, "Last name");
+    displayName = officialDisplayName();
+  }
+
+  private String officialDisplayName() {
+    return java.util.stream.Stream.of(firstName, middleNames, lastName)
+        .filter(part -> part != null && !part.isBlank())
+        .collect(java.util.stream.Collectors.joining(" "));
+  }
+
+  private String requireName(String value, String label) {
+    if (value == null || value.isBlank())
+      throw new IllegalArgumentException(label + " is required.");
+    return value.trim();
+  }
+
+  private String optionalName(String value) {
+    return value == null || value.isBlank() ? null : value.trim();
+  }
+
   public UUID getKeycloakUserId() {
     return keycloakUserId;
   }
@@ -107,6 +141,18 @@ public class PlatformUser extends AuditableEntity {
 
   public String getDisplayName() {
     return displayName;
+  }
+
+  public String getFirstName() {
+    return firstName;
+  }
+
+  public String getMiddleNames() {
+    return middleNames;
+  }
+
+  public String getLastName() {
+    return lastName;
   }
 
   public UserStatus getStatus() {

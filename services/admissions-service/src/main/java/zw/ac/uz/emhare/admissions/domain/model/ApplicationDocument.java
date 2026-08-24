@@ -112,10 +112,12 @@ public class ApplicationDocument extends AuditableEntity {
     this.supersedesApplicationDocumentId = supersedesApplicationDocumentId;
   }
 
-  public void supersede() {
+  public void supersede(boolean draftApplicantReplacement) {
     if (!current) throw new IllegalStateException("Application document is already superseded.");
-    if (status != VerificationStatus.REJECTED) {
-      throw new IllegalStateException("Only a rejected application document can be replaced.");
+    if (status != VerificationStatus.REJECTED
+        && !(draftApplicantReplacement && status == VerificationStatus.PENDING)) {
+      throw new IllegalStateException(
+          "Only pending evidence on a draft or rejected evidence can be replaced.");
     }
     current = false;
   }

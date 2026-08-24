@@ -1,60 +1,64 @@
 // Author: Tinashe K
 
-import { config, flushPromises, shallowMount } from '@vue/test-utils'
-import { computed, defineComponent, h, nextTick, onMounted, ref, watch } from 'vue'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import EmhareAppShell from '../../components/shell/EmhareAppShell.vue'
+import { config, flushPromises, shallowMount } from "@vue/test-utils";
+import { computed, defineComponent, h, nextTick, onMounted, ref, watch } from "vue";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import EmhareAppShell from "../../components/shell/EmhareAppShell.vue";
 
-Object.assign(globalThis, { computed, nextTick, onMounted, ref, watch })
-vi.stubGlobal('navigateTo', vi.fn())
-vi.stubGlobal('useRoute', () => ({ path: '/operations', fullPath: '/operations' }))
-config.global.renderStubDefaultSlot = true
+Object.assign(globalThis, { computed, nextTick, onMounted, ref, watch });
+vi.stubGlobal("navigateTo", vi.fn());
+vi.stubGlobal("useRoute", () => ({ path: "/operations", fullPath: "/operations" }));
+config.global.renderStubDefaultSlot = true;
 
-describe('EmhareAppShell institution branding', () => {
+describe("EmhareAppShell institution branding", () => {
   afterEach(() => {
     const propertyNames = Array.from(
       { length: document.documentElement.style.length },
-      (_, index) => document.documentElement.style.item(index)
-    )
+      (_, index) => document.documentElement.style.item(index),
+    );
     for (const propertyName of propertyNames) {
-      if (propertyName.startsWith('--color-uzgreen-') || propertyName.startsWith('--color-uzgold-')) {
-        document.documentElement.style.removeProperty(propertyName)
+      if (
+        propertyName.startsWith("--color-uzazure-") ||
+        propertyName.startsWith("--color-uzorange-")
+      ) {
+        document.documentElement.style.removeProperty(propertyName);
       }
     }
-    vi.unstubAllGlobals()
-    Object.assign(globalThis, { computed, nextTick, onMounted, ref, watch })
-    vi.stubGlobal('navigateTo', vi.fn())
-    vi.stubGlobal('useRoute', () => ({ path: '/operations', fullPath: '/operations' }))
-  })
+    vi.unstubAllGlobals();
+    Object.assign(globalThis, { computed, nextTick, onMounted, ref, watch });
+    vi.stubGlobal("navigateTo", vi.fn());
+    vi.stubGlobal("useRoute", () => ({ path: "/operations", fullPath: "/operations" }));
+  });
 
-  it('applies and reacts to institution colours from the authenticated profile', async () => {
+  it("applies and reacts to institution colours from the authenticated profile", async () => {
     const currentUserProfile = ref({
-      user: { displayName: 'Operator' },
+      user: { displayName: "Operator" },
       roleAssignments: [],
-      institutionBrandingJson: '{"primaryColor":"#040345","secondaryColor":"#f8b334"}'
-    })
-    vi.stubGlobal('useEmhareAuth', () => ({
+      institutionBrandingJson: '{"primaryColor":"#040345","secondaryColor":"#f8b334"}',
+    });
+    vi.stubGlobal("useEmhareAuth", () => ({
       authenticated: ref(true),
       currentUserProfile,
       requireUser: vi.fn().mockResolvedValue(currentUserProfile.value),
       loadUser: vi.fn(),
-      syncCoreUser: vi.fn()
-    }))
+      syncCoreUser: vi.fn(),
+    }));
 
     const SlotStub = defineComponent({
       setup(_, { slots }) {
-        return () => h('div', [slots.default?.(), slots.header?.(), slots.footer?.()])
-      }
-    })
+        return () => h("div", [slots.default?.(), slots.header?.(), slots.footer?.()]);
+      },
+    });
     const SidebarStub = defineComponent({
       setup(_, { slots }) {
-        return () => h('div', [
-          slots.header?.({ collapsed: false }),
-          slots.default?.({ collapsed: false }),
-          slots.footer?.({ collapsed: false })
-        ])
-      }
-    })
+        return () =>
+          h("div", [
+            slots.header?.({ collapsed: false }),
+            slots.default?.({ collapsed: false }),
+            slots.footer?.({ collapsed: false }),
+          ]);
+      },
+    });
 
     shallowMount(EmhareAppShell, {
       global: {
@@ -63,52 +67,53 @@ describe('EmhareAppShell institution branding', () => {
           UDashboardSidebar: SidebarStub,
           UDashboardPanel: SlotStub,
           UDashboardNavbar: SlotStub,
-          UDashboardPanelContent: SlotStub
-        }
-      }
-    })
-    await flushPromises()
+          UDashboardPanelContent: SlotStub,
+        },
+      },
+    });
+    await flushPromises();
 
-    expect(document.documentElement.style.getPropertyValue('--color-uzgreen-600')).toBe('#040345')
-    expect(document.documentElement.style.getPropertyValue('--color-uzgold-500')).toBe('#f8b334')
+    expect(document.documentElement.style.getPropertyValue("--color-uzazure-600")).toBe("#040345");
+    expect(document.documentElement.style.getPropertyValue("--color-uzorange-500")).toBe("#f8b334");
 
     currentUserProfile.value = {
       ...currentUserProfile.value,
-      institutionBrandingJson: '{"primaryColor":"#112266","secondaryColor":"#cc9900"}'
-    }
-    await nextTick()
+      institutionBrandingJson: '{"primaryColor":"#112266","secondaryColor":"#cc9900"}',
+    };
+    await nextTick();
 
-    expect(document.documentElement.style.getPropertyValue('--color-uzgreen-600')).toBe('#112266')
-    expect(document.documentElement.style.getPropertyValue('--color-uzgold-500')).toBe('#cc9900')
-  })
+    expect(document.documentElement.style.getPropertyValue("--color-uzazure-600")).toBe("#112266");
+    expect(document.documentElement.style.getPropertyValue("--color-uzorange-500")).toBe("#cc9900");
+  });
 
-  it('falls back to the governed UZ palette when branding is invalid', async () => {
+  it("falls back to the governed UZ palette when branding is invalid", async () => {
     const currentUserProfile = ref({
-      user: { displayName: 'Operator' },
+      user: { displayName: "Operator" },
       roleAssignments: [],
-      institutionBrandingJson: 'invalid-json'
-    })
-    vi.stubGlobal('useEmhareAuth', () => ({
+      institutionBrandingJson: "invalid-json",
+    });
+    vi.stubGlobal("useEmhareAuth", () => ({
       authenticated: ref(true),
       currentUserProfile,
       requireUser: vi.fn().mockResolvedValue(currentUserProfile.value),
       loadUser: vi.fn(),
-      syncCoreUser: vi.fn()
-    }))
+      syncCoreUser: vi.fn(),
+    }));
     const SlotStub = defineComponent({
       setup(_, { slots }) {
-        return () => h('div', [slots.default?.(), slots.header?.(), slots.footer?.()])
-      }
-    })
+        return () => h("div", [slots.default?.(), slots.header?.(), slots.footer?.()]);
+      },
+    });
     const SidebarStub = defineComponent({
       setup(_, { slots }) {
-        return () => h('div', [
-          slots.header?.({ collapsed: false }),
-          slots.default?.({ collapsed: false }),
-          slots.footer?.({ collapsed: false })
-        ])
-      }
-    })
+        return () =>
+          h("div", [
+            slots.header?.({ collapsed: false }),
+            slots.default?.({ collapsed: false }),
+            slots.footer?.({ collapsed: false }),
+          ]);
+      },
+    });
 
     shallowMount(EmhareAppShell, {
       global: {
@@ -117,22 +122,22 @@ describe('EmhareAppShell institution branding', () => {
           UDashboardSidebar: SidebarStub,
           UDashboardPanel: SlotStub,
           UDashboardNavbar: SlotStub,
-          UDashboardPanelContent: SlotStub
-        }
-      }
-    })
-    await flushPromises()
+          UDashboardPanelContent: SlotStub,
+        },
+      },
+    });
+    await flushPromises();
 
-    expect(document.documentElement.style.getPropertyValue('--color-uzgreen-600')).toBe('#20743a')
-    expect(document.documentElement.style.getPropertyValue('--color-uzgold-500')).toBe('#f8b334')
+    expect(document.documentElement.style.getPropertyValue("--color-uzazure-600")).toBe("#001f6e");
+    expect(document.documentElement.style.getPropertyValue("--color-uzorange-500")).toBe("#cb920e");
 
     currentUserProfile.value = {
       ...currentUserProfile.value,
-      institutionBrandingJson: '{"primaryColor":"navy","secondaryColor":"gold"}'
-    }
-    await nextTick()
+      institutionBrandingJson: '{"primaryColor":"navy","secondaryColor":"gold"}',
+    };
+    await nextTick();
 
-    expect(document.documentElement.style.getPropertyValue('--color-uzgreen-600')).toBe('#20743a')
-    expect(document.documentElement.style.getPropertyValue('--color-uzgold-500')).toBe('#f8b334')
-  })
-})
+    expect(document.documentElement.style.getPropertyValue("--color-uzazure-600")).toBe("#001f6e");
+    expect(document.documentElement.style.getPropertyValue("--color-uzorange-500")).toBe("#cb920e");
+  });
+});

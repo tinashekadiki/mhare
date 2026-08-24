@@ -241,6 +241,7 @@ Then verify the browser flow:
 | 8089 | Dining | `emhare_dining` |
 | 8090 | Documents and Reporting | `emhare_documents_reporting` |
 | 8091 | Notifications | `emhare_notifications` |
+| 8092 | Communications | `emhare_communications` |
 
 ### Infrastructure
 

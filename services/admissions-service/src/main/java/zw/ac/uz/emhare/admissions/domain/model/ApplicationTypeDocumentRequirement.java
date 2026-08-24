@@ -39,6 +39,9 @@ public class ApplicationTypeDocumentRequirement extends AuditableEntity {
   @Column(name = "is_required", nullable = false)
   private boolean required;
 
+  @Column(name = "capture_section_code", nullable = false, length = 60)
+  private String captureSectionCode;
+
   @Column(name = "sort_order", nullable = false)
   private int sortOrder;
 
@@ -52,6 +55,7 @@ public class ApplicationTypeDocumentRequirement extends AuditableEntity {
       String requirementCode,
       String requirementName,
       boolean required,
+      String captureSectionCode,
       int sortOrder) {
     if (sortOrder <= 0)
       throw new IllegalArgumentException("Document requirement sort order must be positive.");
@@ -60,8 +64,24 @@ public class ApplicationTypeDocumentRequirement extends AuditableEntity {
         requireText(requirementCode, "Requirement code").toUpperCase(Locale.ROOT);
     this.requirementName = requireText(requirementName, "Requirement name");
     this.required = required;
+    this.captureSectionCode = normalizeSectionCode(captureSectionCode);
     this.sortOrder = sortOrder;
     this.active = true;
+  }
+
+  public ApplicationTypeDocumentRequirement(
+      ApplicationType applicationType,
+      String requirementCode,
+      String requirementName,
+      boolean required,
+      int sortOrder) {
+    this(
+        applicationType,
+        requirementCode,
+        requirementName,
+        required,
+        "SUPPORTING_DOCUMENTS",
+        sortOrder);
   }
 
   private String requireText(String value, String field) {
@@ -86,6 +106,10 @@ public class ApplicationTypeDocumentRequirement extends AuditableEntity {
     return required;
   }
 
+  public String getCaptureSectionCode() {
+    return captureSectionCode;
+  }
+
   public int getSortOrder() {
     return sortOrder;
   }
@@ -94,16 +118,28 @@ public class ApplicationTypeDocumentRequirement extends AuditableEntity {
     return active;
   }
 
-  public void configure(String requirementName, boolean required, int sortOrder) {
+  public void configure(
+      String requirementName, boolean required, String captureSectionCode, int sortOrder) {
     if (sortOrder < 1)
       throw new IllegalArgumentException("Document requirement sort order must be positive.");
     this.requirementName = requireText(requirementName, "Requirement name");
     this.required = required;
+    this.captureSectionCode = normalizeSectionCode(captureSectionCode);
     this.sortOrder = sortOrder;
     this.active = true;
   }
 
+  public void configure(String requirementName, boolean required, int sortOrder) {
+    configure(requirementName, required, captureSectionCode, sortOrder);
+  }
+
   public void deactivate() {
     active = false;
+  }
+
+  private String normalizeSectionCode(String value) {
+    return requireText(value, "Capture section code")
+        .toUpperCase(Locale.ROOT)
+        .replaceAll("[^A-Z0-9_]", "_");
   }
 }

@@ -19,10 +19,16 @@ const SlotStub = defineComponent({
 });
 
 const ButtonStub = defineComponent({
-  props: { label: { type: String, default: "" } },
+  props: {
+    label: { type: String, default: "" },
+    to: { type: String, default: "" },
+  },
   emits: ["click"],
   setup(props, { emit }) {
-    return () => h("button", { onClick: () => emit("click") }, props.label);
+    return () =>
+      props.to
+        ? h("a", { href: props.to }, props.label)
+        : h("button", { onClick: () => emit("click") }, props.label);
   },
 });
 
@@ -124,6 +130,9 @@ describe("Applicant register detail workspace", () => {
     expect(applicantWorkspace.isPublishedOfferLetterAvailable(offer)).toBe(true);
     expect(wrapper.text()).toContain("Accepted programme");
     expect(wrapper.text()).toContain("HCS · Computer Science");
+    expect(wrapper.get(`a[href="/operations/admissions/${applicationId}"]`).text()).toContain(
+      "Open application",
+    );
     expect(wrapper.get("button").text()).toContain("Print offer letter");
 
     await applicantWorkspace.printOfferLetter(offer);

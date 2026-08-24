@@ -152,10 +152,41 @@ export type AdmissionRequirementSetSummary = {
   effectiveTo: string | null;
   status: "DRAFT" | "APPROVED" | "RETIRED";
   minimumTotalPoints: number | null;
+  maleCutoffPoints: number | null;
+  femaleCutoffPoints: number | null;
   requiresEnglish: boolean;
+  requiresMathematics: boolean;
+  requiresScience: boolean;
   requiresMathematicsOrScience: boolean;
   advancedRulesVersion: string | null;
   approvedAt: string | null;
+  subjectRequirements?: Array<{
+    id: string;
+    level: string;
+    subjectId: string | null;
+    subjectGroupCode: string | null;
+    requirementType: string;
+    minimumGrade: string | null;
+    minimumPoints: number | null;
+    minimumCount: number | null;
+    weight: number | null;
+    sortOrder: number;
+  }>;
+  qualificationGroups?: Array<{
+    id: string;
+    code: string;
+    name: string;
+    minimumSatisfiedItems: number;
+    sortOrder: number;
+    items: Array<{
+      id: string;
+      qualificationLevel: string;
+      minimumCount: number;
+      minimumTotalPoints: number | null;
+      minimumDurationMonths: number | null;
+      sortOrder: number;
+    }>;
+  }>;
 };
 
 export type SelectionDecisionSummary = {
@@ -433,6 +464,8 @@ export type ApplicationDocumentRequirementState = {
   requirementCode: string;
   requirementName: string;
   required: boolean;
+  captureSectionCode: string;
+  applicantCategoryCodes: string[];
   state: ApplicationDocumentState;
   applicationDocumentId: string | null;
   documentId: string | null;
@@ -584,13 +617,56 @@ export type ApplicantQualificationSitting = {
   centreNumber: string | null;
   candidateNumber: string | null;
   yearWritten: number | null;
+  durationMonths: number | null;
   countryId: string | null;
   documentId: string | null;
+  awardTypeCode?:
+    "DIPLOMA" | "CERTIFICATE" | "DEGREE" | "MASTERS" | "PROFESSIONAL" | "OTHER" | null;
+  qualificationName?: string | null;
   verificationStatus: "CAPTURED" | "VERIFIED" | "REJECTED";
   verifiedByUserId: string | null;
   verifiedAt: string | null;
   rejectionReason: string | null;
   results: ApplicantQualificationResult[];
+  version: number;
+};
+
+export type ApplicantDocumentPrefill = {
+  documentId: string;
+  extractionStatus: "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | "UNSUPPORTED";
+  manualEntryAllowed: boolean;
+  personalFields: Record<string, unknown>;
+  qualificationResults: Array<{
+    subjectId: string | null;
+    subjectName: string;
+    grade: string;
+    confirmationRequired: boolean;
+    candidateSubjects: string[];
+  }>;
+  identityNameMismatch: IdentityNameCorrectionSummary | null;
+  warnings: string[];
+};
+
+export type IdentityName = {
+  firstName: string;
+  middleNames: string | null;
+  lastName: string;
+};
+
+export type IdentityNameCorrectionSummary = {
+  id: string | null;
+  applicationId: string;
+  documentId: string;
+  registeredName: IdentityName;
+  documentName: IdentityName;
+  status: "UNRESOLVED" | "OCR_REVIEWED" | "REQUESTED" | "APPROVED" | "REJECTED";
+  requestReason: string | null;
+  requestedAt: string | null;
+  requestedByUserId: string | null;
+  decisionReason: string | null;
+  decidedAt: string | null;
+  decidedByUserId: string | null;
+  coreSynchronizedAt: string | null;
   version: number;
 };
 
@@ -614,6 +690,7 @@ export type ApplicantApplicationWorkspace = {
   programmeEntryPreferences: ProgrammeEntryPreference[];
   qualifications: ApplicantQualificationSitting[];
   documents: ApplicationDocumentRegister;
+  identityNameCorrection: IdentityNameCorrectionSummary | null;
   readyForSubmission: boolean;
   missingRequirements: string[];
   declarationAcceptedAt: string | null;

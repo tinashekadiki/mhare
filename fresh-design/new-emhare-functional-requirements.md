@@ -324,7 +324,7 @@ The new eMhare shall be organised into these product modules:
 
 **FR-ADM-031:** The system shall maintain a managed subject catalogue for O Level, A Level, and other qualification levels.
 
-**FR-ADM-032:** Subject catalogue entries shall support code, name, level, group, science-subject classification, status, and legacy source codes. O Level and A Level subjects shall be maintained as level-specific reference data.
+**FR-ADM-032:** Subject catalogue entries shall support code, name, level, group, independent Science, Mathematics, and English classifications, status, and legacy source codes. O Level and A Level subjects shall be maintained as level-specific reference data.
 
 **FR-ADM-033:** The system shall maintain grading scales and grade-to-point mappings. The ZIMSEC A Level baseline shall award A = 5, B = 4, C = 3, D = 2, and E = 1 point.
 
@@ -384,6 +384,16 @@ The applicant's first and last name shall be sourced from the authenticated acco
 
 **FR-APP-033:** Staff document decisions shall be auditable.
 
+**FR-APP-034:** Identity evidence shall be captured in Personal Details before the corresponding editable fields: Local applicants require National ID and Birth Certificate evidence, while SADC and International applicants require Passport evidence. Application-category evidence rules are snapshotted when the draft is created and the applicant category is then read-only.
+
+**FR-APP-035:** Selecting or dropping a valid PDF, JPEG, or PNG document shall immediately start its upload. A valid stored document remains usable when OCR is unavailable or fails, and the applicant shall be able to continue with manual entry after receiving a warning.
+
+**FR-APP-036:** OCR output shall be presented only as editable proposals. The system shall not persist extracted personal or qualification values into Admissions until the applicant explicitly saves the corresponding form.
+
+**FR-APP-037:** When identity-document first or last names differ from the authenticated registration identity, the system shall keep the registered names unchanged and show a persistent side-by-side mismatch panel. The applicant shall be able to replace pending evidence while the application is a draft, correct the OCR reading, or submit an evidence-backed official-name correction request without being prevented from completing the draft.
+
+**FR-APP-038:** Authorised Admissions staff shall be able to approve or reject an official-name correction with a reason. Approval shall idempotently synchronize the application official-name snapshot, applicant profile, Core account profile, and Keycloak name; both the original and approved values, source application, source document, applicant request, and staff decision shall remain auditable.
+
 ## 12. Qualification Requirements
 
 ### 12.1 Qualification Sittings
@@ -397,6 +407,12 @@ The applicant's first and last name shall be sourced from the authenticated acco
 **FR-QUAL-004:** Qualification sittings shall capture qualification level, exam body, institution or school, centre number, candidate number, year, country, and supporting document.
 
 **FR-QUAL-005:** The system shall support multiple sittings for one applicant.
+
+**FR-QUAL-006:** Applicant qualification capture shall be evidence-first and aggregate: one supporting document, the sitting or award metadata, and its subject results shall be saved in one transaction. Applicant workflows shall not persist a header-only sitting.
+
+**FR-QUAL-007:** A new O Level aggregate shall initially provide eight editable subject rows and a new A Level aggregate three. Applicants may add rows up to twenty or remove rows down to one; OCR may propose additional rows within that limit.
+
+**FR-QUAL-008:** Non-school evidence shall support Diploma, Certificate, Degree, Masters, Professional, and Other award types, including qualification title, institution, country, year, and duration. Masters uses the Degree eligibility level and Certificate uses the Other eligibility level without losing its award type.
 
 ### 12.2 Qualification Results
 
@@ -452,7 +468,7 @@ The applicant's first and last name shall be sourced from the authenticated acco
 
 **FR-SEL-002:** Requirement sets shall support draft, approved, and retired states. Approving a replacement shall retire any overlapping approved version for the same programme, application type, and intake before activating the replacement.
 
-**FR-SEL-003:** Requirement sets shall support minimum total points, gender-specific cutoffs where used, English requirements, a Mathematics-or-Science pass requirement, subject requirements, subject groups, and alternative-route rules. Points totals are computed only from A Level results; O Level results carry a grade but no points and shall not contribute to `total_points`.
+**FR-SEL-003:** Requirement sets shall support minimum total points, gender-specific cutoffs where used, independently configurable English, Mathematics, and Science pass requirements, subject requirements selected from level-specific reference data, subject groups, and alternative-route rules. Historical approved Mathematics-or-Science rules remain valid under their recorded version. Points totals are computed only from A Level results; O Level results carry a grade but no points and shall not contribute to `total_points`.
 
 **FR-SEL-004:** Requirement changes shall not alter historical evaluation results.
 
@@ -855,6 +871,8 @@ These requirements are in scope for the product architecture and future phases. 
 **NFR-OPS-002:** The system shall support retryable background jobs for notifications, document generation, and batch evaluations.
 
 **NFR-OPS-003:** The system shall record job failures with enough context for operational support.
+
+**NFR-OPS-004:** Documents and Reporting shall run self-hosted OCR asynchronously after malware scanning and durable S3-compatible storage, retry transient failures no more than three times, and never log extracted document text or personal values.
 
 ### 31.5 Usability
 

@@ -170,6 +170,8 @@ type QualificationSubjectReference = {
   name: string;
   subjectGroupCode: string;
   scienceSubject: boolean;
+  mathematicsSubject: boolean;
+  englishSubject: boolean;
   active: boolean;
   version: number;
 };
@@ -327,9 +329,7 @@ const coreWorkspaceTabs = [
   },
 ];
 const tabs = computed(() =>
-  coreWorkspaceTabs.filter((tab) =>
-    tab.requiredPermissions.every(auth.hasPermission),
-  ),
+  coreWorkspaceTabs.filter((tab) => tab.requiredPermissions.every(auth.hasPermission)),
 );
 
 const activeTab = ref(tabs.value[0]?.id ?? "profile");
@@ -383,7 +383,7 @@ const defaultProfile = {
   countryCode: "ZW",
   timezone: "Africa/Harare",
   contactDetailsJson: "{}",
-  brandingJson: '{"primaryColor":"#20743a","secondaryColor":"#f8b334"}',
+  brandingJson: '{"primaryColor":"#001f6e","secondaryColor":"#cb920e"}',
   bankDetailsJson: "{}",
   legacyCode: "UZ",
 };
@@ -405,8 +405,8 @@ const profileContactForm = reactive({
 });
 const profileBrandingForm = reactive({
   documentHeader: "",
-  primaryColor: "#20743a",
-  secondaryColor: "#f8b334",
+  primaryColor: "#001f6e",
+  secondaryColor: "#cb920e",
   logoDocumentId: "",
   registrarSignatureDocumentId: "",
 });
@@ -480,6 +480,8 @@ const qualificationSubjectForm = reactive({
   name: "",
   subjectGroupCode: "HUMANITIES",
   scienceSubject: false,
+  mathematicsSubject: false,
+  englishSubject: false,
   active: true,
   version: 0,
 });
@@ -584,7 +586,9 @@ const qualificationSubjectColumns = [
   { key: "code", label: "ZIMSEC code", sortable: true, frozen: true },
   { key: "name", label: "Subject", sortable: true },
   { key: "subjectGroupCode", label: "Group", sortable: true },
-  { key: "scienceSubject", label: "Classification", sortable: true },
+  { key: "scienceSubject", label: "Science", sortable: true },
+  { key: "mathematicsSubject", label: "Mathematics", sortable: true },
+  { key: "englishSubject", label: "English", sortable: true },
   { key: "active", label: "Status", sortable: true },
 ];
 
@@ -666,16 +670,12 @@ const countryCodeOptions = computed(() =>
     value: country.iso2Code,
   })),
 );
-const baseCurrencyOptions = [
-  { label: "USD · transaction base currency", value: "USD" },
-];
+const baseCurrencyOptions = [{ label: "USD · transaction base currency", value: "USD" }];
 const paymentCurrencyOptions = [
   { label: "USD · Nostro account", value: "USD" },
   { label: "ZWG · Local-currency account", value: "ZWG" },
 ];
-const timezoneOptions = [
-  { label: "Africa/Harare · Zimbabwe", value: "Africa/Harare" },
-];
+const timezoneOptions = [{ label: "Africa/Harare · Zimbabwe", value: "Africa/Harare" }];
 const academicUnitOptions = computed(() =>
   (academicSetup.overview.value?.academicUnits ?? [])
     .filter((unit: AcademicUnitSummary) => unit.status === "ACTIVE")
@@ -688,12 +688,8 @@ const academicUnitOptions = computed(() =>
     })),
 );
 
-const selectedRole = computed(() =>
-  roles.value.find((role) => role.id === selectedRoleId.value),
-);
-const selectedUser = computed(() =>
-  users.value.find((user) => user.id === selectedUserId.value),
-);
+const selectedRole = computed(() => roles.value.find((role) => role.id === selectedRoleId.value));
+const selectedUser = computed(() => users.value.find((user) => user.id === selectedUserId.value));
 const countryLookupSelected = computed(
   () => selectedLookupSetId.value === countryReferenceSelectionId,
 );
@@ -706,9 +702,7 @@ const selectedLookupSet = computed(() => {
       description: "Authoritative country codes and nationality labels.",
     };
   }
-  return lookupSets.value.find(
-    (lookupSet) => lookupSet.id === selectedLookupSetId.value,
-  );
+  return lookupSets.value.find((lookupSet) => lookupSet.id === selectedLookupSetId.value);
 });
 const selectedAssignmentRole = computed(() =>
   roles.value.find((role) => role.id === assignmentForm.roleId),
@@ -723,9 +717,7 @@ const userProvisioningSteps = computed(() => [
     description: "Profile details",
     icon: "i-lucide-user-round",
     status:
-      userProvisioningStep.value === "identity"
-        ? ("current" as const)
-        : ("complete" as const),
+      userProvisioningStep.value === "identity" ? ("current" as const) : ("complete" as const),
     disabled: false,
   },
   {
@@ -746,10 +738,7 @@ const userProvisioningSteps = computed(() => [
     title: "Review",
     description: "Activate profile",
     icon: "i-lucide-clipboard-check",
-    status:
-      userProvisioningStep.value === "review"
-        ? ("current" as const)
-        : ("pending" as const),
+    status: userProvisioningStep.value === "review" ? ("current" as const) : ("pending" as const),
     disabled: !userIdentityStepComplete() || !userAccessStepComplete(),
   },
 ]);
@@ -762,9 +751,7 @@ const activeProfileLogoUrl = computed(
   () => profileLogoPreviewUrl.value || storedProfileLogoUrl.value,
 );
 const activeProfileRegistrarSignatureUrl = computed(
-  () =>
-    profileRegistrarSignaturePreviewUrl.value ||
-    storedProfileRegistrarSignatureUrl.value,
+  () => profileRegistrarSignaturePreviewUrl.value || storedProfileRegistrarSignatureUrl.value,
 );
 const assignmentRows = computed(() =>
   assignments.value.map((assignment) => ({
@@ -779,10 +766,7 @@ const assignmentRows = computed(() =>
 const workflowRows = computed(() =>
   workflowTasks.value.map((task) => ({
     ...task,
-    assignedTo:
-      task.assigneeType === "USER"
-        ? task.assignedUserName
-        : task.assignedRoleName,
+    assignedTo: task.assigneeType === "USER" ? task.assignedUserName : task.assignedRoleName,
     scopeLabel:
       task.scopeType === "INSTITUTION"
         ? "Institution-wide"
@@ -830,9 +814,7 @@ const referenceDatasets = computed(() => [
     label: "Lookup values",
     value: "lookup-values",
     icon: "i-lucide-list-checks",
-    badge: countryLookupSelected.value
-      ? countries.value.length
-      : lookupValues.value.length,
+    badge: countryLookupSelected.value ? countries.value.length : lookupValues.value.length,
   },
   {
     label: "O Level subjects",
@@ -899,9 +881,7 @@ const drawerTitle = computed(() => {
         ? "Edit qualification subject"
         : "Create qualification subject";
     case "qualification-grade":
-      return qualificationGradeForm.id
-        ? "Edit qualification grade"
-        : "Create qualification grade";
+      return qualificationGradeForm.id ? "Edit qualification grade" : "Create qualification grade";
     case "workflow-task":
       return selectedWorkflowTask?.value?.taskReference ?? "Workflow task";
     default:
@@ -953,15 +933,9 @@ const drawerSubmitDisabled = computed(() => {
         !profileForm.defaultCurrencyCode.trim() ||
         !profileForm.countryCode.trim() ||
         !profileForm.timezone.trim() ||
-        profileBankAccounts.value.some(
-          (account) => !profileBankAccountComplete(account),
-        ) ||
-        !profileBankAccounts.value.some(
-          (account) => account.currencyCode === "USD",
-        ) ||
-        !profileBankAccounts.value.some(
-          (account) => account.currencyCode === "ZWG",
-        )
+        profileBankAccounts.value.some((account) => !profileBankAccountComplete(account)) ||
+        !profileBankAccounts.value.some((account) => account.currencyCode === "USD") ||
+        !profileBankAccounts.value.some((account) => account.currencyCode === "ZWG")
       );
     case "user":
       if (!userForm.id) {
@@ -1002,9 +976,7 @@ const drawerSubmitDisabled = computed(() => {
       return !lookupSetForm.code.trim() || !lookupSetForm.name.trim();
     case "lookup-value":
       return (
-        !selectedLookupSetId.value ||
-        !lookupValueForm.code.trim() ||
-        !lookupValueForm.name.trim()
+        !selectedLookupSetId.value || !lookupValueForm.code.trim() || !lookupValueForm.name.trim()
       );
     case "qualification-subject":
       return (
@@ -1013,17 +985,13 @@ const drawerSubmitDisabled = computed(() => {
         !qualificationSubjectForm.subjectGroupCode
       );
     case "qualification-grade":
-      return (
-        !qualificationGradeForm.grade.trim() ||
-        qualificationGradeForm.sortOrder < 0
-      );
+      return !qualificationGradeForm.grade.trim() || qualificationGradeForm.sortOrder < 0;
     case "workflow-task":
       return (
         !selectedWorkflowTask.value ||
         selectedWorkflowTask.value.status === "COMPLETED" ||
         selectedWorkflowTask.value.status === "CANCELLED" ||
-        (selectedWorkflowTask.value.status === "CLAIMED" &&
-          !workflowDecisionForm.comment.trim())
+        (selectedWorkflowTask.value.status === "CLAIMED" && !workflowDecisionForm.comment.trim())
       );
     default:
       return true;
@@ -1050,17 +1018,13 @@ watch(
 
 watch(selectedRoleId, async (roleId) => {
   rolePermissions.value = roleId
-    ? await api.request<RolePermissionGrant[]>(
-        `/api/core/roles/${roleId}/permissions`,
-      )
+    ? await api.request<RolePermissionGrant[]>(`/api/core/roles/${roleId}/permissions`)
     : [];
 });
 
 watch(selectedUserId, async (userId) => {
   assignments.value = userId
-    ? await api.request<UserRoleAssignment[]>(
-        `/api/core/users/${userId}/role-assignments`,
-      )
+    ? await api.request<UserRoleAssignment[]>(`/api/core/users/${userId}/role-assignments`)
     : [];
   assignmentForm.userId = userId;
 });
@@ -1089,10 +1053,7 @@ function parseProfileJson(value?: string) {
   }
 }
 
-function profileJsonString(
-  source: Record<string, unknown>,
-  values: Record<string, string>,
-) {
+function profileJsonString(source: Record<string, unknown>, values: Record<string, string>) {
   const result = { ...source };
   for (const [key, value] of Object.entries(values)) {
     const normalizedValue = value.trim();
@@ -1124,9 +1085,7 @@ function emptyProfileBankAccount(
   };
 }
 
-function parsedProfileBankAccounts(
-  bankDetails: Record<string, unknown>,
-): ProfileBankAccount[] {
+function parsedProfileBankAccounts(bankDetails: Record<string, unknown>): ProfileBankAccount[] {
   if (Array.isArray(bankDetails.accounts)) {
     const accounts = bankDetails.accounts.flatMap((value) => {
       if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -1146,10 +1105,7 @@ function parsedProfileBankAccounts(
           accountNumber: profileJsonValue(account, "accountNumber"),
           branchSortCode: profileJsonValue(account, "branchSortCode"),
           swiftCode: profileJsonValue(account, "swiftCode"),
-          paymentReferenceInstructions: profileJsonValue(
-            account,
-            "paymentReferenceInstructions",
-          ),
+          paymentReferenceInstructions: profileJsonValue(account, "paymentReferenceInstructions"),
         } satisfies ProfileBankAccount,
       ];
     });
@@ -1168,10 +1124,7 @@ function parsedProfileBankAccounts(
         accountNumber: legacyAccountNumber,
         branchSortCode: profileJsonValue(bankDetails, "branchSortCode"),
         swiftCode: profileJsonValue(bankDetails, "swiftCode"),
-        paymentReferenceInstructions: profileJsonValue(
-          bankDetails,
-          "paymentReferenceInstructions",
-        ),
+        paymentReferenceInstructions: profileJsonValue(bankDetails, "paymentReferenceInstructions"),
       },
       emptyProfileBankAccount("ZWG"),
     ];
@@ -1179,10 +1132,7 @@ function parsedProfileBankAccounts(
   return [emptyProfileBankAccount("USD"), emptyProfileBankAccount("ZWG")];
 }
 
-function profileBankDetailsJson(
-  source: Record<string, unknown>,
-  accounts: ProfileBankAccount[],
-) {
+function profileBankDetailsJson(source: Record<string, unknown>, accounts: ProfileBankAccount[]) {
   const result = { ...source };
   for (const legacyKey of [
     "bankName",
@@ -1212,9 +1162,7 @@ function addProfileBankAccount() {
   const zwgCount = profileBankAccounts.value.filter(
     (account) => account.currencyCode === "ZWG",
   ).length;
-  profileBankAccounts.value.push(
-    emptyProfileBankAccount(usdCount <= zwgCount ? "USD" : "ZWG"),
-  );
+  profileBankAccounts.value.push(emptyProfileBankAccount(usdCount <= zwgCount ? "USD" : "ZWG"));
 }
 
 function removeProfileBankAccount(index: number) {
@@ -1222,16 +1170,12 @@ function removeProfileBankAccount(index: number) {
 }
 
 function profileBankAccountComplete(account: ProfileBankAccount) {
-  return Boolean(
-    account.currencyCode && account.bankName.trim() && account.accountNumber.trim(),
-  );
+  return Boolean(account.currencyCode && account.bankName.trim() && account.accountNumber.trim());
 }
 
 function resetProfileForm() {
   Object.assign(profileForm, institutionProfile.value);
-  const contactDetails = parseProfileJson(
-    institutionProfile.value.contactDetailsJson,
-  );
+  const contactDetails = parseProfileJson(institutionProfile.value.contactDetailsJson);
   const branding = parseProfileJson(institutionProfile.value.brandingJson);
   const bankDetails = parseProfileJson(institutionProfile.value.bankDetailsJson);
   Object.assign(profileContactForm, {
@@ -1241,16 +1185,11 @@ function resetProfileForm() {
   });
   Object.assign(profileBrandingForm, {
     documentHeader:
-      profileJsonValue(branding, "documentHeader") ||
-      institutionProfile.value.legalName,
-    primaryColor: profileJsonValue(branding, "primaryColor") || "#20743a",
-    secondaryColor:
-      profileJsonValue(branding, "secondaryColor") || "#f8b334",
+      profileJsonValue(branding, "documentHeader") || institutionProfile.value.legalName,
+    primaryColor: profileJsonValue(branding, "primaryColor") || "#001f6e",
+    secondaryColor: profileJsonValue(branding, "secondaryColor") || "#cb920e",
     logoDocumentId: profileJsonValue(branding, "logoDocumentId"),
-    registrarSignatureDocumentId: profileJsonValue(
-      branding,
-      "registrarSignatureDocumentId",
-    ),
+    registrarSignatureDocumentId: profileJsonValue(branding, "registrarSignatureDocumentId"),
   });
   profileBankAccounts.value = parsedProfileBankAccounts(bankDetails);
   profileLogoFile.value = null;
@@ -1276,12 +1215,8 @@ async function loadStoredProfileLogo() {
   profileLogoLoading.value = true;
   try {
     const [document, download] = await Promise.all([
-      api.request<UploadedDocumentSummary>(
-        `/api/documents/uploads/${documentId}`,
-      ),
-      api.request<UploadedDocumentDownload>(
-        `/api/documents/uploads/${documentId}/download`,
-      ),
+      api.request<UploadedDocumentSummary>(`/api/documents/uploads/${documentId}`),
+      api.request<UploadedDocumentDownload>(`/api/documents/uploads/${documentId}/download`),
     ]);
     storedProfileLogo.value = document;
     storedProfileLogoUrl.value = download.downloadUrl;
@@ -1302,18 +1237,12 @@ async function selectProfileLogo(value: unknown) {
   }
   if (!["image/png", "image/jpeg"].includes(file.type)) {
     profileLogoFile.value = null;
-    await showError(
-      "Logo not accepted",
-      "Choose a genuine PNG or JPEG image.",
-    );
+    await showError("Logo not accepted", "Choose a genuine PNG or JPEG image.");
     return;
   }
   if (file.size > maximumLogoSizeBytes) {
     profileLogoFile.value = null;
-    await showError(
-      "Logo is too large",
-      "Choose an image smaller than 2 MB.",
-    );
+    await showError("Logo is too large", "Choose an image smaller than 2 MB.");
     return;
   }
   profileLogoFile.value = file;
@@ -1343,9 +1272,7 @@ async function loadStoredProfileRegistrarSignature() {
   profileRegistrarSignatureLoading.value = true;
   try {
     const [document, download] = await Promise.all([
-      api.request<UploadedDocumentSummary>(
-        `/api/documents/uploads/${documentId}`,
-      ),
+      api.request<UploadedDocumentSummary>(`/api/documents/uploads/${documentId}`),
       api.request<UploadedDocumentDownload>(
         `/api/documents/uploads/${documentId}/download?disposition=inline`,
       ),
@@ -1369,18 +1296,12 @@ async function selectProfileRegistrarSignature(value: unknown) {
   }
   if (!["image/png", "image/jpeg"].includes(file.type)) {
     profileRegistrarSignatureFile.value = null;
-    await showError(
-      "Signature not accepted",
-      "Choose a genuine PNG or JPEG signature image.",
-    );
+    await showError("Signature not accepted", "Choose a genuine PNG or JPEG signature image.");
     return;
   }
   if (file.size > maximumRegistrarSignatureSizeBytes) {
     profileRegistrarSignatureFile.value = null;
-    await showError(
-      "Signature is too large",
-      "Choose a signature image smaller than 2 MB.",
-    );
+    await showError("Signature is too large", "Choose a signature image smaller than 2 MB.");
     return;
   }
   profileRegistrarSignatureFile.value = file;
@@ -1401,22 +1322,16 @@ async function loadCoreData() {
   try {
     switch (activeTab.value) {
       case "profile": {
-        const [profileResult, countryResult, statisticsResult] =
-          await Promise.all([
-            api.request<InstitutionProfile | null>(
-              "/api/core/institution-profile",
-            ),
-            api.request<Country[]>("/api/core/countries"),
-            api.request<CoreStatistics>("/api/core/statistics"),
-          ]);
+        const [profileResult, countryResult, statisticsResult] = await Promise.all([
+          api.request<InstitutionProfile | null>("/api/core/institution-profile"),
+          api.request<Country[]>("/api/core/countries"),
+          api.request<CoreStatistics>("/api/core/statistics"),
+        ]);
         institutionProfile.value = { ...(profileResult ?? defaultProfile) };
         countries.value = countryResult;
         coreStatistics.value = statisticsResult;
         resetProfileForm();
-        await Promise.all([
-          loadStoredProfileLogo(),
-          loadStoredProfileRegistrarSignature(),
-        ]);
+        await Promise.all([loadStoredProfileLogo(), loadStoredProfileRegistrarSignature()]);
         break;
       }
       case "users":
@@ -1465,9 +1380,7 @@ async function loadCoreData() {
         if (
           !selectedLookupSetId.value ||
           (selectedLookupSetId.value !== countryReferenceSelectionId &&
-            !lookupSets.value.some(
-              (lookupSet) => lookupSet.id === selectedLookupSetId.value,
-            ))
+            !lookupSets.value.some((lookupSet) => lookupSet.id === selectedLookupSetId.value))
         ) {
           selectedLookupSetId.value = countryReferenceSelectionId;
         }
@@ -1500,17 +1413,12 @@ function normalizeSearch(value: unknown) {
   return String(value ?? "").toLowerCase();
 }
 
-function tableRows<T extends Record<string, unknown>>(
-  rows: T[],
-  state: TableState,
-) {
+function tableRows<T extends Record<string, unknown>>(rows: T[], state: TableState) {
   let result = [...rows];
   const search = state.search?.trim().toLowerCase();
   if (search) {
     result = result.filter((row) =>
-      Object.values(row).some((value) =>
-        normalizeSearch(value).includes(search),
-      ),
+      Object.values(row).some((value) => normalizeSearch(value).includes(search)),
     );
   }
   const sort = state.sort?.[0];
@@ -1527,10 +1435,7 @@ function tableRows<T extends Record<string, unknown>>(
   return result.slice(start, start + state.pageSize);
 }
 
-function tableTotal<T extends Record<string, unknown>>(
-  rows: T[],
-  state: TableState,
-) {
+function tableTotal<T extends Record<string, unknown>>(rows: T[], state: TableState) {
   const search = state.search?.trim().toLowerCase();
   if (!search) {
     return rows.length;
@@ -1563,9 +1468,7 @@ async function createUser() {
 
 async function ensureUserProvisioningOptions() {
   const [roleResult] = await Promise.all([
-    roles.value.length
-      ? Promise.resolve(roles.value)
-      : api.request<CoreRole[]>("/api/core/roles"),
+    roles.value.length ? Promise.resolve(roles.value) : api.request<CoreRole[]>("/api/core/roles"),
     academicSetup.ensureOverview(),
   ]);
   roles.value = roleResult;
@@ -1581,9 +1484,7 @@ function createUserAccessDraft(): UserAccessDraft {
   };
 }
 
-function userRoleAssignmentDraft(
-  assignment: UserRoleAssignment,
-): UserAccessDraft {
+function userRoleAssignmentDraft(assignment: UserRoleAssignment): UserAccessDraft {
   userAccessDraftSequence += 1;
   return {
     key: `user-access-${userAccessDraftSequence}`,
@@ -1603,9 +1504,7 @@ function removeUserAccessDraft(key: string) {
     Object.assign(userAccessDrafts.value[0]!, createUserAccessDraft());
     return;
   }
-  userAccessDrafts.value = userAccessDrafts.value.filter(
-    (assignment) => assignment.key !== key,
-  );
+  userAccessDrafts.value = userAccessDrafts.value.filter((assignment) => assignment.key !== key);
 }
 
 function userProvisioningRole(assignment: UserAccessDraft) {
@@ -1617,11 +1516,7 @@ function userProvisioningRoleNeedsScope(assignment: UserAccessDraft) {
 }
 
 function userIdentityStepComplete() {
-  return Boolean(
-    userForm.username.trim() &&
-      userForm.email.trim() &&
-      userForm.displayName.trim(),
-  );
+  return Boolean(userForm.username.trim() && userForm.email.trim() && userForm.displayName.trim());
 }
 
 function roleProvidesUsableAccess(roleId: string) {
@@ -1646,10 +1541,7 @@ function userAccessAssignmentsComplete() {
   return userAccessDrafts.value.every((assignment) => {
     const role = userProvisioningRole(assignment);
     if (!role) return false;
-    if (
-      role.scope === "ACADEMIC_UNIT" &&
-      !assignment.academicUnitId
-    ) {
+    if (role.scope === "ACADEMIC_UNIT" && !assignment.academicUnitId) {
       return false;
     }
     const assignmentKey = `${role.id}:${assignment.academicUnitId}`;
@@ -1659,10 +1551,7 @@ function userAccessAssignmentsComplete() {
   });
 }
 
-async function updateUserProvisioningRole(
-  assignment: UserAccessDraft,
-  roleId: unknown,
-) {
+async function updateUserProvisioningRole(assignment: UserAccessDraft, roleId: unknown) {
   assignment.roleId = String(roleId ?? "");
   if (!userProvisioningRoleNeedsScope(assignment)) {
     assignment.academicUnitId = "";
@@ -1671,10 +1560,7 @@ async function updateUserProvisioningRole(
     return;
   }
   const selectedRoleId = assignment.roleId;
-  rolePermissionLoadingIds.value = new Set([
-    ...rolePermissionLoadingIds.value,
-    selectedRoleId,
-  ]);
+  rolePermissionLoadingIds.value = new Set([...rolePermissionLoadingIds.value, selectedRoleId]);
   try {
     rolePermissionCatalog.value = {
       ...rolePermissionCatalog.value,
@@ -1719,14 +1605,12 @@ function roleAccessAreas(roleId: string) {
     STUDENT: ["Student portal"],
   };
   return [
-    ...new Set(
-      [
-        ...(primaryAccessAreas[role.code] ?? []),
-        ...(rolePermissionCatalog.value[roleId] ?? []).map((grant) =>
-          permissionCategoryLabel(grant.category),
-        ),
-      ],
-    ),
+    ...new Set([
+      ...(primaryAccessAreas[role.code] ?? []),
+      ...(rolePermissionCatalog.value[roleId] ?? []).map((grant) =>
+        permissionCategoryLabel(grant.category),
+      ),
+    ]),
   ];
 }
 
@@ -1740,9 +1624,8 @@ function permissionCategoryLabel(category: string) {
 function academicUnitLabel(academicUnitId: string) {
   if (!academicUnitId) return "Institution-wide";
   return (
-    academicUnitOptions.value.find(
-      (option) => option.value === academicUnitId,
-    )?.label ?? academicUnitId
+    academicUnitOptions.value.find((option) => option.value === academicUnitId)?.label ??
+    academicUnitId
   );
 }
 
@@ -1851,11 +1734,7 @@ async function submitDrawer() {
   if (!drawerKind.value || drawerSubmitDisabled.value) {
     return;
   }
-  if (
-    drawerKind.value === "user" &&
-    !userForm.id &&
-    userProvisioningStep.value !== "review"
-  ) {
+  if (drawerKind.value === "user" && !userForm.id && userProvisioningStep.value !== "review") {
     advanceUserProvisioning();
     return;
   }
@@ -1901,10 +1780,7 @@ async function submitDrawer() {
     }
     drawerOpen.value = false;
   } catch (caught) {
-    const message =
-      caught instanceof Error
-        ? caught.message
-        : "The record could not be saved.";
+    const message = caught instanceof Error ? caught.message : "The record could not be saved.";
     await showError("Save failed", message);
   } finally {
     drawerSaving.value = false;
@@ -1912,32 +1788,24 @@ async function submitDrawer() {
 }
 
 async function saveProfile() {
-  let savedProfile = await api.request<InstitutionProfile>(
-    "/api/core/institution-profile",
-    {
-      method: "PUT",
-      body: profilePayload(),
-    },
-  );
+  let savedProfile = await api.request<InstitutionProfile>("/api/core/institution-profile", {
+    method: "PUT",
+    body: profilePayload(),
+  });
   let brandingAssetsChanged = false;
   if (profileLogoFile.value) {
     if (!savedProfile.id) {
-      throw new Error(
-        "The institution profile must be saved before its logo can be uploaded.",
-      );
+      throw new Error("The institution profile must be saved before its logo can be uploaded.");
     }
     const logoUpload = new FormData();
     logoUpload.set("ownerType", "INSTITUTION");
     logoUpload.set("ownerId", savedProfile.id);
     logoUpload.set("documentTypeCode", "INSTITUTION_LOGO");
     logoUpload.set("file", profileLogoFile.value);
-    const uploadedLogo = await api.request<UploadedDocumentSummary>(
-      "/api/documents/uploads",
-      {
-        method: "POST",
-        body: logoUpload,
-      },
-    );
+    const uploadedLogo = await api.request<UploadedDocumentSummary>("/api/documents/uploads", {
+      method: "POST",
+      body: logoUpload,
+    });
     profileBrandingForm.logoDocumentId = uploadedLogo.id;
     brandingAssetsChanged = true;
   }
@@ -1950,29 +1818,20 @@ async function saveProfile() {
     const signatureUpload = new FormData();
     signatureUpload.set("ownerType", "INSTITUTION");
     signatureUpload.set("ownerId", savedProfile.id);
-    signatureUpload.set(
-      "documentTypeCode",
-      "INSTITUTION_REGISTRAR_SIGNATURE",
-    );
+    signatureUpload.set("documentTypeCode", "INSTITUTION_REGISTRAR_SIGNATURE");
     signatureUpload.set("file", profileRegistrarSignatureFile.value);
-    const uploadedSignature = await api.request<UploadedDocumentSummary>(
-      "/api/documents/uploads",
-      {
-        method: "POST",
-        body: signatureUpload,
-      },
-    );
+    const uploadedSignature = await api.request<UploadedDocumentSummary>("/api/documents/uploads", {
+      method: "POST",
+      body: signatureUpload,
+    });
     profileBrandingForm.registrarSignatureDocumentId = uploadedSignature.id;
     brandingAssetsChanged = true;
   }
   if (brandingAssetsChanged) {
-    savedProfile = await api.request<InstitutionProfile>(
-      "/api/core/institution-profile",
-      {
-        method: "PUT",
-        body: profilePayload(),
-      },
-    );
+    savedProfile = await api.request<InstitutionProfile>("/api/core/institution-profile", {
+      method: "PUT",
+      body: profilePayload(),
+    });
   }
   institutionProfile.value = savedProfile;
   await auth.syncCoreUser();
@@ -1982,8 +1841,7 @@ async function saveProfile() {
   revokeProfileRegistrarSignaturePreview();
   await showSuccess(
     "Institution profile saved",
-    profileBrandingForm.logoDocumentId ||
-      profileBrandingForm.registrarSignatureDocumentId
+    profileBrandingForm.logoDocumentId || profileBrandingForm.registrarSignatureDocumentId
       ? "Institution details and brand assets are updated."
       : "Institution details are updated.",
   );
@@ -1991,15 +1849,9 @@ async function saveProfile() {
 }
 
 function profilePayload() {
-  const existingContactDetails = parseProfileJson(
-    institutionProfile.value.contactDetailsJson,
-  );
-  const existingBranding = parseProfileJson(
-    institutionProfile.value.brandingJson,
-  );
-  const existingBankDetails = parseProfileJson(
-    institutionProfile.value.bankDetailsJson,
-  );
+  const existingContactDetails = parseProfileJson(institutionProfile.value.contactDetailsJson);
+  const existingBranding = parseProfileJson(institutionProfile.value.brandingJson);
+  const existingBankDetails = parseProfileJson(institutionProfile.value.bankDetailsJson);
   return {
     code: profileForm.code,
     name: profileForm.name,
@@ -2019,13 +1871,9 @@ function profilePayload() {
       primaryColor: profileBrandingForm.primaryColor,
       secondaryColor: profileBrandingForm.secondaryColor,
       logoDocumentId: profileBrandingForm.logoDocumentId,
-      registrarSignatureDocumentId:
-        profileBrandingForm.registrarSignatureDocumentId,
+      registrarSignatureDocumentId: profileBrandingForm.registrarSignatureDocumentId,
     }),
-    bankDetailsJson: profileBankDetailsJson(
-      existingBankDetails,
-      profileBankAccounts.value,
-    ),
+    bankDetailsJson: profileBankDetailsJson(existingBankDetails, profileBankAccounts.value),
   };
 }
 
@@ -2063,9 +1911,7 @@ async function saveUser() {
       },
     );
     await showSuccess(
-      provisionedAccess.keycloakIdentityCreated
-        ? "User provisioned"
-        : "User access linked",
+      provisionedAccess.keycloakIdentityCreated ? "User provisioned" : "User access linked",
       provisionedAccess.temporaryPassword
         ? `The Keycloak account and local access are active. Sign in with ${provisionedAccess.user.email}. Temporary password: ${provisionedAccess.temporaryPassword} The user must change it at first sign-in.`
         : "The existing Keycloak account is linked to the active local access profile.",
@@ -2095,10 +1941,7 @@ async function saveEditedUserAccessAssignments(userId: string) {
       continue;
     }
     const originalAssignment = originalAssignments.get(assignment.assignmentId);
-    if (
-      (originalAssignment?.academicUnitId ?? "") !==
-      assignment.academicUnitId
-    ) {
+    if ((originalAssignment?.academicUnitId ?? "") !== assignment.academicUnitId) {
       await api.request(
         `/api/core/users/${userId}/role-assignments/${assignment.assignmentId}/academic-unit`,
         {
@@ -2115,10 +1958,9 @@ async function saveEditedUserAccessAssignments(userId: string) {
   );
   for (const originalAssignment of editingUserRoleAssignments.value) {
     if (!retainedAssignmentIds.has(originalAssignment.id)) {
-      await api.request(
-        `/api/core/users/${userId}/role-assignments/${originalAssignment.id}`,
-        { method: "DELETE" },
-      );
+      await api.request(`/api/core/users/${userId}/role-assignments/${originalAssignment.id}`, {
+        method: "DELETE",
+      });
     }
   }
 }
@@ -2127,9 +1969,7 @@ async function editUser(row: Record<string, unknown>) {
   try {
     const [, roleAssignments] = await Promise.all([
       ensureUserProvisioningOptions(),
-      api.request<UserRoleAssignment[]>(
-        `/api/core/users/${String(row.id)}/role-assignments`,
-      ),
+      api.request<UserRoleAssignment[]>(`/api/core/users/${String(row.id)}/role-assignments`),
     ]);
     Object.assign(userForm, {
       id: row.id,
@@ -2165,10 +2005,7 @@ async function disableUser(row: Record<string, unknown>) {
     return;
   }
   await api.request(`/api/core/users/${row.id}`, { method: "DELETE" });
-  await showSuccess(
-    "User disabled",
-    "The user was soft-deleted and marked disabled.",
-  );
+  await showSuccess("User disabled", "The user was soft-deleted and marked disabled.");
   await loadCoreData();
 }
 
@@ -2303,10 +2140,7 @@ async function grantPermission() {
   rolePermissions.value = await api.request<RolePermissionGrant[]>(
     `/api/core/roles/${selectedRoleId.value}/permissions`,
   );
-  await showSuccess(
-    "Permission granted",
-    "The role permission matrix is updated.",
-  );
+  await showSuccess("Permission granted", "The role permission matrix is updated.");
 }
 
 async function revokePermission(grant: RolePermissionGrant) {
@@ -2320,10 +2154,9 @@ async function revokePermission(grant: RolePermissionGrant) {
   ) {
     return;
   }
-  await api.request(
-    `/api/core/roles/${grant.roleId}/permissions/${grant.permissionId}`,
-    { method: "DELETE" },
-  );
+  await api.request(`/api/core/roles/${grant.roleId}/permissions/${grant.permissionId}`, {
+    method: "DELETE",
+  });
   rolePermissions.value = await api.request<RolePermissionGrant[]>(
     `/api/core/roles/${selectedRoleId.value}/permissions`,
   );
@@ -2368,10 +2201,9 @@ async function expireAssignment(assignment: UserRoleAssignment) {
   ) {
     return;
   }
-  await api.request(
-    `/api/core/users/${userId}/role-assignments/${assignment.id}`,
-    { method: "DELETE" },
-  );
+  await api.request(`/api/core/users/${userId}/role-assignments/${assignment.id}`, {
+    method: "DELETE",
+  });
   assignments.value = await api.request<UserRoleAssignment[]>(
     `/api/core/users/${userId}/role-assignments`,
   );
@@ -2456,13 +2288,10 @@ async function saveLookupValue() {
   if (!selectedLookupSetId.value) {
     return;
   }
-  await api.request(
-    `/api/core/lookup-sets/${selectedLookupSetId.value}/values`,
-    {
-      method: "POST",
-      body: { ...lookupValueForm },
-    },
-  );
+  await api.request(`/api/core/lookup-sets/${selectedLookupSetId.value}/values`, {
+    method: "POST",
+    body: { ...lookupValueForm },
+  });
   resetLookupValueForm();
   lookupValues.value = await api.request<LookupValue[]>(
     `/api/core/lookup-sets/${selectedLookupSetId.value}/values`,
@@ -2496,9 +2325,7 @@ async function progressWorkflowTask() {
       `${task.taskReference} has immutable decision evidence.`,
     );
   }
-  workflowTasks.value = await api.request<WorkflowTask[]>(
-    "/api/core/workflows/tasks",
-  );
+  workflowTasks.value = await api.request<WorkflowTask[]>("/api/core/workflows/tasks");
 }
 
 function editLookupValue(row: Record<string, unknown>) {
@@ -2535,9 +2362,7 @@ function resetLookupValueForm() {
 
 async function saveQualificationSubject() {
   const subjectId = qualificationSubjectForm.id;
-  const subjectLevel = qualificationSubjectForm.level as
-    | "O_LEVEL"
-    | "A_LEVEL";
+  const subjectLevel = qualificationSubjectForm.level as "O_LEVEL" | "A_LEVEL";
   await api.request(
     subjectId
       ? `/api/admissions/qualification-reference-data/subjects/${subjectId}`
@@ -2550,6 +2375,8 @@ async function saveQualificationSubject() {
         name: qualificationSubjectForm.name.trim(),
         subjectGroupCode: qualificationSubjectForm.subjectGroupCode,
         scienceSubject: qualificationSubjectForm.scienceSubject,
+        mathematicsSubject: qualificationSubjectForm.mathematicsSubject,
+        englishSubject: qualificationSubjectForm.englishSubject,
         active: qualificationSubjectForm.active,
         expectedVersion: qualificationSubjectForm.version,
       },
@@ -2565,10 +2392,7 @@ async function saveQualificationSubject() {
     subjectLevel === "O_LEVEL" ? "o-level-subjects" : "a-level-subjects";
 }
 
-function editQualificationSubject(
-  row: Record<string, unknown>,
-  level: "O_LEVEL" | "A_LEVEL",
-) {
+function editQualificationSubject(row: Record<string, unknown>, level: "O_LEVEL" | "A_LEVEL") {
   Object.assign(qualificationSubjectForm, {
     id: String(row.id),
     level,
@@ -2576,6 +2400,8 @@ function editQualificationSubject(
     name: String(row.name),
     subjectGroupCode: String(row.subjectGroupCode),
     scienceSubject: Boolean(row.scienceSubject),
+    mathematicsSubject: Boolean(row.mathematicsSubject),
+    englishSubject: Boolean(row.englishSubject),
     active: Boolean(row.active),
     version: Number(row.version),
   });
@@ -2604,9 +2430,7 @@ async function deleteQualificationSubject(row: Record<string, unknown>) {
   await loadCoreData();
 }
 
-function resetQualificationSubjectForm(
-  level: "O_LEVEL" | "A_LEVEL" = "O_LEVEL",
-) {
+function resetQualificationSubjectForm(level: "O_LEVEL" | "A_LEVEL" = "O_LEVEL") {
   Object.assign(qualificationSubjectForm, {
     id: "",
     level,
@@ -2614,6 +2438,8 @@ function resetQualificationSubjectForm(
     name: "",
     subjectGroupCode: "HUMANITIES",
     scienceSubject: false,
+    mathematicsSubject: false,
+    englishSubject: false,
     active: true,
     version: 0,
   });
@@ -2644,22 +2470,15 @@ async function saveQualificationGrade() {
     "Qualification grade reference data is updated.",
   );
   await loadCoreData();
-  activeReferenceDataset.value =
-    gradeLevel === "O_LEVEL" ? "o-level-grades" : "a-level-grades";
+  activeReferenceDataset.value = gradeLevel === "O_LEVEL" ? "o-level-grades" : "a-level-grades";
 }
 
-function editQualificationGrade(
-  row: Record<string, unknown>,
-  level: "O_LEVEL" | "A_LEVEL",
-) {
+function editQualificationGrade(row: Record<string, unknown>, level: "O_LEVEL" | "A_LEVEL") {
   Object.assign(qualificationGradeForm, {
     id: String(row.id),
     level,
     grade: String(row.grade),
-    points:
-      row.points === null || row.points === undefined
-        ? undefined
-        : Number(row.points),
+    points: row.points === null || row.points === undefined ? undefined : Number(row.points),
     pass: Boolean(row.pass),
     sortOrder: Number(row.sortOrder),
     version: Number(row.version),
@@ -2690,13 +2509,10 @@ async function deleteQualificationGrade(
     "The grade is no longer available for new qualification capture. Historical results are preserved.",
   );
   await loadCoreData();
-  activeReferenceDataset.value =
-    level === "O_LEVEL" ? "o-level-grades" : "a-level-grades";
+  activeReferenceDataset.value = level === "O_LEVEL" ? "o-level-grades" : "a-level-grades";
 }
 
-function resetQualificationGradeForm(
-  level: "O_LEVEL" | "A_LEVEL" = "O_LEVEL",
-) {
+function resetQualificationGradeForm(level: "O_LEVEL" | "A_LEVEL" = "O_LEVEL") {
   Object.assign(qualificationGradeForm, {
     id: "",
     level,
@@ -2718,10 +2534,7 @@ function expireAssignmentRow(row: Record<string, unknown>) {
 
 function rowAction(
   payload: { action: { id: string }; row: Record<string, unknown> },
-  handlers: Record<
-    string,
-    (row: Record<string, unknown>) => void | Promise<void>
-  >,
+  handlers: Record<string, (row: Record<string, unknown>) => void | Promise<void>>,
 ) {
   return handlers[payload.action.id]?.(payload.row);
 }
@@ -2785,21 +2598,12 @@ function rowAction(
                 @click="openDrawer('profile')"
               />
             </template>
-            <div
-              class="grid gap-4 md:grid-cols-[8rem_minmax(0,1fr)] md:items-start"
-            >
-              <div
-                data-emhare-institution-logo
-                aria-label="Institution logo"
-                class="min-w-0"
-              >
+            <div class="grid gap-4 md:grid-cols-[8rem_minmax(0,1fr)] md:items-start">
+              <div data-emhare-institution-logo aria-label="Institution logo" class="min-w-0">
                 <div
                   class="flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-muted bg-default p-3 shadow-sm"
                 >
-                  <USkeleton
-                    v-if="profileLogoLoading"
-                    class="size-full rounded-lg"
-                  />
+                  <USkeleton v-if="profileLogoLoading" class="size-full rounded-lg" />
                   <img
                     v-else-if="storedProfileLogoUrl"
                     :src="storedProfileLogoUrl"
@@ -2817,9 +2621,7 @@ function rowAction(
                     </span>
                   </div>
                 </div>
-                <p class="mt-2 text-center text-xs font-medium text-muted">
-                  Institution logo
-                </p>
+                <p class="mt-2 text-center text-xs font-medium text-muted">Institution logo</p>
               </div>
               <EmhareDescriptionList :items="profileDetails" />
             </div>
@@ -2870,18 +2672,8 @@ function rowAction(
             </template>
             <EmhareDataTable
               :columns="userColumns"
-              :rows="
-                tableRows(
-                  users as unknown as Record<string, unknown>[],
-                  userTableState,
-                )
-              "
-              :total="
-                tableTotal(
-                  users as unknown as Record<string, unknown>[],
-                  userTableState,
-                )
-              "
+              :rows="tableRows(users as unknown as Record<string, unknown>[], userTableState)"
+              :total="tableTotal(users as unknown as Record<string, unknown>[], userTableState)"
               :state="userTableState"
               :loading="loading"
               :row-actions="[
@@ -2894,9 +2686,7 @@ function rowAction(
                 },
               ]"
               @update:state="userTableState = $event"
-              @row-action="
-                rowAction($event, { edit: editUser, disable: disableUser })
-              "
+              @row-action="rowAction($event, { edit: editUser, disable: disableUser })"
             >
               <template #status-cell="{ value }">
                 <EmhareStatusPill
@@ -2913,9 +2703,7 @@ function rowAction(
                 />
               </template>
               <template #lastLoginAt-cell="{ value }">
-                <span>{{
-                  value ? new Date(String(value)).toLocaleString() : "Never"
-                }}</span>
+                <span>{{ value ? new Date(String(value)).toLocaleString() : "Never" }}</span>
               </template>
             </EmhareDataTable>
           </EmhareRegisterPanel>
@@ -2946,18 +2734,8 @@ function rowAction(
             </template>
             <EmhareDataTable
               :columns="roleColumns"
-              :rows="
-                tableRows(
-                  roles as unknown as Record<string, unknown>[],
-                  roleTableState,
-                )
-              "
-              :total="
-                tableTotal(
-                  roles as unknown as Record<string, unknown>[],
-                  roleTableState,
-                )
-              "
+              :rows="tableRows(roles as unknown as Record<string, unknown>[], roleTableState)"
+              :total="tableTotal(roles as unknown as Record<string, unknown>[], roleTableState)"
               :state="roleTableState"
               :loading="loading"
               :row-actions="[
@@ -2970,9 +2748,7 @@ function rowAction(
                 },
               ]"
               @update:state="roleTableState = $event"
-              @row-action="
-                rowAction($event, { edit: editRole, delete: deleteRole })
-              "
+              @row-action="rowAction($event, { edit: editRole, delete: deleteRole })"
             />
           </EmhareRegisterPanel>
 
@@ -2993,10 +2769,7 @@ function rowAction(
             <EmhareDataTable
               :columns="permissionColumns"
               :rows="
-                tableRows(
-                  permissions as unknown as Record<string, unknown>[],
-                  permissionTableState,
-                )
+                tableRows(permissions as unknown as Record<string, unknown>[], permissionTableState)
               "
               :total="
                 tableTotal(
@@ -3027,11 +2800,7 @@ function rowAction(
 
           <EmhareRegisterPanel
             v-if="activeRbacDataset === 'grants'"
-            :title="
-              selectedRole
-                ? `Role grants · ${selectedRole.name}`
-                : 'Role grants'
-            "
+            :title="selectedRole ? `Role grants · ${selectedRole.name}` : 'Role grants'"
             description="Permissions currently attached to the selected role."
             :record-count="rolePermissions.length"
           >
@@ -3041,7 +2810,9 @@ function rowAction(
                 label="Grant permission"
                 color="primary"
                 guidance-title="Select a role first"
-                :guidance-instructions="selectedRoleId ? [] : ['Select the role that should receive the permission.']"
+                :guidance-instructions="
+                  selectedRoleId ? [] : ['Select the role that should receive the permission.']
+                "
                 @click="openDrawer('grant')"
               />
             </template>
@@ -3057,16 +2828,10 @@ function rowAction(
             <EmhareDataTable
               :columns="grantColumns"
               :rows="
-                tableRows(
-                  rolePermissions as unknown as Record<string, unknown>[],
-                  grantTableState,
-                )
+                tableRows(rolePermissions as unknown as Record<string, unknown>[], grantTableState)
               "
               :total="
-                tableTotal(
-                  rolePermissions as unknown as Record<string, unknown>[],
-                  grantTableState,
-                )
+                tableTotal(rolePermissions as unknown as Record<string, unknown>[], grantTableState)
               "
               :state="grantTableState"
               :loading="loading"
@@ -3086,9 +2851,7 @@ function rowAction(
           <EmhareRegisterPanel
             v-if="activeRbacDataset === 'assignments'"
             :title="
-              selectedUser
-                ? `User assignments · ${selectedUser.displayName}`
-                : 'User assignments'
+              selectedUser ? `User assignments · ${selectedUser.displayName}` : 'User assignments'
             "
             description="Active and historical roles for the selected user."
             :record-count="assignments.length"
@@ -3099,7 +2862,9 @@ function rowAction(
                 label="Assign role"
                 color="primary"
                 guidance-title="Select a user first"
-                :guidance-instructions="selectedUserId ? [] : ['Select the user who should receive the role assignment.']"
+                :guidance-instructions="
+                  selectedUserId ? [] : ['Select the user who should receive the role assignment.']
+                "
                 @click="openDrawer('assignment')"
               />
             </template>
@@ -3175,16 +2940,10 @@ function rowAction(
             <EmhareDataTable
               :columns="lookupSetColumns"
               :rows="
-                tableRows(
-                  lookupSets as unknown as Record<string, unknown>[],
-                  lookupSetTableState,
-                )
+                tableRows(lookupSets as unknown as Record<string, unknown>[], lookupSetTableState)
               "
               :total="
-                tableTotal(
-                  lookupSets as unknown as Record<string, unknown>[],
-                  lookupSetTableState,
-                )
+                tableTotal(lookupSets as unknown as Record<string, unknown>[], lookupSetTableState)
               "
               :state="lookupSetTableState"
               :loading="loading"
@@ -3210,32 +2969,25 @@ function rowAction(
           <EmhareRegisterPanel
             v-if="activeReferenceDataset === 'lookup-values'"
             :title="
-              selectedLookupSet
-                ? `Lookup values · ${selectedLookupSet.name}`
-                : 'Lookup values'
+              selectedLookupSet ? `Lookup values · ${selectedLookupSet.name}` : 'Lookup values'
             "
             :description="
-              selectedLookupSet?.description ||
-              'Ordered values in the selected reference-data set.'
+              selectedLookupSet?.description || 'Ordered values in the selected reference-data set.'
             "
-            :record-count="
-              countryLookupSelected ? countries.length : lookupValues.length
-            "
+            :record-count="countryLookupSelected ? countries.length : lookupValues.length"
           >
             <template #actions>
               <EmhareGuidedActionButton
                 icon="i-lucide-plus"
-                :label="
-                  countryLookupSelected
-                    ? 'Create country'
-                    : 'Create lookup value'
-                "
+                :label="countryLookupSelected ? 'Create country' : 'Create lookup value'"
                 color="primary"
                 guidance-title="Select a lookup set first"
-                :guidance-instructions="selectedLookupSetId ? [] : ['Select the lookup set that should contain the new value.']"
-                @click="
-                  countryLookupSelected ? createCountry() : createLookupValue()
+                :guidance-instructions="
+                  selectedLookupSetId
+                    ? []
+                    : ['Select the lookup set that should contain the new value.']
                 "
+                @click="countryLookupSelected ? createCountry() : createLookupValue()"
               />
             </template>
             <div class="mb-3 max-w-xl">
@@ -3251,16 +3003,10 @@ function rowAction(
               v-if="countryLookupSelected"
               :columns="countryColumns"
               :rows="
-                tableRows(
-                  countries as unknown as Record<string, unknown>[],
-                  countryTableState,
-                )
+                tableRows(countries as unknown as Record<string, unknown>[], countryTableState)
               "
               :total="
-                tableTotal(
-                  countries as unknown as Record<string, unknown>[],
-                  countryTableState,
-                )
+                tableTotal(countries as unknown as Record<string, unknown>[], countryTableState)
               "
               :state="countryTableState"
               :loading="loading"
@@ -3274,9 +3020,7 @@ function rowAction(
                 },
               ]"
               @update:state="countryTableState = $event"
-              @row-action="
-                rowAction($event, { edit: editCountry, delete: deleteCountry })
-              "
+              @row-action="rowAction($event, { edit: editCountry, delete: deleteCountry })"
             />
             <EmhareDataTable
               v-else
@@ -3370,8 +3114,20 @@ function rowAction(
             >
               <template #scienceSubject-cell="{ value }">
                 <EmhareStatusPill
-                  :label="value ? 'Science' : 'Other'"
+                  :label="value ? 'Yes' : 'No'"
                   :tone="value ? 'success' : 'neutral'"
+                />
+              </template>
+              <template #mathematicsSubject-cell="{ value }">
+                <EmhareStatusPill
+                  :label="value ? 'Yes' : 'No'"
+                  :tone="value ? 'primary' : 'neutral'"
+                />
+              </template>
+              <template #englishSubject-cell="{ value }">
+                <EmhareStatusPill
+                  :label="value ? 'Yes' : 'No'"
+                  :tone="value ? 'warning' : 'neutral'"
                 />
               </template>
               <template #active-cell="{ value }">
@@ -3432,8 +3188,20 @@ function rowAction(
             >
               <template #scienceSubject-cell="{ value }">
                 <EmhareStatusPill
-                  :label="value ? 'Science' : 'Other'"
+                  :label="value ? 'Yes' : 'No'"
                   :tone="value ? 'success' : 'neutral'"
+                />
+              </template>
+              <template #mathematicsSubject-cell="{ value }">
+                <EmhareStatusPill
+                  :label="value ? 'Yes' : 'No'"
+                  :tone="value ? 'primary' : 'neutral'"
+                />
+              </template>
+              <template #englishSubject-cell="{ value }">
+                <EmhareStatusPill
+                  :label="value ? 'Yes' : 'No'"
+                  :tone="value ? 'warning' : 'neutral'"
                 />
               </template>
               <template #active-cell="{ value }">
@@ -3575,25 +3343,18 @@ function rowAction(
           <div class="grid gap-3 sm:grid-cols-3">
             <EmhareKpiCard
               label="Open"
-              :value="
-                workflowTasks.filter((task) => task.status === 'OPEN').length
-              "
+              :value="workflowTasks.filter((task) => task.status === 'OPEN').length"
               icon="i-lucide-inbox"
             />
             <EmhareKpiCard
               label="Claimed"
-              :value="
-                workflowTasks.filter((task) => task.status === 'CLAIMED').length
-              "
+              :value="workflowTasks.filter((task) => task.status === 'CLAIMED').length"
               icon="i-lucide-user-check"
               tone="warning"
             />
             <EmhareKpiCard
               label="Completed"
-              :value="
-                workflowTasks.filter((task) => task.status === 'COMPLETED')
-                  .length
-              "
+              :value="workflowTasks.filter((task) => task.status === 'COMPLETED').length"
               icon="i-lucide-circle-check"
               tone="success"
             />
@@ -3606,16 +3367,10 @@ function rowAction(
             <EmhareDataTable
               :columns="workflowColumns"
               :rows="
-                tableRows(
-                  workflowRows as unknown as Record<string, unknown>[],
-                  workflowTableState,
-                )
+                tableRows(workflowRows as unknown as Record<string, unknown>[], workflowTableState)
               "
               :total="
-                tableTotal(
-                  workflowRows as unknown as Record<string, unknown>[],
-                  workflowTableState,
-                )
+                tableTotal(workflowRows as unknown as Record<string, unknown>[], workflowTableState)
               "
               :state="workflowTableState"
               :loading="loading"
@@ -3643,11 +3398,7 @@ function rowAction(
                       : ''
                   "
                 >
-                  {{
-                    value
-                      ? new Date(String(value)).toLocaleString()
-                      : "No fixed due date"
-                  }}
+                  {{ value ? new Date(String(value)).toLocaleString() : "No fixed due date" }}
                 </span>
               </template>
               <template #status-cell="{ value }">
@@ -3671,10 +3422,28 @@ function rowAction(
         <section v-if="activeTab === 'audit'">
           <div class="space-y-5">
             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <EmhareKpiCard label="Users" :value="operationalReport.inventory.userCount" icon="i-lucide-users" />
-              <EmhareKpiCard label="Roles" :value="operationalReport.inventory.roleCount" icon="i-lucide-shield-check" />
-              <EmhareKpiCard label="Audit activity · 24h" :value="operationalReport.auditEventsLast24Hours" icon="i-lucide-clipboard-check" tone="success" />
-              <EmhareKpiCard label="Login sessions · 24h" :value="operationalReport.loginSessionsLast24Hours" icon="i-lucide-log-in" tone="info" />
+              <EmhareKpiCard
+                label="Users"
+                :value="operationalReport.inventory.userCount"
+                icon="i-lucide-users"
+              />
+              <EmhareKpiCard
+                label="Roles"
+                :value="operationalReport.inventory.roleCount"
+                icon="i-lucide-shield-check"
+              />
+              <EmhareKpiCard
+                label="Audit activity · 24h"
+                :value="operationalReport.auditEventsLast24Hours"
+                icon="i-lucide-clipboard-check"
+                tone="success"
+              />
+              <EmhareKpiCard
+                label="Login sessions · 24h"
+                :value="operationalReport.loginSessionsLast24Hours"
+                icon="i-lucide-log-in"
+                tone="info"
+              />
             </div>
 
             <EmhareRegisterPanel
@@ -3684,8 +3453,12 @@ function rowAction(
             >
               <EmhareDataTable
                 :columns="auditColumns"
-                :rows="tableRows(auditEvents as unknown as Record<string, unknown>[], auditTableState)"
-                :total="tableTotal(auditEvents as unknown as Record<string, unknown>[], auditTableState)"
+                :rows="
+                  tableRows(auditEvents as unknown as Record<string, unknown>[], auditTableState)
+                "
+                :total="
+                  tableTotal(auditEvents as unknown as Record<string, unknown>[], auditTableState)
+                "
                 :state="auditTableState"
                 :loading="loading"
                 @update:state="auditTableState = $event"
@@ -3709,8 +3482,12 @@ function rowAction(
             >
               <EmhareDataTable
                 :columns="loginColumns"
-                :rows="tableRows(loginEvents as unknown as Record<string, unknown>[], loginTableState)"
-                :total="tableTotal(loginEvents as unknown as Record<string, unknown>[], loginTableState)"
+                :rows="
+                  tableRows(loginEvents as unknown as Record<string, unknown>[], loginTableState)
+                "
+                :total="
+                  tableTotal(loginEvents as unknown as Record<string, unknown>[], loginTableState)
+                "
                 :state="loginTableState"
                 :loading="loading"
                 @update:state="loginTableState = $event"
@@ -3728,25 +3505,21 @@ function rowAction(
 
         <EmhareRecordDrawer
           v-model:open="drawerOpen"
-          :presentation="
-            drawerKind === 'profile' || drawerKind === 'user'
-              ? 'page'
-              : 'sidepanel'
-          "
+          :presentation="drawerKind === 'profile' || drawerKind === 'user' ? 'page' : 'sidepanel'"
           :title="drawerTitle"
           :description="drawerDescription"
           :submit-label="
             drawerKind === 'user' && !userForm.id
               ? userProvisioningSubmitLabel
               : drawerKind === 'grant'
-              ? 'Grant permission'
-              : drawerKind === 'assignment'
-                ? 'Assign role'
-                : drawerKind === 'workflow-task'
-                  ? selectedWorkflowTask?.status === 'OPEN'
-                    ? 'Claim task'
-                    : 'Record decision'
-                  : 'Save record'
+                ? 'Grant permission'
+                : drawerKind === 'assignment'
+                  ? 'Assign role'
+                  : drawerKind === 'workflow-task'
+                    ? selectedWorkflowTask?.status === 'OPEN'
+                      ? 'Claim task'
+                      : 'Record decision'
+                    : 'Save record'
           "
           :submit-icon="
             drawerKind === 'user' && !userForm.id
@@ -3754,25 +3527,17 @@ function rowAction(
                 ? 'i-lucide-user-check'
                 : 'i-lucide-arrow-right'
               : drawerKind === 'workflow-task'
-              ? selectedWorkflowTask?.status === 'OPEN'
-                ? 'i-lucide-hand'
-                : 'i-lucide-gavel'
-              : drawerKind === 'grant' || drawerKind === 'assignment'
-                ? 'i-lucide-plus'
-                : 'i-lucide-save'
+                ? selectedWorkflowTask?.status === 'OPEN'
+                  ? 'i-lucide-hand'
+                  : 'i-lucide-gavel'
+                : drawerKind === 'grant' || drawerKind === 'assignment'
+                  ? 'i-lucide-plus'
+                  : 'i-lucide-save'
           "
           :busy="drawerSaving"
           :submit-disabled="drawerSubmitDisabled"
-          :show-back="
-            drawerKind === 'user' &&
-            !userForm.id &&
-            userProvisioningStep !== 'identity'
-          "
-          :width="
-            drawerKind === 'profile' || drawerKind === 'user'
-              ? 'xl'
-              : 'lg'
-          "
+          :show-back="drawerKind === 'user' && !userForm.id && userProvisioningStep !== 'identity'"
+          :width="drawerKind === 'profile' || drawerKind === 'user' ? 'xl' : 'lg'"
           @submit="submitDrawer"
           @back="returnToPreviousUserProvisioningStep"
           @close="handleDrawerClosed"
@@ -4003,20 +3768,14 @@ function rowAction(
                     :alt="`${profileForm.name} logo preview`"
                     class="size-full object-contain"
                   />
-                  <UIcon
-                    v-else
-                    name="i-lucide-image-plus"
-                    class="size-10 text-dimmed"
-                  />
+                  <UIcon v-else name="i-lucide-image-plus" class="size-10 text-dimmed" />
                 </div>
                 <div class="min-w-0 space-y-3">
                   <div>
-                    <p class="text-sm font-semibold text-highlighted">
-                      Institution logo
-                    </p>
+                    <p class="text-sm font-semibold text-highlighted">Institution logo</p>
                     <p class="mt-1 text-sm text-muted">
-                      Use a transparent PNG or a JPEG under 2 MB. A square or
-                      horizontal mark with clear padding works best.
+                      Use a transparent PNG or a JPEG under 2 MB. A square or horizontal mark with
+                      clear padding works best.
                     </p>
                   </div>
                   <EmhareFormField
@@ -4032,10 +3791,7 @@ function rowAction(
                     class="flex flex-wrap items-center gap-2 text-xs text-muted"
                   >
                     <span class="truncate">
-                      {{
-                        profileLogoFile?.name ||
-                        storedProfileLogo?.originalFileName
-                      }}
+                      {{ profileLogoFile?.name || storedProfileLogo?.originalFileName }}
                     </span>
                     <span v-if="profileLogoLoading">Loading preview…</span>
                     <UButton
@@ -4061,20 +3817,14 @@ function rowAction(
                     :alt="`${profileForm.registrarName} signature preview`"
                     class="size-full object-contain"
                   />
-                  <UIcon
-                    v-else
-                    name="i-lucide-signature"
-                    class="size-10 text-dimmed"
-                  />
+                  <UIcon v-else name="i-lucide-signature" class="size-10 text-dimmed" />
                 </div>
                 <div class="min-w-0 space-y-3">
                   <div>
-                    <p class="text-sm font-semibold text-highlighted">
-                      Registrar signature
-                    </p>
+                    <p class="text-sm font-semibold text-highlighted">Registrar signature</p>
                     <p class="mt-1 text-sm text-muted">
-                      Upload the transparent PNG or JPEG signature printed above
-                      the configured Registrar name on new offer letters.
+                      Upload the transparent PNG or JPEG signature printed above the configured
+                      Registrar name on new offer letters.
                     </p>
                   </div>
                   <EmhareFormField
@@ -4095,9 +3845,7 @@ function rowAction(
                         storedProfileRegistrarSignature?.originalFileName
                       }}
                     </span>
-                    <span v-if="profileRegistrarSignatureLoading">
-                      Loading preview…
-                    </span>
+                    <span v-if="profileRegistrarSignatureLoading"> Loading preview… </span>
                     <UButton
                       label="Remove"
                       icon="i-lucide-trash-2"
@@ -4235,16 +3983,9 @@ function rowAction(
                       :items="academicUnitOptions"
                       required
                     />
-                    <div
-                      v-else
-                      class="rounded-lg border border-dashed border-muted px-4 py-3"
-                    >
-                      <p class="text-xs font-semibold uppercase tracking-wide text-muted">
-                        Scope
-                      </p>
-                      <p class="mt-1 text-sm text-highlighted">
-                        Institution-wide
-                      </p>
+                    <div v-else class="rounded-lg border border-dashed border-muted px-4 py-3">
+                      <p class="text-xs font-semibold uppercase tracking-wide text-muted">Scope</p>
+                      <p class="mt-1 text-sm text-highlighted">Institution-wide</p>
                     </div>
                   </div>
 
@@ -4295,9 +4036,7 @@ function rowAction(
                 />
 
                 <div class="rounded-xl border border-muted bg-elevated/40 p-5">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-muted">
-                    Identity
-                  </p>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-muted">Identity</p>
                   <p class="mt-2 text-base font-semibold text-highlighted">
                     {{ userForm.displayName }}
                   </p>
@@ -4411,7 +4150,9 @@ function rowAction(
                         Role assignment {{ assignmentIndex + 1 }}
                       </p>
                       <p class="mt-1 text-xs text-muted">
-                        {{ assignment.assignmentId ? "Existing active assignment" : "New assignment" }}
+                        {{
+                          assignment.assignmentId ? "Existing active assignment" : "New assignment"
+                        }}
                       </p>
                     </div>
                     <UButton
@@ -4446,16 +4187,9 @@ function rowAction(
                       :items="academicUnitOptions"
                       required
                     />
-                    <div
-                      v-else
-                      class="rounded-lg border border-dashed border-muted px-4 py-3"
-                    >
-                      <p class="text-xs font-semibold uppercase tracking-wide text-muted">
-                        Scope
-                      </p>
-                      <p class="mt-1 text-sm text-highlighted">
-                        Institution-wide
-                      </p>
+                    <div v-else class="rounded-lg border border-dashed border-muted px-4 py-3">
+                      <p class="text-xs font-semibold uppercase tracking-wide text-muted">Scope</p>
+                      <p class="mt-1 text-sm text-highlighted">Institution-wide</p>
                     </div>
                   </div>
                 </div>
@@ -4480,12 +4214,7 @@ function rowAction(
               required
               :readonly="Boolean(roleForm.id)"
             />
-            <EmhareFormField
-              v-model="roleForm.name"
-              name="roleName"
-              label="Name"
-              required
-            />
+            <EmhareFormField v-model="roleForm.name" name="roleName" label="Name" required />
             <EmhareFormField
               v-model="roleForm.scope"
               type="select"
@@ -4589,28 +4318,10 @@ function rowAction(
             />
           </div>
 
-          <div
-            v-else-if="drawerKind === 'country'"
-            class="grid gap-4 sm:grid-cols-2"
-          >
-            <EmhareFormField
-              v-model="countryForm.iso2Code"
-              name="iso2Code"
-              label="ISO2"
-              required
-            />
-            <EmhareFormField
-              v-model="countryForm.iso3Code"
-              name="iso3Code"
-              label="ISO3"
-              required
-            />
-            <EmhareFormField
-              v-model="countryForm.name"
-              name="countryName"
-              label="Name"
-              required
-            />
+          <div v-else-if="drawerKind === 'country'" class="grid gap-4 sm:grid-cols-2">
+            <EmhareFormField v-model="countryForm.iso2Code" name="iso2Code" label="ISO2" required />
+            <EmhareFormField v-model="countryForm.iso3Code" name="iso3Code" label="ISO3" required />
+            <EmhareFormField v-model="countryForm.name" name="countryName" label="Name" required />
             <EmhareFormField
               v-model="countryForm.nationalityName"
               name="nationalityName"
@@ -4675,18 +4386,13 @@ function rowAction(
             />
           </div>
 
-          <div
-            v-else-if="drawerKind === 'qualification-subject'"
-            class="space-y-4"
-          >
+          <div v-else-if="drawerKind === 'qualification-subject'" class="space-y-4">
             <UAlert
               color="primary"
               variant="soft"
               icon="i-lucide-book-open-check"
               :title="
-                qualificationSubjectForm.level === 'A_LEVEL'
-                  ? 'A Level subject'
-                  : 'O Level subject'
+                qualificationSubjectForm.level === 'A_LEVEL' ? 'A Level subject' : 'O Level subject'
               "
               description="Changes apply to new applicant qualification capture. Existing result snapshots remain unchanged."
             />
@@ -4712,13 +4418,29 @@ function rowAction(
               label="Subject name"
               required
             />
-            <EmhareFormField
-              v-model="qualificationSubjectForm.scienceSubject"
-              type="toggle"
-              name="qualificationScienceSubject"
-              label="Science subject"
-              description="Science subjects can satisfy mathematics-or-science admission requirements."
-            />
+            <div class="grid gap-3 sm:grid-cols-3">
+              <EmhareFormField
+                v-model="qualificationSubjectForm.scienceSubject"
+                type="toggle"
+                name="qualificationScienceSubject"
+                label="Science"
+                description="Can independently satisfy a Science pass requirement."
+              />
+              <EmhareFormField
+                v-model="qualificationSubjectForm.mathematicsSubject"
+                type="toggle"
+                name="qualificationMathematicsSubject"
+                label="Mathematics"
+                description="Can independently satisfy a Mathematics pass requirement."
+              />
+              <EmhareFormField
+                v-model="qualificationSubjectForm.englishSubject"
+                type="toggle"
+                name="qualificationEnglishSubject"
+                label="English"
+                description="Can independently satisfy an English pass requirement."
+              />
+            </div>
             <EmhareFormField
               v-model="qualificationSubjectForm.active"
               type="toggle"
@@ -4728,18 +4450,13 @@ function rowAction(
             />
           </div>
 
-          <div
-            v-else-if="drawerKind === 'qualification-grade'"
-            class="space-y-4"
-          >
+          <div v-else-if="drawerKind === 'qualification-grade'" class="space-y-4">
             <UAlert
               color="primary"
               variant="soft"
               icon="i-lucide-graduation-cap"
               :title="
-                qualificationGradeForm.level === 'A_LEVEL'
-                  ? 'A Level grade'
-                  : 'O Level grade'
+                qualificationGradeForm.level === 'A_LEVEL' ? 'A Level grade' : 'O Level grade'
               "
               description="Grade outcomes feed qualification validation. A Level points also feed applicant points calculation."
             />
@@ -4769,18 +4486,11 @@ function rowAction(
               v-model="qualificationGradeForm.pass"
               type="toggle"
               name="qualificationGradePass"
-              :label="
-                qualificationGradeForm.level === 'A_LEVEL'
-                  ? 'Principal pass'
-                  : 'Pass'
-              "
+              :label="qualificationGradeForm.level === 'A_LEVEL' ? 'Principal pass' : 'Pass'"
             />
           </div>
 
-          <div
-            v-else-if="drawerKind === 'workflow-task' && selectedWorkflowTask"
-            class="space-y-4"
-          >
+          <div v-else-if="drawerKind === 'workflow-task' && selectedWorkflowTask" class="space-y-4">
             <UAlert
               :color="
                 selectedWorkflowTask.status === 'COMPLETED'
@@ -4817,8 +4527,7 @@ function rowAction(
                     selectedWorkflowTask.scopeType === 'INSTITUTION'
                       ? 'Institution-wide'
                       : (academicSetup.overview.value?.academicUnits.find(
-                          (unit) =>
-                            unit.id === selectedWorkflowTask?.academicUnitId,
+                          (unit) => unit.id === selectedWorkflowTask?.academicUnitId,
                         )?.name ?? 'Academic unit'),
                 },
                 {
@@ -4830,8 +4539,7 @@ function rowAction(
                 { label: 'Status', value: selectedWorkflowTask.status },
                 {
                   label: 'Claimed by',
-                  value:
-                    selectedWorkflowTask.claimedByUserName ?? 'Not claimed',
+                  value: selectedWorkflowTask.claimedByUserName ?? 'Not claimed',
                 },
               ]"
             />
@@ -4858,27 +4566,29 @@ function rowAction(
                 required
               />
             </template>
-            <EmharePaginatedCollection v-if="selectedWorkflowTask.decisions.length" :items="selectedWorkflowTask.decisions" :initial-page-size="5" v-slot="{ items: paginatedWorkflowDecisions }">
-            <div class="space-y-2">
-              <h3 class="text-sm font-semibold">Decision history</h3>
-              <div
-                v-for="decision in paginatedWorkflowDecisions"
-                :key="decision.id"
-                class="rounded-md border border-muted p-3"
-              >
-                <div class="flex items-center justify-between gap-2">
-                  <EmhareStatusPill
-                    :label="decision.decisionCode"
-                    tone="success"
-                  />
-                  <span class="text-xs text-muted">{{
-                    new Date(decision.decidedAt).toLocaleString()
-                  }}</span>
+            <EmharePaginatedCollection
+              v-if="selectedWorkflowTask.decisions.length"
+              :items="selectedWorkflowTask.decisions"
+              :initial-page-size="5"
+              v-slot="{ items: paginatedWorkflowDecisions }"
+            >
+              <div class="space-y-2">
+                <h3 class="text-sm font-semibold">Decision history</h3>
+                <div
+                  v-for="decision in paginatedWorkflowDecisions"
+                  :key="decision.id"
+                  class="rounded-md border border-muted p-3"
+                >
+                  <div class="flex items-center justify-between gap-2">
+                    <EmhareStatusPill :label="decision.decisionCode" tone="success" />
+                    <span class="text-xs text-muted">{{
+                      new Date(decision.decidedAt).toLocaleString()
+                    }}</span>
+                  </div>
+                  <p class="mt-2 text-sm">{{ decision.comment }}</p>
+                  <p class="mt-1 text-xs text-muted">{{ decision.actorName }}</p>
                 </div>
-                <p class="mt-2 text-sm">{{ decision.comment }}</p>
-                <p class="mt-1 text-xs text-muted">{{ decision.actorName }}</p>
               </div>
-            </div>
             </EmharePaginatedCollection>
           </div>
         </EmhareRecordDrawer>

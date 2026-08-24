@@ -22,6 +22,20 @@ spring:
 emhare:
   documents:
     generation-interval-ms: ${DOCUMENT_GENERATION_INTERVAL_MS:1000}
+    ocr:
+      enabled: ${DOCUMENT_OCR_ENABLED:true}
+      base-url: ${DOCLING_SERVE_URL:http://localhost:5001}
+      engine-name: DOCLING_RAPIDOCR
+      engine-version: docling-serve-v1.29.0
+      maximum-attempts: 3
+      retry-delay: 10s
+      document-timeout: 2m
+      processing-interval-ms: ${DOCUMENT_OCR_PROCESSING_INTERVAL_MS:1500}
+    malware-scan:
+      host: ${DOCUMENT_MALWARE_SCAN_HOST:localhost}
+      port: ${DOCUMENT_MALWARE_SCAN_PORT:3310}
+      connect-timeout-millis: ${DOCUMENT_MALWARE_SCAN_CONNECT_TIMEOUT_MILLIS:3000}
+      read-timeout-millis: ${DOCUMENT_MALWARE_SCAN_READ_TIMEOUT_MILLIS:15000}
     storage:
       endpoint: ${DOCUMENT_STORAGE_ENDPOINT:http://localhost:9000}
       region: ${DOCUMENT_STORAGE_REGION:us-east-1}

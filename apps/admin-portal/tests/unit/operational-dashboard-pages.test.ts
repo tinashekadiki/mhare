@@ -171,21 +171,28 @@ describe("Main Operations dashboard page", () => {
     vi.stubGlobal("useEmhareApi", () => ({ errorMessage: vi.fn() }));
     dashboardLoaderMocks.loadOperationsOverview.mockImplementation(
       async (_api: unknown, keys: string[]) => {
-        const key = keys[0]
-        return [{
-          ...financeSnapshot,
-          key,
-          label: key === "finance" ? "Finance" : `Live ${key}`,
-          dashboardPath:
-            key === "admissions"
-              ? "/operations/admissions-dashboard"
-              : `/operations/dashboard/${key}`,
-          available: key !== "notifications",
-          errorMessage: key === "notifications" ? "Notifications cannot be read." : undefined,
-          summaryMetrics: key === "academic-setup"
-            ? [{ label: "Faculty", value: 3 }, { label: "Department", value: 5 }]
-            : undefined,
-        }]
+        const key = keys[0];
+        return [
+          {
+            ...financeSnapshot,
+            key,
+            label: key === "finance" ? "Finance" : `Live ${key}`,
+            dashboardPath:
+              key === "admissions"
+                ? "/operations/admissions-dashboard"
+                : `/operations/dashboard/${key}`,
+            available: key !== "notifications",
+            errorMessage: key === "notifications" ? "Notifications cannot be read." : undefined,
+            summaryMetrics:
+              key === "academic-setup"
+                ? [
+                    { label: "Faculty", value: 3 },
+                    { label: "Department", value: 5 },
+                  ]
+                : undefined,
+            trend: key === "student-records" ? [{ label: "Aug", value: 23 }] : undefined,
+          },
+        ];
       },
     );
   });
@@ -207,13 +214,26 @@ describe("Main Operations dashboard page", () => {
     expect(wrapper.findAll("h1")).toHaveLength(1);
     expect(wrapper.get("h1").text()).toBe("Operations");
     expect(wrapper.findAll('[data-testid^="operations-module-"]')).toHaveLength(11);
+    expect(wrapper.findAll('[data-testid="operations-analytics-widget"]')).toHaveLength(12);
+    expect(wrapper.get('[data-testid="operations-executive-overview"]').text()).toContain(
+      "Institution pulse",
+    );
+    expect(wrapper.get('[data-testid="document-verification-donut"]')).toBeDefined();
+    expect(wrapper.get('[data-testid="registration-trend-chart"]')).toBeDefined();
+    expect(
+      wrapper.get('[data-testid="registration-trend-chart"] polyline').attributes("points"),
+    ).toBe("10,20.0 230,20.0");
+    expect(wrapper.get('[data-testid="academic-capacity-bars"]')).toBeDefined();
+    expect(wrapper.get('[data-testid="admissions-conversion-funnel"]')).toBeDefined();
     const academicUnitMetrics = wrapper
       .get('[data-testid="operations-module-academic-setup"]')
       .findAll('[data-testid="operations-summary-metric"]');
-    expect(academicUnitMetrics.map((metric) => ({
-      label: metric.get('[data-testid="operations-summary-label"]').text(),
-      value: metric.get('[data-testid="operations-summary-value"]').text(),
-    }))).toEqual([
+    expect(
+      academicUnitMetrics.map((metric) => ({
+        label: metric.get('[data-testid="operations-summary-label"]').text(),
+        value: metric.get('[data-testid="operations-summary-value"]').text(),
+      })),
+    ).toEqual([
       { label: "Faculty", value: "3" },
       { label: "Department", value: "5" },
     ]);

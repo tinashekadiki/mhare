@@ -395,10 +395,10 @@ ${refereeMinimumRecords > 0 ? `(gen_random_uuid(), '${fixture.applicationTypeId}
 (gen_random_uuid(), '${fixture.applicationTypeId}', 'PROGRAMME_CHOICES', 'Programme choices', true, true, 1, 60, true, now(), now(), 0),
 (gen_random_uuid(), '${fixture.applicationTypeId}', 'DOCUMENTS', 'Supporting documents', true, true, 0, 70, true, now(), now(), 0),
 (gen_random_uuid(), '${fixture.applicationTypeId}', 'REVIEW_DECLARATION', 'Review and declaration', true, false, 0, 90, true, now(), now(), 0);
-INSERT INTO application_type_document_requirements (id, application_type_id, requirement_code, requirement_name, is_required, sort_order, is_active, created_at, updated_at, version)
+INSERT INTO application_type_document_requirements (id, application_type_id, requirement_code, requirement_name, is_required, capture_section_code, sort_order, is_active, created_at, updated_at, version)
 VALUES
-(gen_random_uuid(), '${fixture.applicationTypeId}', 'IDENTITY_DOCUMENT', 'Identity document', true, 10, true, now(), now(), 0),
-(gen_random_uuid(), '${fixture.applicationTypeId}', 'ACADEMIC_QUALIFICATION_EVIDENCE', 'Academic qualification evidence', true, 20, true, now(), now(), 0);
+(gen_random_uuid(), '${fixture.applicationTypeId}', 'NATIONAL_ID', 'National ID', true, 'PERSONAL_DETAILS', 10, true, now(), now(), 0),
+(gen_random_uuid(), '${fixture.applicationTypeId}', 'BIRTH_CERTIFICATE', 'Birth Certificate', true, 'PERSONAL_DETAILS', 20, true, now(), now(), 0);
 INSERT INTO exam_bodies (id, code, name, country_id, is_active, created_at, updated_at, version)
 VALUES ('${fixture.examBodyId}', 'ZIMSEC_${codeSuffix}', 'Zimbabwe School Examinations Council ${codeSuffix}', '${fixture.countryId}', true, now(), now(), 0);
 INSERT INTO admission_subjects (id, code, name, level, subject_group_code, is_active, created_at, updated_at, version)
@@ -538,7 +538,7 @@ async function login(page: Page, fixture: ApplicantLoginFixture) {
 }
 
 async function selectOption(page: Page, label: string | RegExp, option: string | RegExp) {
-  const field = page.getByLabel(label);
+  const field = page.getByLabel(label).first();
   await expect(field).toBeEnabled({ timeout: 30_000 });
   let lastError: unknown;
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -549,7 +549,11 @@ async function selectOption(page: Page, label: string | RegExp, option: string |
       .first();
     try {
       await optionLocator.waitFor({ state: "visible", timeout: 10_000 });
-      await optionLocator.click({ force: true });
+      const optionText = (await optionLocator.textContent())?.trim();
+      if (!optionText) throw new Error(`Option text was empty for ${String(option)}.`);
+      await page.keyboard.type(optionText);
+      await page.keyboard.press("Enter");
+      await expect(field).toContainText(option, { timeout: 5_000 });
       await page.keyboard.press("Escape");
       await expect(page.getByRole("listbox"))
         .toBeHidden({ timeout: 5_000 })
@@ -580,7 +584,7 @@ async function selectOptionUntilFieldContains(
   option: string | RegExp,
   expectedText: string,
 ) {
-  const field = page.getByLabel(label);
+  const field = page.getByLabel(label).first();
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await selectOption(page, label, option);
     if (((await field.textContent()) ?? "").includes(expectedText)) return;
@@ -621,16 +625,15 @@ async function dismissSuccessDialog(page: Page) {
   });
 }
 
-async function uploadEvidence(page: Page, requirementName: string, filePath: string) {
-  const activeSection = page.locator("#application-section-editor");
-  const requirementRow = activeSection
-    .locator(".space-y-3 > div")
-    .filter({ hasText: requirementName })
-    .first();
-  await requirementRow
-    .getByRole("button", { name: /Upload|Replace/ })
-    .evaluate((element: HTMLElement) => element.click());
-  await page.locator('input[type="file"]').last().setInputFiles(filePath);
+async function uploadAutomaticEvidence(page: Page, requirementName: string, filePath: string) {
+  const evidenceCard = page
+    .getByRole("heading", { name: new RegExp(`^${requirementName}(?: \\*)?$`) })
+    .locator("xpath=ancestor::section[1]");
+  const fileChooserPromise = page.waitForEvent("filechooser");
+  await evidenceCard
+    .getByRole("button", { name: /Drop (?:the document here|a replacement) or click to choose/ })
+    .click();
+  const fileChooser = await fileChooserPromise;
   await Promise.all([
     page.waitForResponse(
       (response) =>
@@ -638,17 +641,90 @@ async function uploadEvidence(page: Page, requirementName: string, filePath: str
         response.request().method() === "POST" &&
         response.ok(),
     ),
+    fileChooser.setFiles(filePath),
+  ]);
+  await expect(evidenceCard.getByText(/Ready to review|Uploaded/).first()).toBeVisible({
+    timeout: 20_000,
+  });
+}
+
+async function uploadRequiredPersonalEvidence(
+  page: Page,
+  testInfo: { outputPath: (...pathSegments: string[]) => string },
+  codeSuffix: string,
+) {
+  const evidencePath = testInfo.outputPath(`identity-evidence-${codeSuffix}.pdf`);
+  mkdirSync(dirname(evidencePath), { recursive: true });
+  writeFileSync(evidencePath, `%PDF-1.4\n% redacted identity evidence ${codeSuffix}\n%%EOF\n`);
+  await uploadAutomaticEvidence(page, "National ID", evidencePath);
+  await uploadAutomaticEvidence(page, "Birth Certificate", evidencePath);
+  await expect(page.getByText("Upload the required identity evidence to continue")).toHaveCount(0);
+  await expect(page.getByLabel("Title")).toBeEnabled();
+}
+
+async function completeSchoolQualification(
+  page: Page,
+  testInfo: { outputPath: (...pathSegments: string[]) => string },
+  fixture: ApplicantFixture,
+  institutionName: string,
+  centreNumber: string,
+  candidateNumber: string,
+) {
+  const evidencePath = testInfo.outputPath(`qualification-evidence-${fixture.codeSuffix}.pdf`);
+  mkdirSync(dirname(evidencePath), { recursive: true });
+  writeFileSync(
+    evidencePath,
+    `%PDF-1.4\n% redacted qualification evidence ${fixture.codeSuffix}\n%%EOF\n`,
+  );
+  await uploadAutomaticEvidence(page, "Qualification evidence", evidencePath);
+  await selectOption(page, "Exam body", new RegExp(`ZIMSEC_${fixture.codeSuffix}`));
+  await page.getByLabel("School or institution").fill(institutionName);
+  await page.getByLabel("Year written").fill("2024");
+  await page.getByLabel("Centre number").fill(centreNumber);
+  await page.getByLabel("Candidate number").fill(candidateNumber);
+  await selectOption(page, "Country", /ZW .*Zimbabwe/);
+
+  while ((await page.getByRole("button", { name: /Remove subject/ }).count()) > 2) {
+    await page
+      .getByRole("button", { name: /Remove subject/ })
+      .last()
+      .click();
+  }
+  await page
+    .getByLabel("Managed subject")
+    .first()
+    .evaluate((element: HTMLElement) => element.click());
+  await page
+    .getByRole("option", { name: new RegExp(`ENG_${fixture.codeSuffix}`) })
+    .click({ force: true });
+  await page
+    .getByLabel("Grade")
+    .first()
+    .evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "A", exact: true }).last().click({ force: true });
+  await page
+    .getByLabel("Managed subject")
+    .nth(1)
+    .evaluate((element: HTMLElement) => element.click());
+  await page
+    .getByRole("option", { name: new RegExp(`MATH_${fixture.codeSuffix}`) })
+    .click({ force: true });
+  await page
+    .getByLabel("Grade")
+    .nth(1)
+    .evaluate((element: HTMLElement) => element.click());
+  await page.getByRole("option", { name: "B", exact: true }).last().click({ force: true });
+  await Promise.all([
     page.waitForResponse(
       (response) =>
-        response.url().includes("/api/admissions/applications/") &&
-        response.url().endsWith("/documents") &&
+        response.url().endsWith("/qualification-aggregates") &&
         response.request().method() === "POST" &&
         response.ok(),
     ),
-    clickVisibleButtonContaining(page, "Upload evidence"),
+    clickVisibleButtonContaining(page, "Save record"),
   ]);
-  await dismissSuccessDialog(page);
-  await expect(activeSection.getByText(requirementName)).toBeVisible();
+  await expect(page.getByText(`English Language ${fixture.codeSuffix}`)).toBeVisible();
+  await expect(page.getByText(`Mathematics ${fixture.codeSuffix}`)).toBeVisible();
 }
 
 async function waitForReferenceInvitation(email: string) {
@@ -711,6 +787,286 @@ async function submitConfidentialReference(page: Page, responseUrl: string, rela
 }
 
 test.describe("Applicant programme choices", () => {
+  for (const evidenceScenario of [
+    {
+      categoryCode: "LOCAL",
+      label: "Local",
+      requirements: [
+        ["NATIONAL_ID", "National ID"],
+        ["BIRTH_CERTIFICATE", "Birth Certificate"],
+      ],
+    },
+    {
+      categoryCode: "INTERNATIONAL",
+      label: "International",
+      requirements: [["PASSPORT", "Passport"]],
+    },
+  ] as const) {
+    test(`${evidenceScenario.label} personal details unlock only after applicable evidence auto-uploads`, async ({
+      page,
+    }, testInfo) => {
+      test.setTimeout(90_000);
+      let fixture: ApplicantLoginFixture | null = null;
+      try {
+        fixture = await createApplicantLoginFixture();
+        await page.goto(applicantPortalUrl);
+        await login(page, fixture);
+
+        const applicationId = randomUUID();
+        const uploadedRequirementCodes = new Set<string>();
+        const requirementDocumentIds = new Map<string, string>();
+        const workspace = () => ({
+          application: {
+            id: applicationId,
+            applicationNumber: `EMH-EVIDENCE-${evidenceScenario.categoryCode}`,
+            applicantNumber: "A-EVIDENCE-001",
+            applicantName: "Route Applicant",
+            intakeId: randomUUID(),
+            intakeCode: "AUG-2027",
+            applicationTypeId: randomUUID(),
+            applicationTypeName: "Undergraduate and Diploma",
+            status: "DRAFT",
+            paymentRequired: false,
+            paymentClearanceStatus: "NOT_REQUIRED",
+            paymentWaiverReason: null,
+            canSubmit: false,
+            canEnterReview: false,
+            calculatedTotalPoints: null,
+            pointsCalculatedAt: null,
+            programmeChoices: [],
+            payment: null,
+          },
+          profile: {
+            id: randomUUID(),
+            userId: fixture!.userId,
+            applicantNumber: "A-EVIDENCE-001",
+            applicantCategoryCode: evidenceScenario.categoryCode,
+            titleCode: null,
+            firstName: "Route",
+            middleNames: null,
+            lastName: "Applicant",
+            dateOfBirth: null,
+            genderCode: null,
+            maritalStatusCode: null,
+            nationalIdNumber: null,
+            passportNumber: null,
+            countryId: null,
+            nationalityCountryId: null,
+            placeOfBirth: null,
+            disabilityStatusCode: null,
+            specialNeeds: null,
+            sponsorTypeCode: null,
+            primaryEmail: fixture!.username,
+            primaryPhone: null,
+            postalAddress: null,
+            residentialAddress: null,
+            completenessPercentage: 20,
+            missingRequiredFields: ["dateOfBirth"],
+            createdAt: "2026-08-23T10:00:00Z",
+            updatedAt: "2026-08-23T10:00:00Z",
+            version: 0,
+          },
+          sections: [
+            {
+              id: randomUUID(),
+              code: "PERSONAL_DETAILS",
+              name: "Personal Details",
+              required: true,
+              repeatable: false,
+              minimumRecords: 0,
+              sortOrder: 10,
+              status: "IN_PROGRESS",
+              completedAt: null,
+              completionSummary: "Upload identity evidence and complete personal details.",
+              version: 0,
+            },
+            {
+              id: randomUUID(),
+              code: "QUALIFICATIONS",
+              name: "Qualifications",
+              required: true,
+              repeatable: true,
+              minimumRecords: 1,
+              sortOrder: 20,
+              status: "NOT_STARTED",
+              completedAt: null,
+              completionSummary: null,
+              version: 0,
+            },
+            {
+              id: randomUUID(),
+              code: "DOCUMENTS",
+              name: "Supporting Documents",
+              required: false,
+              repeatable: true,
+              minimumRecords: 0,
+              sortOrder: 30,
+              status: "NOT_STARTED",
+              completedAt: null,
+              completionSummary: null,
+              version: 0,
+            },
+          ],
+          nextOfKin: [],
+          employmentHistory: [],
+          referees: [],
+          qualifications: [],
+          priorUzDeclaration: null,
+          professionalAchievementsDeclaredNone: false,
+          professionalAchievements: [],
+          programmeEntryPreferences: [],
+          documents: {
+            requirements: evidenceScenario.requirements.map(([code, name]) => ({
+              requirementCode: code,
+              requirementName: name,
+              required: true,
+              captureSectionCode: "PERSONAL_DETAILS",
+              applicantCategoryCodes: [evidenceScenario.categoryCode],
+              state: uploadedRequirementCodes.has(code) ? "PENDING" : "MISSING",
+              applicationDocumentId: null,
+              documentId: requirementDocumentIds.get(code) ?? null,
+              fileName: uploadedRequirementCodes.has(code) ? `${code.toLowerCase()}.pdf` : null,
+              mimeType: uploadedRequirementCodes.has(code) ? "application/pdf" : null,
+              checksumSha256: null,
+              linkedAt: null,
+              verifiedByUserId: null,
+              verifiedAt: null,
+              rejectionReason: null,
+              documentVersion: 0,
+              version: 0,
+            })),
+            requiredDocumentsUploaded:
+              uploadedRequirementCodes.size === evidenceScenario.requirements.length,
+            allRequiredDocumentsVerified: false,
+          },
+          readyForSubmission: false,
+          missingRequirements: [],
+          declarationAcceptedAt: null,
+          declarationVersion: null,
+          workflowProgress: { currentStageCode: "DRAFT", stages: [] },
+        });
+
+        await page.route(`**/api/admissions/applications/${applicationId}/workspace`, (route) =>
+          route.fulfill({ json: workspace() }),
+        );
+        await page.route("**/api/admissions/applications/start-options**", (route) =>
+          route.fulfill({
+            json: { applicantCategories: [], applicationTypes: [], intakes: [], routes: [] },
+          }),
+        );
+        await page.route("**/api/admissions/qualification-reference-data", (route) =>
+          route.fulfill({
+            json: { examBodies: [], oLevelSubjects: [], aLevelSubjects: [], otherSubjects: [] },
+          }),
+        );
+        await page.route("**/api/core/reference/countries", (route) => route.fulfill({ json: [] }));
+        await page.route("**/api/documents/uploads", async (route) => {
+          const requestBody = route.request().postData() ?? "";
+          const requirementCode = evidenceScenario.requirements.find(([code]) =>
+            requestBody.includes(code),
+          )?.[0];
+          if (!requirementCode) throw new Error("Uploaded requirement code was not found.");
+          const documentId = randomUUID();
+          requirementDocumentIds.set(requirementCode, documentId);
+          await route.fulfill({
+            json: {
+              id: documentId,
+              extractionStatus: "COMPLETED",
+              verificationStatus: "PENDING",
+            },
+          });
+        });
+        await page.route(
+          `**/api/admissions/applications/${applicationId}/documents`,
+          async (route) => {
+            const body = route.request().postDataJSON() as { requirementCode: string };
+            uploadedRequirementCodes.add(body.requirementCode);
+            await route.fulfill({ json: {} });
+          },
+        );
+        await page.route("**/api/documents/uploads/*/ocr-extraction", (route) =>
+          route.fulfill({
+            json: {
+              documentId: route.request().url().split("/").at(-2),
+              status: "COMPLETED",
+              warningsJson: "[]",
+            },
+          }),
+        );
+        await page.route(
+          `**/api/admissions/applications/${applicationId}/documents/*/prefill**`,
+          (route) =>
+            route.fulfill({
+              json: {
+                personalFields: {
+                  dateOfBirth: "15/01/1999",
+                  genderCode: "F",
+                  ...(evidenceScenario.categoryCode === "INTERNATIONAL"
+                    ? { passportNumber: "ab123456" }
+                    : { nationalIdNumber: "12-345678-a-90" }),
+                },
+                qualificationResults: [],
+                warnings: [],
+                manualEntryAllowed: true,
+              },
+            }),
+        );
+
+        await page.goto(`${applicantPortalUrl}/applications/${applicationId}`);
+        await expect(
+          page.getByText("Upload the required identity evidence to continue", { exact: true }),
+        ).toBeVisible();
+        await expect(page.getByLabel("Date of birth")).not.toBeEditable();
+        await expect(
+          page
+            .getByRole("navigation", { name: "Application process" })
+            .getByRole("button", { name: /Supporting Documents/i }),
+        ).toHaveCount(0);
+
+        const evidencePath = testInfo.outputPath(
+          `${evidenceScenario.categoryCode.toLowerCase()}-identity.pdf`,
+        );
+        mkdirSync(dirname(evidencePath), { recursive: true });
+        writeFileSync(evidencePath, "%PDF-1.4\n% redacted identity fixture\n%%EOF\n");
+        for (const [, requirementName] of evidenceScenario.requirements) {
+          const evidenceCard = page
+            .getByRole("heading", { name: new RegExp(`^${requirementName}`) })
+            .locator("xpath=ancestor::section[1]");
+          const fileChooserPromise = page.waitForEvent("filechooser");
+          await evidenceCard
+            .getByRole("button", { name: /Drop the document here or click to choose/ })
+            .click();
+          const fileChooser = await fileChooserPromise;
+          await Promise.all([
+            page.waitForResponse(
+              (response) =>
+                response.url().includes("/api/documents/uploads") &&
+                response.request().method() === "POST",
+            ),
+            fileChooser.setFiles(evidencePath),
+          ]);
+          await expect(evidenceCard.getByText("Ready to review", { exact: true })).toBeVisible();
+        }
+
+        await expect(
+          page.getByText("Upload the required identity evidence to continue", { exact: true }),
+        ).toHaveCount(0);
+        await expect(page.getByLabel("Date of birth")).toBeEditable();
+        await expect(page.getByLabel("Date of birth")).toHaveValue("1999-01-15");
+        await expect(page.getByLabel("First name")).not.toBeEditable();
+        await expect(page.getByLabel("Last name")).not.toBeEditable();
+        await expect(page.getByLabel("Applicant category")).not.toBeEditable();
+        if (evidenceScenario.categoryCode === "INTERNATIONAL") {
+          await expect(page.getByLabel("Passport number")).toHaveValue("AB123456");
+        } else {
+          await expect(page.getByLabel("National ID number")).toHaveValue("12-345678-A-90");
+        }
+      } finally {
+        await cleanupApplicantLoginFixture(fixture);
+      }
+    });
+  }
+
   test("compares UNDERGRAD, POSTGRAD, MBA, and EDUCATION before creating a draft", async ({
     page,
   }, testInfo) => {
@@ -1764,6 +2120,7 @@ test.describe("Applicant programme choices", () => {
       await expect(page.getByLabel("First name")).toHaveValue("Browser");
       await expect(page.getByLabel("Last name")).not.toBeEditable();
       await expect(page.getByLabel("Last name")).toHaveValue("Applicant");
+      await uploadRequiredPersonalEvidence(page, testInfo, fixture.codeSuffix);
 
       const profileSave = page.waitForResponse(
         (response) =>
@@ -1774,8 +2131,8 @@ test.describe("Applicant programme choices", () => {
       );
       await selectOption(page, "Title", "Mr");
       await page.getByLabel("Date of birth").fill("1999-01-15");
-      await selectOption(page, "Gender", "MALE");
-      await selectOption(page, "Marital status", "SINGLE");
+      await selectOptionUntilFieldContains(page, "Gender", "MALE", "MALE");
+      await selectOptionUntilFieldContains(page, "Marital status", "SINGLE", "SINGLE");
       await page.getByLabel("National ID number").fill(`99-${fixture.codeSuffix}`);
       await selectOptionUntilFieldContains(
         page,
@@ -1810,48 +2167,19 @@ test.describe("Applicant programme choices", () => {
       ).toBeVisible();
       await expect(
         page.getByRole("heading", {
-          name: "Qualification sitting",
+          name: "Add qualification",
           exact: true,
         }),
       ).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(0);
-      await selectOption(page, "Exam body", new RegExp(`ZIMSEC_${fixture.codeSuffix}`));
-      await page.getByLabel("School or institution").fill("Browser Test High School");
-      await page.getByLabel("Year written").fill("2024");
-      await page.getByLabel("Centre number").fill("C1234");
-      await page.getByLabel("Candidate number").fill(`N${fixture.codeSuffix}`);
-      await selectOption(page, "Country", /ZW .*Zimbabwe/);
-      await clickVisibleButtonContaining(page, "Save record");
-      await expect(
-        page.getByText(`Zimbabwe School Examinations Council ${fixture.codeSuffix}`),
-      ).toBeVisible();
-
-      await clickVisibleButtonContaining(page, "Add result");
-      await expect(
-        page.getByRole("heading", { name: "Add subject results", exact: true }),
-      ).toBeVisible();
-      await selectOption(page, "Managed subject", new RegExp(`ENG_${fixture.codeSuffix}`));
-      await selectOption(page, "Grade", "A");
-      await clickVisibleButtonContaining(page, "Add another subject");
-      const secondSubjectField = page.getByLabel("Managed subject").nth(1);
-      await secondSubjectField.evaluate((element: HTMLElement) => element.click());
-      await page
-        .getByRole("option", { name: new RegExp(`MATH_${fixture.codeSuffix}`) })
-        .click({ force: true });
-      const secondGradeField = page.getByLabel("Grade").nth(1);
-      await secondGradeField.evaluate((element: HTMLElement) => element.click());
-      await page.getByRole("option", { name: "B", exact: true }).last().click({ force: true });
-      await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.url().endsWith("/results/batch") &&
-            response.request().method() === "POST" &&
-            response.ok(),
-        ),
-        clickVisibleButtonContaining(page, "Save 2 subjects"),
-      ]);
-      await expect(page.getByText(`English Language ${fixture.codeSuffix}`)).toBeVisible();
-      await expect(page.getByText(`Mathematics ${fixture.codeSuffix}`)).toBeVisible();
+      await completeSchoolQualification(
+        page,
+        testInfo,
+        fixture,
+        "Browser Test High School",
+        "C1234",
+        `N${fixture.codeSuffix}`,
+      );
 
       await clickVisibleButtonContaining(page, "Continue: Programme choices");
       await expect(
@@ -1879,34 +2207,6 @@ test.describe("Applicant programme choices", () => {
             exact: true,
           })
           .last(),
-      ).toBeVisible();
-      await clickVisibleButtonContaining(page, "Continue: Supporting documents");
-      await expect(
-        page.getByRole("heading", {
-          name: "Supporting documents",
-          exact: true,
-        }),
-      ).toBeVisible();
-      const evidencePath = testInfo.outputPath(`application-evidence-${fixture.codeSuffix}.pdf`);
-      mkdirSync(dirname(evidencePath), { recursive: true });
-      writeFileSync(
-        evidencePath,
-        `%PDF-1.4\n% eMhare applicant evidence ${fixture.codeSuffix}\n%%EOF\n`,
-      );
-      await expect(
-        activeSection.locator("p.font-medium").filter({ hasText: "Identity document" }),
-      ).toBeVisible();
-      await expect(
-        activeSection
-          .locator("p.font-medium")
-          .filter({ hasText: "Academic qualification evidence" }),
-      ).toBeVisible();
-      await uploadEvidence(page, "Identity document", evidencePath);
-      await uploadEvidence(page, "Academic qualification evidence", evidencePath);
-      await expect(
-        activeSection.getByText("Required documents uploaded.", {
-          exact: true,
-        }),
       ).toBeVisible();
       await clickVisibleButtonContaining(page, "Continue: Review and declaration");
 
@@ -1976,7 +2276,7 @@ test.describe("Applicant programme choices", () => {
         }),
       ).toBeVisible();
       await expect(
-        activeSection.getByText(`application-evidence-${fixture.codeSuffix}.pdf`).first(),
+        activeSection.getByText(`identity-evidence-${fixture.codeSuffix}.pdf`).first(),
       ).toBeVisible();
       await expect(
         activeSection.getByRole("heading", {
@@ -1993,14 +2293,14 @@ test.describe("Applicant programme choices", () => {
           response.ok(),
       );
       await activeSection
-        .getByRole("button", { name: "Preview Identity document", exact: true })
+        .getByRole("button", { name: "Preview National ID", exact: true })
         .evaluate((element: HTMLElement) => element.click());
       await documentDownloadResponse;
-      await expect(activeSection.getByTitle("Identity document preview")).toBeVisible();
+      await expect(activeSection.getByTitle("National ID preview")).toBeVisible();
       await activeSection
         .getByRole("button", { name: "Close document preview", exact: true })
         .evaluate((element: HTMLElement) => element.click());
-      await expect(activeSection.getByTitle("Identity document preview")).toHaveCount(0);
+      await expect(activeSection.getByTitle("National ID preview")).toHaveCount(0);
 
       await clickVisibleButtonContaining(page, "Accept declaration");
       await clickVisibleButtonContaining(page, "Accept declaration");
@@ -2095,6 +2395,7 @@ test.describe("Applicant programme choices", () => {
         await expect(page.getByLabel("First name")).toHaveValue("Browser");
         await expect(page.getByLabel("Last name")).not.toBeEditable();
         await expect(page.getByLabel("Last name")).toHaveValue("Applicant");
+        await uploadRequiredPersonalEvidence(page, testInfo, fixture.codeSuffix);
 
         const profileSave = page.waitForResponse(
           (response) =>
@@ -2104,8 +2405,8 @@ test.describe("Applicant programme choices", () => {
         );
         await selectOption(page, "Title", "Mr");
         await page.getByLabel("Date of birth").fill("1994-04-12");
-        await selectOption(page, "Gender", "MALE");
-        await selectOption(page, "Marital status", "SINGLE");
+        await selectOptionUntilFieldContains(page, "Gender", "MALE", "MALE");
+        await selectOptionUntilFieldContains(page, "Marital status", "SINGLE", "SINGLE");
         await page.getByLabel("National ID number").fill(`94-${fixture.codeSuffix}`);
         await selectOptionUntilFieldContains(
           page,
@@ -2137,51 +2438,14 @@ test.describe("Applicant programme choices", () => {
         await expect(page.getByText("Tariro Applicant")).toBeVisible();
 
         await clickVisibleButtonContaining(page, "Continue: Qualifications");
-        await selectOption(page, "Exam body", new RegExp(`ZIMSEC_${fixture.codeSuffix}`));
-        await page.getByLabel("School or institution").fill("University of Zimbabwe");
-        await page.getByLabel("Year written").fill("2024");
-        await page.getByLabel("Centre number").fill(`UZ-${routeScenario.route}`);
-        await page
-          .getByLabel("Candidate number")
-          .fill(`${routeScenario.route}${fixture.codeSuffix}`);
-        await selectOption(page, "Country", /ZW .*Zimbabwe/);
-        await Promise.all([
-          page.waitForResponse(
-            (response) =>
-              response.url().endsWith("/qualifications") &&
-              response.request().method() === "POST" &&
-              response.ok(),
-          ),
-          clickVisibleButtonContaining(page, "Save record"),
-        ]);
-        await clickVisibleButtonContaining(page, "Add result");
-        await selectOption(page, "Managed subject", new RegExp(`ENG_${fixture.codeSuffix}`));
-        await selectOption(page, "Grade", "A");
-        await clickVisibleButtonContaining(page, "Add another subject");
-        await page
-          .getByLabel("Managed subject")
-          .nth(1)
-          .evaluate((element: HTMLElement) => element.click());
-        await page
-          .getByRole("option", {
-            name: new RegExp(`MATH_${fixture.codeSuffix}`),
-          })
-          .click({ force: true });
-        await page
-          .getByLabel("Grade")
-          .nth(1)
-          .evaluate((element: HTMLElement) => element.click());
-        await page.getByRole("option", { name: "B", exact: true }).last().click({ force: true });
-        await Promise.all([
-          page.waitForResponse(
-            (response) =>
-              response.url().endsWith("/results/batch") &&
-              response.request().method() === "POST" &&
-              response.ok(),
-          ),
-          clickVisibleButtonContaining(page, "Save 2 subjects"),
-        ]);
-        await expect(page.getByText(`Mathematics ${fixture.codeSuffix}`)).toBeVisible();
+        await completeSchoolQualification(
+          page,
+          testInfo,
+          fixture,
+          "University of Zimbabwe",
+          `UZ-${routeScenario.route}`,
+          `${routeScenario.route}${fixture.codeSuffix}`,
+        );
 
         await clickVisibleButtonContaining(page, "Continue: Employment history");
         await expect(
@@ -2352,17 +2616,6 @@ test.describe("Applicant programme choices", () => {
             .last(),
         ).toBeVisible();
 
-        await clickVisibleButtonContaining(page, "Continue: Supporting documents");
-        const evidencePath = testInfo.outputPath(
-          `${routeScenario.route.toLowerCase()}-evidence-${fixture.codeSuffix}.pdf`,
-        );
-        mkdirSync(dirname(evidencePath), { recursive: true });
-        writeFileSync(
-          evidencePath,
-          `%PDF-1.4\n% ${routeScenario.route} application evidence ${fixture.codeSuffix}\n%%EOF\n`,
-        );
-        await uploadEvidence(page, "Identity document", evidencePath);
-        await uploadEvidence(page, "Academic qualification evidence", evidencePath);
         await clickVisibleButtonContaining(page, "Continue: Review and declaration");
         await expect(
           page.getByRole("heading", {
