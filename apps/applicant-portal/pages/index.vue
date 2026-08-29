@@ -910,8 +910,8 @@ function formatDate(value: string) {
                   color="warning"
                   variant="soft"
                   icon="i-lucide-clock-3"
-                  title="Payment confirmation required"
-                  description="Use the payment reference above. Finance confirmation will unlock submission automatically."
+                  title="Online payment confirmation pending"
+                  description="Successful online payments are confirmed automatically. Your application will enter review after confirmation."
                 />
                 <UAlert
                   v-else-if="application.paymentClearanceStatus === 'UNRATED'"

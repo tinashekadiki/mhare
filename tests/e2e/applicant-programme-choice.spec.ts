@@ -1914,6 +1914,90 @@ test.describe("Applicant programme choices", () => {
       await expect(page.getByRole("heading", { name: "Payment confirmed" })).toBeVisible();
       expect(reconciledAttemptId).toBe(checkoutAttemptId);
       await expect(page.getByText("Application fee confirmed", { exact: true })).toBeVisible();
+
+      await page.route("**/api/admissions/applications/mine", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify([
+            {
+              id: applicationId,
+              applicationNumber: "EMH-PAYMENT-UI-0001",
+              applicantNumber: "APP-PAYMENT-UI-0001",
+              applicantName: "Browser Applicant",
+              intakeId: fixture!.intakeId,
+              intakeCode: `BI_${fixture!.codeSuffix}`,
+              applicationTypeId: fixture!.applicationTypeId,
+              applicationTypeName: fixture!.applicationTypeName,
+              status: "SUBMITTED",
+              paymentRequired: true,
+              feePolicy: {
+                policyStatus: "FEE_STRUCTURE",
+                feeStructureId: randomUUID(),
+                feeStructureCode: "APPLICATION_FEE",
+                feeStructureName: "Application fee",
+                feeStructureVersion: 0,
+                programmeLevelId: fixture!.programmeLevelId,
+                programmeLevelCode: `BUG_${fixture!.codeSuffix}`,
+                applicantCategoryCode: "LOCAL",
+                amount: 25,
+                currencyCode: "USD",
+                effectiveAt: "2026-08-10T06:00:00Z",
+                feeFreeReason: null,
+                feePolicyDecidedByUserId: null,
+                feePolicyDecidedAt: null,
+              },
+              paymentClearanceStatus: "PENDING",
+              paymentWaiverReason: null,
+              canSubmit: false,
+              canEnterReview: false,
+              calculatedTotalPoints: null,
+              pointsCalculatedAt: null,
+              admissionsClearanceStatus: "NOT_CONFIRMED",
+              confirmedByUserId: null,
+              confirmedAt: null,
+              confirmationReason: null,
+              payment: {
+                financePaymentReferenceId,
+                reference: "EMH-PAY-0000000442",
+                amountDue: 25,
+                currencyCode: "USD",
+                baseCurrencyCode: "USD",
+                baseAmountDue: 25,
+                ratingStatus: "RATED",
+                status: "PENDING",
+                requiredForSubmission: false,
+                workflowCleared: false,
+                paidAt: null,
+              },
+              programmeChoices: [],
+            },
+          ]),
+        }),
+      );
+      await page.route(`**/api/admissions/applications/${applicationId}/documents/mine`, (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            applicationId,
+            applicationNumber: "EMH-PAYMENT-UI-0001",
+            requiredDocumentsUploaded: true,
+            requiredDocumentsVerified: true,
+            missingRequirementCodes: [],
+            pendingRequirementCodes: [],
+            rejectedRequirementCodes: [],
+            requirements: [],
+          }),
+        }),
+      );
+      await page.goto(applicantPortalUrl);
+      await expect(
+        page.getByText(
+          "Successful online payments are confirmed automatically. Your application will enter review after confirmation.",
+          { exact: true },
+        ),
+      ).toBeVisible();
     } finally {
       await cleanupFixture(fixture);
     }
@@ -2694,7 +2778,6 @@ test.describe("Applicant programme choices", () => {
         await expect(page.getByText(fixture.applicationTypeName, { exact: true })).toBeVisible();
         await expect(page.getByText("Before submission", { exact: true })).toHaveCount(0);
         await expect(page.getByText("Documents & fee", { exact: true })).toHaveClass(/font-medium/);
-
         await page.screenshot({
           path: testInfo.outputPath(
             `${routeScenario.route.toLowerCase()}-application-complete.png`,

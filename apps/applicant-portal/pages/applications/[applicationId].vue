@@ -1316,6 +1316,32 @@ async function applyDocumentPrefill(documentId: string, qualificationLevel?: str
       { cache: "no-store" },
     );
     if (qualificationLevel) {
+      const fields = prefill.personalFields;
+      const examBodyCode =
+        typeof fields.examBodyCode === "string" ? fields.examBodyCode.trim().toUpperCase() : "";
+      if (examBodyCode && !qualificationForm.examBodyId) {
+        qualificationForm.examBodyId =
+          qualificationReferences.value?.examBodies.find(
+            (examBody) => examBody.code.toUpperCase() === examBodyCode,
+          )?.id ?? "";
+      }
+      if (typeof fields.schoolOrInstitution === "string" && !qualificationForm.institutionName) {
+        qualificationForm.institutionName = fields.schoolOrInstitution.trim();
+      }
+      const extractedYear = Number(fields.yearWritten);
+      if (Number.isInteger(extractedYear) && extractedYear >= 1900 && extractedYear <= 2100) {
+        qualificationForm.yearWritten = extractedYear;
+      }
+      if (typeof fields.centreNumber === "string" && !qualificationForm.centreNumber) {
+        qualificationForm.centreNumber = fields.centreNumber.trim();
+      }
+      if (typeof fields.candidateNumber === "string" && !qualificationForm.candidateNumber) {
+        qualificationForm.candidateNumber = fields.candidateNumber.trim();
+      }
+      if (!qualificationForm.countryId && fields.countryCode === "ZWE") {
+        qualificationForm.countryId =
+          countries.value.find((country) => country.name.toUpperCase() === "ZIMBABWE")?.id ?? "";
+      }
       if (prefill.qualificationResults.length) {
         resultForms.value = prefill.qualificationResults.slice(0, 20).map((proposal) => ({
           clientId: nextResultDraftId++,

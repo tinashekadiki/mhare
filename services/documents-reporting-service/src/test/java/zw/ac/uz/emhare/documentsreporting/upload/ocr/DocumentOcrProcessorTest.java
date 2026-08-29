@@ -9,6 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ai.docling.core.DoclingDocument;
 import ai.docling.serve.api.DoclingServeApi;
 import ai.docling.serve.api.convert.request.ConvertDocumentRequest;
 import ai.docling.serve.api.convert.response.DocumentResponse;
@@ -53,6 +54,7 @@ class DocumentOcrProcessorTest {
     when(document.getStorageKey()).thenReturn("applications/evidence.pdf");
     when(document.getOriginalFileName()).thenReturn("evidence.pdf");
     when(document.getMimeType()).thenReturn("application/pdf");
+    when(document.getDocumentTypeCode()).thenReturn("NATIONAL_ID");
     when(imagePreprocessor.prepare(any(byte[].class), eq("application/pdf"), eq("evidence.pdf")))
         .thenAnswer(
             invocation ->
@@ -90,6 +92,12 @@ class DocumentOcrProcessorTest {
             .filename("evidence.pdf")
             .textContent("National ID: 12-345678A90\nGender: Female")
             .markdownContent("National ID: 12-345678A90")
+            .jsonContent(
+                DoclingDocument.builder()
+                    .schemaName("DoclingDocument")
+                    .version("1.0.0")
+                    .name("evidence")
+                    .build())
             .build();
     when(doclingServeApi.convertSource(any(ConvertDocumentRequest.class)))
         .thenReturn(
@@ -132,6 +140,128 @@ class DocumentOcrProcessorTest {
     extraction.fail("third", "safe", 3, java.time.Duration.ZERO, now);
     assertThat(extraction.getStatus()).isEqualTo(DocumentOcrStatus.FAILED);
     assertThat(extraction.getAttemptCount()).isEqualTo(3);
+  }
+
+  @Test
+  void runsASecondLayoutAwarePassForRasterSchoolQualificationEvidence() {
+    queueExtraction();
+    when(document.getOriginalFileName()).thenReturn("certificate.png");
+    when(document.getMimeType()).thenReturn("image/png");
+    when(document.getDocumentTypeCode()).thenReturn("O_LEVEL");
+    byte[] content = "qualification image".getBytes(StandardCharsets.UTF_8);
+    when(s3Client.getObjectAsBytes(any(GetObjectRequest.class)))
+        .thenReturn(ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), content));
+    when(imagePreprocessor.prepare(content, "image/png", "certificate.png"))
+        .thenReturn(new OcrImagePreprocessor.PreparedOcrInput(content, "certificate.png", false));
+    when(imagePreprocessor.prepareQualificationRegion(content, "image/png", "certificate.png"))
+        .thenReturn(
+            Optional.of(
+                new OcrImagePreprocessor.PreparedOcrInput(
+                    content, "certificate.qualification-region.ocr.png", true)));
+    when(imagePreprocessor.prepareQualificationContrastRegion(
+            content, "image/png", "certificate.png"))
+        .thenReturn(
+            Optional.of(
+                new OcrImagePreprocessor.PreparedOcrInput(
+                    content, "certificate.qualification-contrast-region.ocr.png", true)));
+    InBodyConvertDocumentResponse primaryResponse =
+        InBodyConvertDocumentResponse.builder()
+            .document(
+                DocumentResponse.builder()
+                    .filename("certificate.png")
+                    .textContent("Zimbabwe School Examinations Council")
+                    .build())
+            .status("success")
+            .processingTime(0.4)
+            .build();
+    InBodyConvertDocumentResponse regionResponse =
+        InBodyConvertDocumentResponse.builder()
+            .document(
+                DocumentResponse.builder()
+                    .filename("certificate.qualification-region.ocr.png")
+                    .textContent("ENGLISH LANGUAGE C")
+                    .build())
+            .status("success")
+            .processingTime(0.2)
+            .build();
+    when(doclingServeApi.convertSource(any(ConvertDocumentRequest.class)))
+        .thenReturn(primaryResponse, regionResponse, regionResponse);
+
+    assertThat(processor(true).processNext()).isTrue();
+
+    assertThat(extraction.getStructuredExtractionJson())
+        .contains("qualificationRegionDocument")
+        .contains("qualificationRegionText")
+        .contains("qualificationContrastRegionDocument")
+        .contains("ENGLISH LANGUAGE C");
+    assertThat(extraction.getWarningsJson()).doesNotContain("identity facts");
+    verify(doclingServeApi, times(3)).convertSource(any(ConvertDocumentRequest.class));
+  }
+
+  @Test
+  void keepsThePrimaryOcrResultWhenTheOptionalQualificationRegionFails() {
+    queueExtraction();
+    when(document.getOriginalFileName()).thenReturn("statement.png");
+    when(document.getMimeType()).thenReturn("image/png");
+    when(document.getDocumentTypeCode()).thenReturn("A_LEVEL");
+    byte[] content = "qualification image".getBytes(StandardCharsets.UTF_8);
+    when(s3Client.getObjectAsBytes(any(GetObjectRequest.class)))
+        .thenReturn(ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), content));
+    when(imagePreprocessor.prepare(content, "image/png", "statement.png"))
+        .thenReturn(new OcrImagePreprocessor.PreparedOcrInput(content, "statement.png", false));
+    when(imagePreprocessor.prepareQualificationRegion(content, "image/png", "statement.png"))
+        .thenReturn(
+            Optional.of(
+                new OcrImagePreprocessor.PreparedOcrInput(
+                    content, "statement.qualification-region.ocr.png", true)));
+    when(imagePreprocessor.prepareQualificationContrastRegion(
+            content, "image/png", "statement.png"))
+        .thenReturn(Optional.empty());
+    InBodyConvertDocumentResponse primaryResponse =
+        InBodyConvertDocumentResponse.builder()
+            .document(
+                DocumentResponse.builder()
+                    .filename("statement.png")
+                    .textContent("ZIMSEC Advanced Level")
+                    .build())
+            .status("success")
+            .processingTime(0.4)
+            .build();
+    when(doclingServeApi.convertSource(any(ConvertDocumentRequest.class)))
+        .thenReturn(primaryResponse)
+        .thenThrow(new IllegalStateException("region unavailable"));
+
+    assertThat(processor(true).processNext()).isTrue();
+
+    assertThat(extraction.getStatus()).isEqualTo(DocumentOcrStatus.COMPLETED);
+    assertThat(extraction.getStructuredExtractionJson())
+        .contains("qualificationRegionProcessingStatus", "failed")
+        .contains("IllegalStateException");
+  }
+
+  @Test
+  void skipsTheQualificationRegionWhenTheDocumentTypeIsMissing() {
+    queueExtraction();
+    when(document.getDocumentTypeCode()).thenReturn(null);
+    ResponseBytes<GetObjectResponse> bytes =
+        ResponseBytes.fromByteArray(
+            GetObjectResponse.builder().build(),
+            "unclassified evidence".getBytes(StandardCharsets.UTF_8));
+    when(s3Client.getObjectAsBytes(any(GetObjectRequest.class))).thenReturn(bytes);
+    when(doclingServeApi.convertSource(any(ConvertDocumentRequest.class)))
+        .thenReturn(
+            InBodyConvertDocumentResponse.builder()
+                .document(
+                    DocumentResponse.builder().filename("evidence.pdf").textContent("").build())
+                .status("success")
+                .processingTime(0.1)
+                .build());
+
+    assertThat(processor(true).processNext()).isTrue();
+
+    verify(imagePreprocessor, never()).prepareQualificationRegion(any(byte[].class), any(), any());
+    verify(imagePreprocessor, never())
+        .prepareQualificationContrastRegion(any(byte[].class), any(), any());
   }
 
   @Test

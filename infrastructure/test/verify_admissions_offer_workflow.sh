@@ -53,6 +53,8 @@ admission_cycle_id=$(uuidgen | tr '[:upper:]' '[:lower:]')
 generated_document_id=''
 uploaded_document_id=''
 uploaded_document_storage_key=''
+qualification_document_id=''
+qualification_document_storage_key=''
 
 keycloak_client_uuid=''
 applicant_keycloak_user_id=''
@@ -99,18 +101,30 @@ cleanup_disposable_records() {
       "${document_storage_endpoint}/${document_storage_bucket}/${uploaded_document_storage_key}"
   fi
 
+  if [[ -n "${qualification_document_storage_key}" ]]; then
+    curl -fsS -o /dev/null -X DELETE \
+      --aws-sigv4 'aws:amz:us-east-1:s3' \
+      --user "${document_storage_access_key}:${document_storage_secret_key}" \
+      "${document_storage_endpoint}/${document_storage_bucket}/${qualification_document_storage_key}"
+  fi
+
   docker exec -i "${postgres_container}" psql -q -U postgres -d emhare_documents_reporting \
     -v offer_id="${offer_id:-00000000-0000-0000-0000-000000000000}" \
     -v generated_document_id="${generated_document_id:-00000000-0000-0000-0000-000000000000}" \
-    -v uploaded_document_id="${uploaded_document_id:-00000000-0000-0000-0000-000000000000}" >/dev/null <<'SQL'
+    -v uploaded_document_id="${uploaded_document_id:-00000000-0000-0000-0000-000000000000}" \
+    -v qualification_document_id="${qualification_document_id:-00000000-0000-0000-0000-000000000000}" >/dev/null <<'SQL'
 BEGIN;
 SET LOCAL session_replication_role = replica;
 DELETE FROM integration_outbox WHERE payload ->> 'offerId' = :'offer_id';
 DELETE FROM integration_inbox WHERE payload ->> 'offerId' = :'offer_id';
 DELETE FROM integration_outbox WHERE payload ->> 'documentId' = :'uploaded_document_id';
 DELETE FROM integration_inbox WHERE payload ->> 'documentId' = :'uploaded_document_id';
+DELETE FROM integration_outbox WHERE payload ->> 'documentId' = :'qualification_document_id';
+DELETE FROM integration_inbox WHERE payload ->> 'documentId' = :'qualification_document_id';
 DELETE FROM uploaded_documents_aud WHERE id = :'uploaded_document_id'::uuid;
 DELETE FROM uploaded_documents WHERE id = :'uploaded_document_id'::uuid;
+DELETE FROM uploaded_documents_aud WHERE id = :'qualification_document_id'::uuid;
+DELETE FROM uploaded_documents WHERE id = :'qualification_document_id'::uuid;
 DELETE FROM published_offer_letter_projections_aud WHERE offer_id = :'offer_id'::uuid;
 DELETE FROM published_offer_letter_projections WHERE offer_id = :'offer_id'::uuid;
 DELETE FROM generated_documents_aud WHERE id = :'generated_document_id'::uuid;
@@ -176,6 +190,7 @@ SQL
     -v application_type_programme_section_id="${application_type_programme_section_id}" \
     -v application_type_document_requirement_id="${application_type_document_requirement_id}" \
     -v uploaded_document_id="${uploaded_document_id:-00000000-0000-0000-0000-000000000000}" \
+    -v qualification_document_id="${qualification_document_id:-00000000-0000-0000-0000-000000000000}" \
     -v admission_cycle_id="${admission_cycle_id}" \
     -v applicant_core_user_id="${applicant_core_user_id:-00000000-0000-0000-0000-000000000000}" >/dev/null <<'SQL'
 BEGIN;
@@ -185,6 +200,7 @@ DELETE FROM integration_outbox
 DELETE FROM integration_inbox
  WHERE payload ->> 'applicationId' = :'application_id' OR payload ->> 'offerId' = :'offer_id';
 DELETE FROM integration_inbox WHERE payload ->> 'documentId' = :'uploaded_document_id';
+DELETE FROM integration_inbox WHERE payload ->> 'documentId' = :'qualification_document_id';
 DELETE FROM application_documents_aud WHERE application_id = :'application_id'::uuid;
 DELETE FROM application_documents WHERE application_id = :'application_id'::uuid;
 DELETE FROM application_document_requirement_snapshots_aud WHERE application_id = :'application_id'::uuid;
@@ -535,7 +551,7 @@ requirement_set=$(request_json -X POST "${admissions_base_url}/api/admissions/re
   -H "Authorization: Bearer ${staff_access_token}" -H 'Content-Type: application/json' \
   -d "$(jq -nc --arg programme "${programme_id}" --arg type "${application_type_id}" --arg intake "${intake_id}" \
     --arg today "$(date +%F)" \
-    '{programmeId:$programme,applicationTypeId:$type,intakeId:$intake,versionCode:"E2E.1",effectiveFrom:$today,requiresEnglish:false,requiresMathematicsOrScience:false,subjectRequirements:[],qualificationGroups:[{code:"PRIOR_DEGREE",name:"Prior degree duration",minimumSatisfiedItems:1,sortOrder:1,items:[{qualificationLevel:"DEGREE",minimumCount:1,minimumDurationMonths:36,sortOrder:1}]}]}')")
+    '{programmeId:$programme,applicationTypeId:$type,intakeId:$intake,versionCode:"E2E.1",effectiveFrom:$today,requiresEnglish:false,requiresMathematics:false,requiresScience:false,requiresMathematicsOrScience:false,subjectRequirements:[],qualificationGroups:[{code:"PRIOR_DEGREE",name:"Prior degree duration",minimumSatisfiedItems:1,sortOrder:1,items:[{qualificationLevel:"DEGREE",minimumCount:1,minimumDurationMonths:36,sortOrder:1}]}]}')")
 requirement_set_id=$(jq -er .id <<<"${requirement_set}")
 current_step='approving governed admission requirement set'
 approved_requirement_set=$(request_json -X POST "${admissions_base_url}/api/admissions/requirement-sets/${requirement_set_id}/approve" \
@@ -545,14 +561,45 @@ jq -e '.status == "APPROVED"
     and .qualificationGroups[0].items[0].minimumDurationMonths == 36' \
   <<<"${approved_requirement_set}" >/dev/null
 
-current_step='capturing applicant qualification duration and result evidence'
+current_step='uploading and independently verifying qualification evidence'
+qualification_document=$(request_json -X POST "${gateway_base_url}/api/documents/uploads" \
+  -H "Authorization: Bearer ${applicant_access_token}" \
+  -F ownerType=APPLICATION \
+  -F ownerId="${application_id}" \
+  -F documentTypeCode=ACADEMIC_QUALIFICATION_EVIDENCE \
+  -F "file=@services/documents-reporting-service/src/main/resources/documents/uz-logo.jpg;type=image/jpeg")
+qualification_document_id=$(jq -er .id <<<"${qualification_document}")
+qualification_document_version=$(jq -er .version <<<"${qualification_document}")
+qualification_document_storage_key=$(docker exec -i "${postgres_container}" psql -At -v ON_ERROR_STOP=1 \
+  -U postgres -d emhare_documents_reporting -c \
+  "SELECT storage_key FROM uploaded_documents WHERE id = '${qualification_document_id}'::uuid")
+jq -e --arg applicationId "${application_id}" '
+  .ownerType == "APPLICATION"
+    and .ownerId == $applicationId
+    and .documentTypeCode == "ACADEMIC_QUALIFICATION_EVIDENCE"
+    and .verificationStatus == "PENDING"
+' <<<"${qualification_document}" >/dev/null
+
+verified_qualification_document=$(request_json -X POST \
+  "${gateway_base_url}/api/documents/uploads/${qualification_document_id}/verify" \
+  -H "Authorization: Bearer ${staff_access_token}" -H 'Content-Type: application/json' \
+  -d "$(jq -nc --argjson expectedVersion "${qualification_document_version}" \
+    '{expectedVersion:$expectedVersion,comment:"Qualification evidence verified against the issuing institution record."}')")
+jq -e '.verificationStatus == "VERIFIED" and .version == 1' \
+  <<<"${verified_qualification_document}" >/dev/null
+
+current_step='capturing applicant qualification aggregate against verified evidence'
 qualification_workspace=$(request_json -X POST \
-  "${admissions_base_url}/api/admissions/applications/${application_id}/qualifications" \
+  "${admissions_base_url}/api/admissions/applications/${application_id}/qualification-aggregates" \
   -H "Authorization: Bearer ${applicant_access_token}" -H 'Content-Type: application/json' \
-  -d '{"level":"DEGREE","institutionName":"University of Zimbabwe","yearWritten":2025,"durationMonths":48,"expectedVersion":0}')
+  -d "$(jq -nc --arg documentId "${qualification_document_id}" \
+    '{level:"DEGREE",awardTypeCode:"DEGREE",qualificationName:"Bachelor of Commerce Honours Degree",institutionName:"University of Zimbabwe",yearWritten:2025,durationMonths:48,documentId:$documentId,results:[],expectedVersion:0}')")
 qualification_sitting_id=$(jq -er '.qualifications[0].id' <<<"${qualification_workspace}")
-if ! jq -e '.application.canSubmit == true
-    and .qualifications[0].durationMonths == 48
+if ! jq -e --arg documentId "${qualification_document_id}" '
+    .qualifications[0].durationMonths == 48
+    and .qualifications[0].documentId == $documentId
+    and .qualifications[0].awardTypeCode == "DEGREE"
+    and .qualifications[0].qualificationName == "Bachelor of Commerce Honours Degree"
     and .qualifications[0].verificationStatus == "CAPTURED"' \
   <<<"${qualification_workspace}" >/dev/null; then
   jq . <<<"${qualification_workspace}" >&2

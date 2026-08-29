@@ -11,6 +11,7 @@ import ai.docling.serve.api.convert.response.InBodyConvertDocumentResponse;
 import java.time.Clock;
 import java.util.Base64;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -71,7 +72,11 @@ public class DocumentOcrProcessor {
     repository.saveAndFlush(extraction);
     try {
       ExtractionPayload payload = convert(extraction.getUploadedDocument());
-      ApplicantEvidenceFactExtractor.ExtractionFacts facts = factExtractor.extract(payload.text());
+      ApplicantEvidenceFactExtractor.ExtractionFacts facts =
+          factExtractor.extract(
+              payload.text(),
+              payload.structuredExtraction(),
+              extraction.getUploadedDocument().getDocumentTypeCode());
       extraction.complete(
           objectMapper.writeValueAsString(payload.structuredExtraction()),
           objectMapper.writeValueAsString(facts.facts()),
@@ -117,6 +122,34 @@ public class DocumentOcrProcessor {
             .asByteArray();
     OcrImagePreprocessor.PreparedOcrInput preparedInput =
         imagePreprocessor.prepare(content, document.getMimeType(), document.getOriginalFileName());
+    InBodyConvertDocumentResponse response = convertPreparedInput(preparedInput);
+    String text = responseText(response);
+    Map<String, Object> structured = new LinkedHashMap<>();
+    structured.put("filename", response.getDocument().getFilename());
+    structured.put("document", serializableJsonContent(response));
+    structured.put("text", text);
+    structured.put("markdown", response.getDocument().getMarkdownContent());
+    structured.put("processingStatus", response.getStatus());
+    structured.put("processingTimeSeconds", response.getProcessingTime());
+    structured.put("inputPreprocessed", preparedInput.preprocessed());
+    if (isSchoolQualificationEvidence(document)) {
+      imagePreprocessor
+          .prepareQualificationRegion(
+              content, document.getMimeType(), document.getOriginalFileName())
+          .ifPresent(
+              region -> appendQualificationRegion(structured, region, "qualificationRegion"));
+      imagePreprocessor
+          .prepareQualificationContrastRegion(
+              content, document.getMimeType(), document.getOriginalFileName())
+          .ifPresent(
+              region ->
+                  appendQualificationRegion(structured, region, "qualificationContrastRegion"));
+    }
+    return new ExtractionPayload(text, structured);
+  }
+
+  private InBodyConvertDocumentResponse convertPreparedInput(
+      OcrImagePreprocessor.PreparedOcrInput preparedInput) {
     ConvertDocumentRequest request =
         ConvertDocumentRequest.builder()
             .source(
@@ -138,20 +171,46 @@ public class DocumentOcrProcessor {
                     .build())
             .target(InBodyTarget.builder().build())
             .build();
-    InBodyConvertDocumentResponse response =
-        (InBodyConvertDocumentResponse) doclingServeApi.convertSource(request);
+    return (InBodyConvertDocumentResponse) doclingServeApi.convertSource(request);
+  }
+
+  private String responseText(InBodyConvertDocumentResponse response) {
     String text = response.getDocument().getTextContent();
     if (text == null || text.isBlank()) text = response.getDocument().getMarkdownContent();
     if (text == null) text = "";
-    Map<String, Object> structured = new LinkedHashMap<>();
-    structured.put("filename", response.getDocument().getFilename());
-    structured.put("document", response.getDocument().getJsonContent());
-    structured.put("text", text);
-    structured.put("markdown", response.getDocument().getMarkdownContent());
-    structured.put("processingStatus", response.getStatus());
-    structured.put("processingTimeSeconds", response.getProcessingTime());
-    structured.put("inputPreprocessed", preparedInput.preprocessed());
-    return new ExtractionPayload(text, structured);
+    return text;
+  }
+
+  private Map<String, Object> serializableJsonContent(InBodyConvertDocumentResponse response) {
+    if (response.getDocument().getJsonContent() == null) return Map.of();
+    return objectMapper.convertValue(
+        response.getDocument().getJsonContent(),
+        new tools.jackson.core.type.TypeReference<Map<String, Object>>() {});
+  }
+
+  private boolean isSchoolQualificationEvidence(UploadedDocument document) {
+    String documentTypeCode =
+        document.getDocumentTypeCode() == null
+            ? ""
+            : document.getDocumentTypeCode().trim().toUpperCase(Locale.ROOT);
+    return documentTypeCode.equals("O_LEVEL") || documentTypeCode.equals("A_LEVEL");
+  }
+
+  private void appendQualificationRegion(
+      Map<String, Object> structured,
+      OcrImagePreprocessor.PreparedOcrInput region,
+      String fieldPrefix) {
+    try {
+      InBodyConvertDocumentResponse response = convertPreparedInput(region);
+      structured.put(fieldPrefix + "Filename", response.getDocument().getFilename());
+      structured.put(fieldPrefix + "Document", serializableJsonContent(response));
+      structured.put(fieldPrefix + "Text", responseText(response));
+      structured.put(fieldPrefix + "ProcessingStatus", response.getStatus());
+      structured.put(fieldPrefix + "ProcessingTimeSeconds", response.getProcessingTime());
+    } catch (RuntimeException exception) {
+      structured.put(fieldPrefix + "ProcessingStatus", "failed");
+      structured.put(fieldPrefix + "FailureCode", exception.getClass().getSimpleName());
+    }
   }
 
   private record ExtractionPayload(String text, Map<String, Object> structuredExtraction) {}

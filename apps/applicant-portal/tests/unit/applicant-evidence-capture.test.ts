@@ -30,6 +30,10 @@ describe("applicant evidence-first qualification capture", () => {
     expect(source).not.toContain(
       "Capture the examination sitting before adding its subject results",
     );
+    expect(source).toContain("fields.examBodyCode");
+    expect(source).toContain("fields.schoolOrInstitution");
+    expect(source).toContain("fields.yearWritten");
+    expect(source).toContain("prefill.qualificationResults.slice(0, 20)");
   });
 
   it("maps certificate and masters awards onto the existing eligibility levels", () => {

@@ -66,6 +66,67 @@ class OcrImagePreprocessorTest {
   }
 
   @Test
+  void preparesAnEnlargedCentralResultsRegionForBorderlessQualificationLayouts() throws Exception {
+    BufferedImage source = new BufferedImage(1500, 1125, BufferedImage.TYPE_INT_RGB);
+    Graphics2D graphics = source.createGraphics();
+    graphics.setColor(Color.WHITE);
+    graphics.fillRect(0, 0, source.getWidth(), source.getHeight());
+    graphics.setColor(Color.BLACK);
+    graphics.drawString("ENGLISH LANGUAGE", 300, 600);
+    graphics.drawString("C", 1250, 600);
+    graphics.dispose();
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    ImageIO.write(source, "png", output);
+
+    OcrImagePreprocessor.PreparedOcrInput prepared =
+        preprocessor
+            .prepareQualificationRegion(output.toByteArray(), "image/png", "certificate.png")
+            .orElseThrow();
+
+    BufferedImage preparedImage =
+        ImageIO.read(new java.io.ByteArrayInputStream(prepared.content()));
+    assertThat(prepared.fileName()).isEqualTo("certificate.qualification-region.ocr.png");
+    assertThat(prepared.preprocessed()).isTrue();
+    assertThat(preparedImage.getWidth()).isEqualTo(2340);
+    assertThat(preparedImage.getHeight()).isGreaterThan(750);
+
+    OcrImagePreprocessor.PreparedOcrInput contrastPrepared =
+        preprocessor
+            .prepareQualificationContrastRegion(
+                output.toByteArray(), "image/png", "certificate.png")
+            .orElseThrow();
+    assertThat(contrastPrepared.fileName())
+        .isEqualTo("certificate.qualification-contrast-region.ocr.png");
+  }
+
+  @Test
+  void doesNotCreateAQualificationRegionForPdfEvidence() {
+    assertThat(
+            preprocessor.prepareQualificationRegion(
+                "%PDF fixture".getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                "application/pdf",
+                "certificate.pdf"))
+        .isEmpty();
+  }
+
+  @Test
+  void includesTheCompleteResultsTableForPortraitQualificationEvidence() throws Exception {
+    BufferedImage source = new BufferedImage(1200, 1600, BufferedImage.TYPE_INT_RGB);
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    ImageIO.write(source, "png", output);
+
+    OcrImagePreprocessor.PreparedOcrInput prepared =
+        preprocessor
+            .prepareQualificationRegion(output.toByteArray(), "image/png", "statement.png")
+            .orElseThrow();
+    BufferedImage preparedImage =
+        ImageIO.read(new java.io.ByteArrayInputStream(prepared.content()));
+
+    assertThat(preparedImage.getHeight()).isEqualTo(2400);
+    assertThat(preparedImage.getWidth()).isGreaterThan(1800);
+  }
+
+  @Test
   void fallsBackToOriginalInputWhenImageBytesCannotBeDecoded() {
     byte[] content = "not an image".getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
@@ -75,5 +136,83 @@ class OcrImagePreprocessorTest {
     assertThat(prepared.content()).isSameAs(content);
     assertThat(prepared.fileName()).isEqualTo("damaged.jpg");
     assertThat(prepared.preprocessed()).isFalse();
+  }
+
+  @Test
+  void rejectsAnUnreadableQualificationRegionWithoutFailingTheUpload() {
+    assertThat(
+            preprocessor.prepareQualificationRegion(
+                "not an image".getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                "image/png",
+                "damaged.png"))
+        .isEmpty();
+  }
+
+  @Test
+  void recognisesRasterFileExtensionsWhenMimeMetadataIsMissing() throws Exception {
+    BufferedImage source = new BufferedImage(100, 100, BufferedImage.TYPE_INT_RGB);
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    ImageIO.write(source, "png", output);
+    byte[] content = output.toByteArray();
+
+    OcrImagePreprocessor.PreparedOcrInput jpgRegion =
+        preprocessor.prepareQualificationRegion(content, null, "scan.jpg").orElseThrow();
+    OcrImagePreprocessor.PreparedOcrInput jpegRegion =
+        preprocessor
+            .prepareQualificationRegion(content, "application/octet-stream", "scan.jpeg")
+            .orElseThrow();
+    OcrImagePreprocessor.PreparedOcrInput safelyNamedRegion =
+        preprocessor.prepareQualificationRegion(content, "image/jpeg", null).orElseThrow();
+
+    assertThat(jpgRegion.fileName()).isEqualTo("scan.qualification-region.ocr.png");
+    assertThat(jpegRegion.fileName()).isEqualTo("scan.qualification-region.ocr.png");
+    assertThat(safelyNamedRegion.fileName()).isEqualTo("evidence.qualification-region.ocr.png");
+  }
+
+  @Test
+  void suppressesLightSecurityPatternNoiseInTheQualificationRegion() throws Exception {
+    BufferedImage source = new BufferedImage(600, 900, BufferedImage.TYPE_INT_RGB);
+    Graphics2D graphics = source.createGraphics();
+    graphics.setColor(Color.WHITE);
+    graphics.fillRect(0, 0, source.getWidth(), source.getHeight());
+    graphics.setColor(new Color(190, 190, 190));
+    graphics.fillRect(100, 300, 400, 200);
+    graphics.setColor(Color.BLACK);
+    graphics.fillRect(200, 350, 100, 30);
+    graphics.dispose();
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    ImageIO.write(source, "png", output);
+
+    OcrImagePreprocessor.PreparedOcrInput prepared =
+        preprocessor
+            .prepareQualificationRegion(output.toByteArray(), "image/png", "certificate.png")
+            .orElseThrow();
+    BufferedImage preparedImage =
+        ImageIO.read(new java.io.ByteArrayInputStream(prepared.content()));
+
+    assertThat(preparedImage.getRaster().getSample(600, 800, 0)).isEqualTo(255);
+    assertThat(preparedImage.getRaster().getSample(500, 550, 0)).isEqualTo(0);
+  }
+
+  @Test
+  void retainsSparseLowContrastTextFromOnlineResultScreenshots() throws Exception {
+    BufferedImage source = new BufferedImage(600, 900, BufferedImage.TYPE_INT_RGB);
+    Graphics2D graphics = source.createGraphics();
+    graphics.setColor(Color.WHITE);
+    graphics.fillRect(0, 0, source.getWidth(), source.getHeight());
+    graphics.setColor(new Color(190, 190, 190));
+    graphics.fillRect(200, 350, 100, 30);
+    graphics.dispose();
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    ImageIO.write(source, "png", output);
+
+    OcrImagePreprocessor.PreparedOcrInput prepared =
+        preprocessor
+            .prepareQualificationRegion(output.toByteArray(), "image/png", "results.png")
+            .orElseThrow();
+    BufferedImage preparedImage =
+        ImageIO.read(new java.io.ByteArrayInputStream(prepared.content()));
+
+    assertThat(preparedImage.getRaster().getSample(500, 550, 0)).isEqualTo(0);
   }
 }

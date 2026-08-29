@@ -201,6 +201,132 @@ describe("Applicant offer-letter access", () => {
     );
   });
 
+  it("maps editable qualification OCR proposals into the aggregate form", async () => {
+    const ApplicantApplicationPage = (await import("../../pages/applications/[applicationId].vue"))
+      .default;
+    const wrapper = shallowMount(ApplicantApplicationPage);
+    const viewModel = wrapper.vm as unknown as {
+      applyDocumentPrefill: (documentId: string, qualificationLevel?: string) => Promise<void>;
+      openQualification: (record?: ApplicantQualificationSitting) => void;
+      qualificationReferences: {
+        examBodies: Array<{ id: string; code: string; name: string; scienceSubject: null }>;
+        oLevelSubjects: never[];
+        aLevelSubjects: never[];
+        otherSubjects: never[];
+      };
+      countries: Array<{
+        id: string;
+        iso2Code: string;
+        name: string;
+        nationalityName: string;
+      }>;
+      qualificationForm: {
+        examBodyId: string;
+        institutionName: string;
+        yearWritten: number;
+        centreNumber: string;
+        candidateNumber: string;
+        countryId: string;
+      };
+      resultForms: Array<{
+        subjectId: string;
+        grade: string;
+        principalSubject: boolean;
+      }>;
+    };
+    viewModel.qualificationReferences = {
+      examBodies: [{ id: "zimsec-id", code: "ZIMSEC", name: "ZIMSEC", scienceSubject: null }],
+      oLevelSubjects: [],
+      aLevelSubjects: [],
+      otherSubjects: [],
+    };
+    viewModel.countries.push({
+      id: "zimbabwe-id",
+      iso2Code: "ZW",
+      name: "Zimbabwe",
+      nationalityName: "Zimbabwean",
+    });
+    request.mockResolvedValueOnce({
+      documentId: "document-1",
+      extractionStatus: "COMPLETED",
+      manualEntryAllowed: true,
+      personalFields: {
+        examBodyCode: " zimsec ",
+        schoolOrInstitution: " Chinhoyi High School ",
+        yearWritten: "2024",
+        centreNumber: " 080120 ",
+        candidateNumber: " 5035 ",
+        countryCode: "ZWE",
+      },
+      qualificationResults: [
+        {
+          subjectId: "biology-id",
+          subjectName: "Biology",
+          grade: "A",
+          confirmationRequired: false,
+          candidateSubjects: ["Biology"],
+        },
+        {
+          subjectId: "ambiguous-id",
+          subjectName: "Mathematics",
+          grade: "Z",
+          confirmationRequired: true,
+          candidateSubjects: ["Mathematics", "Pure Mathematics"],
+        },
+      ],
+      identityNameMismatch: null,
+      warnings: [],
+    });
+
+    await viewModel.applyDocumentPrefill("document-1", "A_LEVEL");
+
+    expect(viewModel.qualificationForm).toMatchObject({
+      examBodyId: "zimsec-id",
+      institutionName: "Chinhoyi High School",
+      yearWritten: 2024,
+      centreNumber: "080120",
+      candidateNumber: "5035",
+      countryId: "zimbabwe-id",
+    });
+    expect(viewModel.resultForms).toMatchObject([
+      { subjectId: "biology-id", grade: "A", principalSubject: true },
+      { subjectId: "", grade: "", principalSubject: true },
+    ]);
+
+    viewModel.qualificationForm.examBodyId = "existing-exam-body";
+    viewModel.qualificationForm.institutionName = "Existing School";
+    viewModel.qualificationForm.centreNumber = "existing-centre";
+    viewModel.qualificationForm.candidateNumber = "existing-candidate";
+    viewModel.qualificationForm.countryId = "existing-country";
+    request.mockResolvedValueOnce({
+      documentId: "document-2",
+      extractionStatus: "COMPLETED",
+      manualEntryAllowed: true,
+      personalFields: {
+        examBodyCode: 42,
+        schoolOrInstitution: 42,
+        yearWritten: 1800,
+        centreNumber: 42,
+        candidateNumber: 42,
+        countryCode: "GBR",
+      },
+      qualificationResults: [],
+      identityNameMismatch: null,
+      warnings: [],
+    });
+
+    await viewModel.applyDocumentPrefill("document-2", "O_LEVEL");
+
+    expect(viewModel.qualificationForm).toMatchObject({
+      examBodyId: "existing-exam-body",
+      institutionName: "Existing School",
+      centreNumber: "existing-centre",
+      candidateNumber: "existing-candidate",
+      countryId: "existing-country",
+    });
+    expect(viewModel.resultForms).toHaveLength(2);
+  });
+
   it("uses the same popup-safe offer-letter access from the applicant home page", async () => {
     const ApplicantHomePage = (await import("../../pages/index.vue")).default;
     shallowMount(ApplicantHomePage, {

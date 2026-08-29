@@ -134,11 +134,16 @@ INSERT INTO applicants (
     :'applicant_email', now(), now(), 0
 );
 INSERT INTO applications (
-    id, admission_cycle_id, applicant_id, application_type_id, application_number,
-    payment_required, status, created_at, updated_at, version
+    id, admission_cycle_id, intake_id, intake_code, intake_name, intake_starts_on,
+    intake_ends_on, maximum_programme_choices, applicant_id, application_type_id,
+    application_number, official_first_name, official_last_name,
+    application_fee_policy_status, payment_required, status, created_at, updated_at, version
 ) VALUES (
-    :'application_id'::uuid, :'admission_cycle_id'::uuid, :'applicant_id'::uuid,
-    :'application_type_id'::uuid, :'application_number', false, 'DRAFT', now(), now(), 0
+    :'application_id'::uuid, :'admission_cycle_id'::uuid, :'intake_id'::uuid,
+    'E2E-DOC-' || left(:'intake_id', 8), 'Disposable document workflow intake',
+    current_date - 1, current_date + 30, 3, :'applicant_id'::uuid,
+    :'application_type_id'::uuid, :'application_number', 'Enterprise', 'Applicant',
+    'LEGACY_UNSNAPSHOTTED', false, 'DRAFT', now(), now(), 0
 );
 SQL
 

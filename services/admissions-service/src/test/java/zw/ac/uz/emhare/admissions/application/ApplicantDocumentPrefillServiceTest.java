@@ -10,7 +10,10 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -179,6 +182,161 @@ class ApplicantDocumentPrefillServiceTest {
         .containsExactly("Mathematics", "Mathematics");
     assertThat(prefill.qualificationResults().get(1).subjectId()).isEqualTo(english.getId());
     assertThat(prefill.qualificationResults().get(1).grade()).isEqualTo("B");
+  }
+
+  @Test
+  void resolvesLayoutAwareQualificationProposalsEvenWhenSomeGradesNeedManualConfirmation() {
+    AdmissionSubject english = subject(UUID.randomUUID(), "4005", "English Language");
+    AdmissionSubject science = subject(UUID.randomUUID(), "4003", "Integrated Science");
+    when(subjectRepository.findAllByLevelAndActiveTrueAndDeletedAtIsNullOrderByNameAsc(
+            zw.ac.uz.emhare.admissions.domain.model.SubjectLevel.O_LEVEL))
+        .thenReturn(List.of(english, science));
+    when(documentsReportingClient.getOcrExtraction(documentId))
+        .thenReturn(
+            extraction(
+                "COMPLETED",
+                "{\"qualificationResults\":[{\"subjectName\":\"ENGLISHLANGUAGE\",\"grade\":\"C\"},{\"subjectName\":\"INTEGRATEDSCIENCE\",\"grade\":\"\"}]}",
+                "[\"One grade could not be read reliably.\"]"));
+
+    var prefill = service.prefill(applicationId, applicantUserId, documentId, "O_LEVEL");
+
+    assertThat(prefill.qualificationResults()).hasSize(2);
+    assertThat(prefill.qualificationResults().getFirst().subjectId()).isEqualTo(english.getId());
+    assertThat(prefill.qualificationResults().getFirst().grade()).isEqualTo("C");
+    assertThat(prefill.qualificationResults().get(1).subjectId()).isEqualTo(science.getId());
+    assertThat(prefill.qualificationResults().get(1).grade()).isEmpty();
+    assertThat(prefill.qualificationResults()).allMatch(result -> !result.confirmationRequired());
+  }
+
+  @Test
+  void resolvesHistoricalZimsecSubjectLabelsAgainstCurrentManagedSubjects() throws Exception {
+    AdmissionSubject english = subject(UUID.randomUUID(), "4001", "English Language");
+    AdmissionSubject religiousStudies =
+        subject(UUID.randomUUID(), "4047", "Family and Religious Studies");
+    AdmissionSubject history = subject(UUID.randomUUID(), "4009", "History");
+    AdmissionSubject geography = subject(UUID.randomUUID(), "4008", "Geography");
+    AdmissionSubject shona = subject(UUID.randomUUID(), "4007", "Shona Language");
+    AdmissionSubject science = subject(UUID.randomUUID(), "4003", "Combined Science");
+    AdmissionSubject commerce = subject(UUID.randomUUID(), "4049", "Commerce");
+    when(subjectRepository.findAllByLevelAndActiveTrueAndDeletedAtIsNullOrderByNameAsc(
+            zw.ac.uz.emhare.admissions.domain.model.SubjectLevel.O_LEVEL))
+        .thenReturn(
+            List.of(english, religiousStudies, history, geography, shona, science, commerce));
+    String proposedFactsJson =
+        new ObjectMapper()
+            .writeValueAsString(
+                Map.of(
+                    "qualificationResults",
+                    List.of(
+                        Map.of("subjectName", "ENGLISHLANGUAGE", "grade", "C"),
+                        Map.of("subjectName", "RELIGIOUS STUDIES", "grade", "A"),
+                        Map.of("subjectName", "HISTORY", "grade", "B"),
+                        Map.of("subjectName", "GEOGRAPHY", "grade", "C"),
+                        Map.of("subjectName", "SHONA", "grade", "D"),
+                        Map.of("subjectName", "INTEGRATEDSCIENCE", "grade", "C"),
+                        Map.of("subjectName", "COMMERCE", "grade", "C"))));
+    when(documentsReportingClient.getOcrExtraction(documentId))
+        .thenReturn(extraction("COMPLETED", proposedFactsJson, "[]"));
+
+    var prefill = service.prefill(applicationId, applicantUserId, documentId, "O_LEVEL");
+
+    assertThat(prefill.qualificationResults())
+        .extracting(
+            ApplicantDocumentPrefillService.QualificationResultProposal::subjectName,
+            ApplicantDocumentPrefillService.QualificationResultProposal::grade)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple("English Language", "C"),
+            org.assertj.core.groups.Tuple.tuple("Family and Religious Studies", "A"),
+            org.assertj.core.groups.Tuple.tuple("History", "B"),
+            org.assertj.core.groups.Tuple.tuple("Geography", "C"),
+            org.assertj.core.groups.Tuple.tuple("Shona Language", "D"),
+            org.assertj.core.groups.Tuple.tuple("Combined Science", "C"),
+            org.assertj.core.groups.Tuple.tuple("Commerce", "C"));
+    assertThat(prefill.qualificationResults())
+        .allMatch(result -> result.subjectId() != null && !result.confirmationRequired());
+  }
+
+  @Test
+  void resolvesOneUnambiguousMinorOcrSubjectErrorAgainstManagedReferenceData() {
+    AdmissionSubject business =
+        subject(UUID.randomUUID(), "4048", "Business and Enterprise Skills");
+    AdmissionSubject commerce = subject(UUID.randomUUID(), "4049", "Commerce");
+    when(subjectRepository.findAllByLevelAndActiveTrueAndDeletedAtIsNullOrderByNameAsc(
+            zw.ac.uz.emhare.admissions.domain.model.SubjectLevel.O_LEVEL))
+        .thenReturn(List.of(business, commerce));
+    when(documentsReportingClient.getOcrExtraction(documentId))
+        .thenReturn(
+            extraction(
+                "COMPLETED",
+                "{\"qualificationResults\":[{\"subjectName\":\"BUSINESS AND ENTERPRlSE SKILLS\",\"grade\":\"A\"}]}",
+                "[]"));
+
+    var prefill = service.prefill(applicationId, applicantUserId, documentId, "O_LEVEL");
+
+    assertThat(prefill.qualificationResults())
+        .singleElement()
+        .satisfies(
+            result -> {
+              assertThat(result.subjectId()).isEqualTo(business.getId());
+              assertThat(result.subjectName()).isEqualTo("Business and Enterprise Skills");
+              assertThat(result.confirmationRequired()).isFalse();
+            });
+  }
+
+  @Test
+  void filtersMalformedStructuredRowsAndLimitsAmbiguousCodeMatchesToTwenty() throws Exception {
+    AdmissionSubject english = subject(UUID.randomUUID(), "4005", "English Language");
+    AdmissionSubject legacyEnglish = subject(UUID.randomUUID(), "4005", "English");
+    when(subjectRepository.findAllByLevelAndActiveTrueAndDeletedAtIsNullOrderByNameAsc(
+            zw.ac.uz.emhare.admissions.domain.model.SubjectLevel.O_LEVEL))
+        .thenReturn(List.of(english, legacyEnglish));
+    List<Object> extractedResults = new ArrayList<>();
+    extractedResults.add("not-a-result-row");
+    extractedResults.add(Map.of());
+    extractedResults.add(Map.of("subjectName", "   "));
+    extractedResults.add(Map.of("subjectName", "UNKNOWN", "grade", "A"));
+    Map<String, Object> nullGradeResult = new LinkedHashMap<>();
+    nullGradeResult.put("subjectName", "4005");
+    nullGradeResult.put("grade", null);
+    extractedResults.add(nullGradeResult);
+    for (int index = 0; index < 20; index++) {
+      extractedResults.add(Map.of("subjectName", "4005", "grade", "C"));
+    }
+    String proposedFactsJson =
+        new ObjectMapper().writeValueAsString(Map.of("qualificationResults", extractedResults));
+    when(documentsReportingClient.getOcrExtraction(documentId))
+        .thenReturn(extraction("COMPLETED", proposedFactsJson, "[]"));
+
+    var prefill = service.prefill(applicationId, applicantUserId, documentId, "O_LEVEL");
+
+    assertThat(prefill.qualificationResults()).hasSize(20);
+    assertThat(prefill.qualificationResults().getFirst().grade()).isEmpty();
+    assertThat(prefill.qualificationResults())
+        .allMatch(result -> result.confirmationRequired() && result.subjectId() == null);
+  }
+
+  @Test
+  void fallsBackToLineParsingWhenStructuredQualificationResultsAreNotAList() {
+    AdmissionSubject history = subject(UUID.randomUUID(), "4010", "History");
+    when(subjectRepository.findAllByLevelAndActiveTrueAndDeletedAtIsNullOrderByNameAsc(
+            zw.ac.uz.emhare.admissions.domain.model.SubjectLevel.O_LEVEL))
+        .thenReturn(List.of(history));
+    when(documentsReportingClient.getOcrExtraction(documentId))
+        .thenReturn(
+            extraction(
+                "COMPLETED",
+                "{\"qualificationResults\":\"not-a-list\",\"lines\":[\"History B\"]}",
+                "[]"));
+
+    var prefill = service.prefill(applicationId, applicantUserId, documentId, "O_LEVEL");
+
+    assertThat(prefill.qualificationResults())
+        .singleElement()
+        .satisfies(
+            result -> {
+              assertThat(result.subjectId()).isEqualTo(history.getId());
+              assertThat(result.grade()).isEqualTo("B");
+            });
   }
 
   @Test

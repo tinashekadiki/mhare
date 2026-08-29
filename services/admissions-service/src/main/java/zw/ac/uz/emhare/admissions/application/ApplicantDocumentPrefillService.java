@@ -29,6 +29,11 @@ public class ApplicantDocumentPrefillService {
 
   private static final Pattern RESULT_GRADE =
       Pattern.compile("(?:^|\\s)(A|B|C|D|E|U)(?:\\s|$)", Pattern.CASE_INSENSITIVE);
+  private static final Map<String, String> HISTORICAL_ZIMSEC_SUBJECT_NAME_ALIASES =
+      Map.of(
+          "INTEGRATEDSCIENCE", "COMBINEDSCIENCE",
+          "RELIGIOUSSTUDIES", "FAMILYANDRELIGIOUSSTUDIES",
+          "SHONA", "SHONALANGUAGE");
 
   private final ApplicationRepository applicationRepository;
   private final AdmissionSubjectRepository subjectRepository;
@@ -165,6 +170,9 @@ public class ApplicantDocumentPrefillService {
     if (level != SubjectLevel.O_LEVEL && level != SubjectLevel.A_LEVEL) return List.of();
     List<AdmissionSubject> subjects =
         subjectRepository.findAllByLevelAndActiveTrueAndDeletedAtIsNullOrderByNameAsc(level);
+    List<QualificationResultProposal> structuredProposals =
+        resolveStructuredQualificationResults(facts, subjects);
+    if (!structuredProposals.isEmpty()) return structuredProposals;
     Object linesValue = facts.get("lines");
     if (!(linesValue instanceof List<?> lines)) return List.of();
     List<QualificationResultProposal> proposals = new ArrayList<>();
@@ -195,6 +203,103 @@ public class ApplicantDocumentPrefillService {
       if (proposals.size() == 20) break;
     }
     return proposals;
+  }
+
+  private List<QualificationResultProposal> resolveStructuredQualificationResults(
+      Map<String, Object> facts, List<AdmissionSubject> subjects) {
+    Object resultsValue = facts.get("qualificationResults");
+    if (!(resultsValue instanceof List<?> results)) return List.of();
+    List<QualificationResultProposal> proposals = new ArrayList<>();
+    for (Object resultValue : results) {
+      if (!(resultValue instanceof Map<?, ?> result)) continue;
+      String extractedSubject = normalizeExtractedSubject(result.get("subjectName"));
+      if (extractedSubject.isBlank()) continue;
+      String extractedSubjectMatchKey = subjectMatchKey(extractedSubject);
+      List<AdmissionSubject> matches = managedSubjectMatches(subjects, extractedSubjectMatchKey);
+      if (matches.isEmpty()) continue;
+      AdmissionSubject exact = matches.size() == 1 ? matches.getFirst() : null;
+      Object gradeValue = result.get("grade");
+      String grade =
+          (gradeValue == null ? "" : String.valueOf(gradeValue)).trim().toUpperCase(Locale.ROOT);
+      proposals.add(
+          new QualificationResultProposal(
+              exact == null ? null : exact.getId(),
+              exact == null ? extractedSubject : exact.getName(),
+              grade,
+              matches.size() != 1,
+              matches.stream().map(AdmissionSubject::getName).toList()));
+      if (proposals.size() == 20) break;
+    }
+    return List.copyOf(proposals);
+  }
+
+  private String normalizeExtractedSubject(Object value) {
+    return value == null
+        ? ""
+        : String.valueOf(value)
+            .replace('_', ' ')
+            .replaceAll("\\s+", " ")
+            .trim()
+            .toUpperCase(Locale.ROOT);
+  }
+
+  private String subjectMatchKey(Object value) {
+    return normalizeExtractedSubject(value).replaceAll("[^A-Z0-9]", "");
+  }
+
+  private List<AdmissionSubject> managedSubjectMatches(
+      List<AdmissionSubject> subjects, String extractedSubjectMatchKey) {
+    List<AdmissionSubject> directMatches =
+        subjects.stream()
+            .filter(
+                subject ->
+                    subjectMatchKey(subject.getName()).equals(extractedSubjectMatchKey)
+                        || subjectMatchKey(subject.getCode()).equals(extractedSubjectMatchKey))
+            .toList();
+    if (!directMatches.isEmpty()) return directMatches;
+    String managedReferenceMatchKey =
+        HISTORICAL_ZIMSEC_SUBJECT_NAME_ALIASES.getOrDefault(
+            extractedSubjectMatchKey, extractedSubjectMatchKey);
+    List<AdmissionSubject> exactMatches =
+        subjects.stream()
+            .filter(
+                subject ->
+                    subjectMatchKey(subject.getName()).equals(managedReferenceMatchKey)
+                        || subjectMatchKey(subject.getCode()).equals(managedReferenceMatchKey))
+            .toList();
+    if (!exactMatches.isEmpty() || managedReferenceMatchKey.length() < 5) return exactMatches;
+    int permittedDistance = Math.min(3, Math.max(1, managedReferenceMatchKey.length() / 8));
+    int bestDistance = Integer.MAX_VALUE;
+    List<AdmissionSubject> closestMatches = new ArrayList<>();
+    for (AdmissionSubject subject : subjects) {
+      String managedSubjectMatchKey = subjectMatchKey(subject.getName());
+      int distance = editDistance(managedReferenceMatchKey, managedSubjectMatchKey);
+      if (distance > permittedDistance) continue;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        closestMatches.clear();
+      }
+      if (distance == bestDistance) closestMatches.add(subject);
+    }
+    return List.copyOf(closestMatches);
+  }
+
+  private int editDistance(String left, String right) {
+    int[] previous = new int[right.length() + 1];
+    for (int column = 0; column <= right.length(); column++) previous[column] = column;
+    for (int row = 1; row <= left.length(); row++) {
+      int[] current = new int[right.length() + 1];
+      current[0] = row;
+      for (int column = 1; column <= right.length(); column++) {
+        int replacementCost = left.charAt(row - 1) == right.charAt(column - 1) ? 0 : 1;
+        current[column] =
+            Math.min(
+                Math.min(current[column - 1] + 1, previous[column] + 1),
+                previous[column - 1] + replacementCost);
+      }
+      previous = current;
+    }
+    return previous[right.length()];
   }
 
   private void addIdentityMismatchWarnings(

@@ -29,8 +29,9 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Opt-in benchmark for locally curated public Zimbabwean document specimens. Raw OCR output and
- * personal values are deliberately excluded from the generated report.
+ * Opt-in benchmark for locally curated Zimbabwean document specimens. Raw OCR output and personal
+ * values are deliberately excluded from the generated report; the local corpus may contain
+ * user-authorized personal-data samples and must remain outside source control.
  *
  * @author Tinashe K
  */
@@ -61,8 +62,12 @@ class PublicZimbabweDocumentOcrBenchmarkTest {
             .build();
     List<BenchmarkDocumentResult> results = new ArrayList<>();
     List<String> failures = new ArrayList<>();
+    String requestedDocumentId = System.getenv("OCR_BENCHMARK_DOCUMENT_ID");
 
     for (BenchmarkDocument document : manifest.documents()) {
+      if (requestedDocumentId != null
+          && !requestedDocumentId.isBlank()
+          && !requestedDocumentId.equals(document.id())) continue;
       Path documentPath = corpusDirectory.resolve(document.file()).normalize();
       assertThat(documentPath).startsWith(corpusDirectory);
       assertThat(documentPath).isRegularFile();
@@ -73,7 +78,17 @@ class PublicZimbabweDocumentOcrBenchmarkTest {
       String text = response.getDocument().getTextContent();
       if (text == null || text.isBlank()) text = response.getDocument().getMarkdownContent();
       if (text == null) text = "";
-      String normalizedText = normalize(text);
+      String normalizedText =
+          normalize(
+              text
+                  + "\n"
+                  + String.valueOf(
+                      conversion.structuredExtraction().getOrDefault("qualificationRegionText", ""))
+                  + "\n"
+                  + String.valueOf(
+                      conversion
+                          .structuredExtraction()
+                          .getOrDefault("qualificationContrastRegionText", "")));
       List<String> matchedFragments = new ArrayList<>();
       List<String> missingFragments = new ArrayList<>();
       for (String expectedFragment : document.expectedTextFragments()) {
@@ -85,7 +100,9 @@ class PublicZimbabweDocumentOcrBenchmarkTest {
           document.expectedTextFragments().isEmpty()
               ? 1.0
               : (double) matchedFragments.size() / document.expectedTextFragments().size();
-      ApplicantEvidenceFactExtractor.ExtractionFacts extractedFacts = factExtractor.extract(text);
+      ApplicantEvidenceFactExtractor.ExtractionFacts extractedFacts =
+          factExtractor.extract(
+              text, conversion.structuredExtraction(), qualificationDocumentType(document.id()));
       Map<String, Boolean> expectedFactMatches = new LinkedHashMap<>();
       for (Map.Entry<String, String> expectedFact : document.expectedFacts().entrySet()) {
         boolean matches =
@@ -108,6 +125,7 @@ class PublicZimbabweDocumentOcrBenchmarkTest {
                   .filter(key -> !"lines".equals(key))
                   .sorted()
                   .toList(),
+              qualificationResultCount(extractedFacts),
               Map.copyOf(expectedFactMatches)));
       if (!"success".equalsIgnoreCase(response.getStatus())) {
         failures.add(document.id() + " conversion status was " + response.getStatus());
@@ -143,11 +161,50 @@ class PublicZimbabweDocumentOcrBenchmarkTest {
   }
 
   private BenchmarkConversion convert(DoclingServeApi client, Path documentPath) throws Exception {
+    byte[] content = Files.readAllBytes(documentPath);
     OcrImagePreprocessor.PreparedOcrInput preparedInput =
         imagePreprocessor.prepare(
-            Files.readAllBytes(documentPath),
-            Files.probeContentType(documentPath),
-            documentPath.getFileName().toString());
+            content, Files.probeContentType(documentPath), documentPath.getFileName().toString());
+    InBodyConvertDocumentResponse response = convert(client, preparedInput);
+    Map<String, Object> structuredExtraction = new LinkedHashMap<>();
+    structuredExtraction.put(
+        "document",
+        objectMapper.convertValue(
+            response.getDocument().getJsonContent(),
+            new tools.jackson.core.type.TypeReference<Map<String, Object>>() {}));
+    imagePreprocessor
+        .prepareQualificationRegion(
+            content, Files.probeContentType(documentPath), documentPath.getFileName().toString())
+        .ifPresent(
+            region -> {
+              InBodyConvertDocumentResponse regionResponse = convert(client, region);
+              structuredExtraction.put(
+                  "qualificationRegionDocument",
+                  objectMapper.convertValue(
+                      regionResponse.getDocument().getJsonContent(),
+                      new tools.jackson.core.type.TypeReference<Map<String, Object>>() {}));
+              structuredExtraction.put(
+                  "qualificationRegionText", regionResponse.getDocument().getTextContent());
+            });
+    imagePreprocessor
+        .prepareQualificationContrastRegion(
+            content, Files.probeContentType(documentPath), documentPath.getFileName().toString())
+        .ifPresent(
+            region -> {
+              InBodyConvertDocumentResponse regionResponse = convert(client, region);
+              structuredExtraction.put(
+                  "qualificationContrastRegionDocument",
+                  objectMapper.convertValue(
+                      regionResponse.getDocument().getJsonContent(),
+                      new tools.jackson.core.type.TypeReference<Map<String, Object>>() {}));
+              structuredExtraction.put(
+                  "qualificationContrastRegionText", regionResponse.getDocument().getTextContent());
+            });
+    return new BenchmarkConversion(response, preparedInput.preprocessed(), structuredExtraction);
+  }
+
+  private InBodyConvertDocumentResponse convert(
+      DoclingServeApi client, OcrImagePreprocessor.PreparedOcrInput preparedInput) {
     ConvertDocumentRequest request =
         ConvertDocumentRequest.builder()
             .source(
@@ -168,9 +225,20 @@ class PublicZimbabweDocumentOcrBenchmarkTest {
                     .build())
             .target(InBodyTarget.builder().build())
             .build();
-    return new BenchmarkConversion(
-        (InBodyConvertDocumentResponse) client.convertSource(request),
-        preparedInput.preprocessed());
+    return (InBodyConvertDocumentResponse) client.convertSource(request);
+  }
+
+  private String qualificationDocumentType(String documentId) {
+    String normalized = documentId.toLowerCase(Locale.ROOT);
+    if (normalized.contains("a-level")) return "A_LEVEL";
+    if (normalized.contains("o-level")) return "O_LEVEL";
+    return null;
+  }
+
+  private int qualificationResultCount(
+      ApplicantEvidenceFactExtractor.ExtractionFacts extractedFacts) {
+    Object results = extractedFacts.facts().get("qualificationResults");
+    return results instanceof List<?> values ? values.size() : 0;
   }
 
   private String requireEnvironmentVariable(String name) {
@@ -211,9 +279,13 @@ class PublicZimbabweDocumentOcrBenchmarkTest {
       List<String> matchedExpectedFragments,
       List<String> missingExpectedFragments,
       List<String> proposedFactKeys,
+      int proposedQualificationResultCount,
       Map<String, Boolean> expectedFactMatches) {}
 
-  record BenchmarkConversion(InBodyConvertDocumentResponse response, boolean inputPreprocessed) {}
+  record BenchmarkConversion(
+      InBodyConvertDocumentResponse response,
+      boolean inputPreprocessed,
+      Map<String, Object> structuredExtraction) {}
 
   record BenchmarkReport(
       String engine,

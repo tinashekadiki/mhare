@@ -17,6 +17,7 @@ import {
 } from "../../scripts/changed-coverage.mjs";
 
 const temporaryDirectories: string[] = [];
+const TEMPORARY_GIT_TEST_TIMEOUT_MS = 15_000;
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
@@ -111,29 +112,35 @@ diff --git a/apps/admin-portal/pages/removed.vue b/apps/admin-portal/pages/remov
     ).toEqual(["services/finance-service"]);
   });
 
-  it("collects a diff larger than the default child-process buffer", () => {
-    const repositoryRoot = mkdtempSync(join(tmpdir(), "emhare-large-diff-"));
-    temporaryDirectories.push(repositoryRoot);
-    const sourcePath = "packages/example/composables/useLargeDiff.ts";
-    mkdirSync(join(repositoryRoot, "packages/example/composables"), { recursive: true });
-    execFileSync("git", ["init", "--quiet"], { cwd: repositoryRoot });
-    execFileSync("git", ["config", "user.name", "Coverage Test"], { cwd: repositoryRoot });
-    execFileSync("git", ["config", "user.email", "coverage@example.test"], { cwd: repositoryRoot });
-    writeFileSync(
-      join(repositoryRoot, sourcePath),
-      `export const value = '${"a".repeat(600_000)}'\n`,
-    );
-    execFileSync("git", ["add", sourcePath], { cwd: repositoryRoot });
-    execFileSync("git", ["commit", "--quiet", "-m", "baseline"], { cwd: repositoryRoot });
-    writeFileSync(
-      join(repositoryRoot, sourcePath),
-      `export const value = '${"b".repeat(600_000)}'\n`,
-    );
+  it(
+    "collects a diff larger than the default child-process buffer",
+    () => {
+      const repositoryRoot = mkdtempSync(join(tmpdir(), "emhare-large-diff-"));
+      temporaryDirectories.push(repositoryRoot);
+      const sourcePath = "packages/example/composables/useLargeDiff.ts";
+      mkdirSync(join(repositoryRoot, "packages/example/composables"), { recursive: true });
+      execFileSync("git", ["init", "--quiet"], { cwd: repositoryRoot });
+      execFileSync("git", ["config", "user.name", "Coverage Test"], { cwd: repositoryRoot });
+      execFileSync("git", ["config", "user.email", "coverage@example.test"], {
+        cwd: repositoryRoot,
+      });
+      writeFileSync(
+        join(repositoryRoot, sourcePath),
+        `export const value = '${"a".repeat(600_000)}'\n`,
+      );
+      execFileSync("git", ["add", sourcePath], { cwd: repositoryRoot });
+      execFileSync("git", ["commit", "--quiet", "-m", "baseline"], { cwd: repositoryRoot });
+      writeFileSync(
+        join(repositoryRoot, sourcePath),
+        `export const value = '${"b".repeat(600_000)}'\n`,
+      );
 
-    const changedLines = collectChangedLines(repositoryRoot, "HEAD");
+      const changedLines = collectChangedLines(repositoryRoot, "HEAD");
 
-    expect(changedLines.get(sourcePath)).toEqual(new Set([2]));
-  });
+      expect(changedLines.get(sourcePath)).toEqual(new Set([2]));
+    },
+    TEMPORARY_GIT_TEST_TIMEOUT_MS,
+  );
 
   it("does not count formatter-only line wrapping collected from git", () => {
     const repositoryRoot = mkdtempSync(join(tmpdir(), "emhare-formatting-diff-"));
@@ -189,31 +196,35 @@ diff --git a/apps/admin-portal/pages/removed.vue b/apps/admin-portal/pages/remov
     expect(changedLines.has(sourcePath)).toBe(false);
   });
 
-  it("keeps only semantic lines when formatting and behaviour change together", () => {
-    const repositoryRoot = mkdtempSync(join(tmpdir(), "emhare-semantic-formatting-diff-"));
-    temporaryDirectories.push(repositoryRoot);
-    const sourcePath = "packages/example/composables/useFormatting.ts";
-    mkdirSync(join(repositoryRoot, "packages/example/composables"), { recursive: true });
-    execFileSync("git", ["init", "--quiet"], { cwd: repositoryRoot });
-    execFileSync("git", ["config", "user.name", "Coverage Test"], { cwd: repositoryRoot });
-    execFileSync("git", ["config", "user.email", "coverage@example.test"], {
-      cwd: repositoryRoot,
-    });
-    writeFileSync(
-      join(repositoryRoot, sourcePath),
-      "export const formatted = resolve(longArgument, anotherArgument)\nexport const colour = '#20743a'\n",
-    );
-    execFileSync("git", ["add", sourcePath], { cwd: repositoryRoot });
-    execFileSync("git", ["commit", "--quiet", "-m", "baseline"], { cwd: repositoryRoot });
-    writeFileSync(
-      join(repositoryRoot, sourcePath),
-      'export const formatted = resolve(\n  longArgument,\n  anotherArgument,\n);\nexport const colour = "var(--color-uzazure-600)";\n',
-    );
+  it(
+    "keeps only semantic lines when formatting and behaviour change together",
+    () => {
+      const repositoryRoot = mkdtempSync(join(tmpdir(), "emhare-semantic-formatting-diff-"));
+      temporaryDirectories.push(repositoryRoot);
+      const sourcePath = "packages/example/composables/useFormatting.ts";
+      mkdirSync(join(repositoryRoot, "packages/example/composables"), { recursive: true });
+      execFileSync("git", ["init", "--quiet"], { cwd: repositoryRoot });
+      execFileSync("git", ["config", "user.name", "Coverage Test"], { cwd: repositoryRoot });
+      execFileSync("git", ["config", "user.email", "coverage@example.test"], {
+        cwd: repositoryRoot,
+      });
+      writeFileSync(
+        join(repositoryRoot, sourcePath),
+        "export const formatted = resolve(longArgument, anotherArgument)\nexport const colour = '#20743a'\n",
+      );
+      execFileSync("git", ["add", sourcePath], { cwd: repositoryRoot });
+      execFileSync("git", ["commit", "--quiet", "-m", "baseline"], { cwd: repositoryRoot });
+      writeFileSync(
+        join(repositoryRoot, sourcePath),
+        'export const formatted = resolve(\n  longArgument,\n  anotherArgument,\n);\nexport const colour = "var(--color-uzazure-600)";\n',
+      );
 
-    const changedLines = collectChangedLines(repositoryRoot, "HEAD");
+      const changedLines = collectChangedLines(repositoryRoot, "HEAD");
 
-    expect(changedLines.get(sourcePath)).toEqual(new Set([2]));
-  });
+      expect(changedLines.get(sourcePath)).toEqual(new Set([2]));
+    },
+    TEMPORARY_GIT_TEST_TIMEOUT_MS,
+  );
 });
 
 describe("coverage report parsing", () => {

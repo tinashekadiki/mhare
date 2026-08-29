@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const adminBaseUrl = process.env.ADMIN_PORTAL_URL ?? "http://localhost:3100";
-const applicantBaseUrl = process.env.APPLICANT_PORTAL_URL ?? "http://localhost:3101";
+const applicantBaseUrl = process.env.APPLICANT_PORTAL_URL ?? "http://localhost:3001";
 const studentPortalBaseUrl = process.env.STUDENT_PORTAL_URL ?? "http://localhost:3102";
 const workbenchBaseUrl = process.env.UI_WORKBENCH_URL ?? "http://localhost:3103";
 
