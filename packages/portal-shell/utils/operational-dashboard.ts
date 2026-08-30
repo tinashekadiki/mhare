@@ -100,6 +100,10 @@ export type OperationalDashboardApi = {
   request(path: string): Promise<unknown>;
 };
 
+export type OperationalDashboardScope = {
+  academicPeriodId?: string | null;
+};
+
 type CoreStatistics = {
   userCount: number;
   roleCount: number;
@@ -227,6 +231,7 @@ export function isOperationalDashboardKey(value: string): value is OperationalDa
 export async function loadOperationalDashboard(
   api: OperationalDashboardApi,
   key: OperationalDashboardKey,
+  scope: OperationalDashboardScope = {},
 ): Promise<OperationalDashboardSnapshot> {
   switch (key) {
     case "core":
@@ -238,7 +243,7 @@ export async function loadOperationalDashboard(
     case "finance":
       return loadFinanceDashboard(api);
     case "student-records":
-      return loadStudentRecordsDashboard(api);
+      return loadStudentRecordsDashboard(api, scope);
     case "assessment-results":
       return loadAssessmentDashboard(api);
     case "exams-timetabling":
@@ -257,8 +262,11 @@ export async function loadOperationalDashboard(
 export async function loadOperationsOverview(
   api: OperationalDashboardApi,
   keys: OperationalDashboardKey[] = operationalDashboardModules.map((module) => module.key),
+  scope: OperationalDashboardScope = {},
 ): Promise<OperationalDashboardSnapshot[]> {
-  const results = await Promise.allSettled(keys.map((key) => loadOperationalDashboard(api, key)));
+  const results = await Promise.allSettled(
+    keys.map((key) => loadOperationalDashboard(api, key, scope)),
+  );
   return results.map((result, index) => {
     if (result.status === "fulfilled") return result.value;
     const key = keys[index]!;
@@ -660,16 +668,24 @@ async function loadFinanceDashboard(
 
 async function loadStudentRecordsDashboard(
   api: OperationalDashboardApi,
+  scope: OperationalDashboardScope,
 ): Promise<OperationalDashboardSnapshot> {
   const [conversions, registrations] = await Promise.all([
     request<StudentConversionSummary[]>(api, "/api/student-records/conversions"),
     request<RegistrationSummary[]>(api, "/api/student-records/registrations"),
   ]);
+  const scopedRegistrations = scope.academicPeriodId
+    ? registrations.filter(
+        (registration) => registration.academicPeriodId === scope.academicPeriodId,
+      )
+    : registrations;
   const module = getModule("student-records");
   const dashboard = snapshot(
     module,
     now(),
-    "Conversion and registration are separate governed lifecycles; totals are not merged.",
+    scope.academicPeriodId
+      ? "Registration metrics follow the selected academic period; conversion and registration totals remain separate."
+      : "Conversion and registration are separate governed lifecycles; totals are not merged.",
     [
       metric(
         "Converted students",
@@ -680,21 +696,21 @@ async function loadStudentRecordsDashboard(
       ),
       metric(
         "Registration records",
-        registrations.length,
+        scopedRegistrations.length,
         "Distinct student-period registration records",
         "i-lucide-clipboard-list",
         "primary",
       ),
       metric(
         "Confirmed registrations",
-        registrations.filter((item) => item.status === "CONFIRMED").length,
+        scopedRegistrations.filter((item) => item.status === "CONFIRMED").length,
         "Confirmed downstream roster evidence",
         "i-lucide-badge-check",
         "info",
       ),
       metric(
         "Registered Modules",
-        registrations
+        scopedRegistrations
           .filter((item) => item.status === "CONFIRMED")
           .reduce((total, item) => total + item.modules.length, 0),
         "Module rows on confirmed registrations",
@@ -721,7 +737,7 @@ async function loadStudentRecordsDashboard(
       ),
       action(
         "Academic approval",
-        registrations.filter((item) => item.status === "SUBMITTED").length,
+        scopedRegistrations.filter((item) => item.status === "SUBMITTED").length,
         "Submitted Module registrations awaiting academic review.",
         "/operations/student-registrations",
         "i-lucide-user-check",
@@ -729,14 +745,14 @@ async function loadStudentRecordsDashboard(
       ),
       action(
         "Registration confirmation",
-        registrations.filter((item) => item.status === "ACADEMIC_APPROVED").length,
+        scopedRegistrations.filter((item) => item.status === "ACADEMIC_APPROVED").length,
         "Approved registrations awaiting Registry confirmation.",
         "/operations/student-registrations",
         "i-lucide-stamp",
         "primary",
       ),
     ],
-    distributionFrom(registrations, (item) => item.status),
+    distributionFrom(scopedRegistrations, (item) => item.status),
     [
       link(
         "Student conversions",
@@ -752,7 +768,7 @@ async function loadStudentRecordsDashboard(
       ),
     ],
   );
-  return { ...dashboard, trend: monthlyRegistrationTrend(registrations) };
+  return { ...dashboard, trend: monthlyRegistrationTrend(scopedRegistrations) };
 }
 
 async function loadAssessmentDashboard(

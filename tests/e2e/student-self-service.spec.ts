@@ -11,13 +11,33 @@ type StudentSelfServiceFixture = {
   registrationId: string;
 };
 
-function createLiveFixture() {
+function createLiveFixture(fixtureManifestPath: string) {
   const result = spawnSync("bash", ["infrastructure/test/verify_student_self_service.sh"], {
     cwd: process.cwd(),
     encoding: "utf8",
+    env: {
+      ...process.env,
+      SELF_SERVICE_FIXTURE_MANIFEST_PATH: fixtureManifestPath,
+    },
   });
   if (result.status !== 0) throw new Error(result.stderr || result.stdout);
   return JSON.parse(result.stdout) as StudentSelfServiceFixture;
+}
+
+function cleanupLiveFixture(fixtureManifestPath: string) {
+  const result = spawnSync(
+    "bash",
+    [
+      "infrastructure/test/verify_student_self_service.sh",
+      "--cleanup-manifest",
+      fixtureManifestPath,
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    },
+  );
+  if (result.status !== 0) throw new Error(result.stderr || result.stdout);
 }
 
 async function login(page: Page, fixture: StudentSelfServiceFixture) {
@@ -35,61 +55,66 @@ test.describe("Student self-service workspace", () => {
     page,
   }, testInfo) => {
     test.setTimeout(90_000);
-    const fixture = createLiveFixture();
+    const fixtureManifestPath = testInfo.outputPath("student-self-service-fixture.json");
+    const fixture = createLiveFixture(fixtureManifestPath);
     const consoleErrors: string[] = [];
     page.on(
       "console",
       (message) => message.type() === "error" && consoleErrors.push(message.text()),
     );
 
-    await login(page, fixture);
+    try {
+      await login(page, fixture);
 
-    await expect(page.getByRole("heading", { name: "Student workspace" })).toBeVisible();
-    const studentNumberCard = page
-      .getByText("Institutional identifier", { exact: true })
-      .locator("..");
-    await expect(
-      studentNumberCard.getByText(`STU-SELF-${fixture.runId.slice(0, 8)}-1`, { exact: true }),
-    ).toBeVisible();
-    await expect(page.getByText("Self-service Biology", { exact: true }).first()).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Student workspace" })).toBeVisible();
+      const studentNumberCard = page
+        .getByText("Institutional identifier", { exact: true })
+        .locator("..");
+      await expect(
+        studentNumberCard.getByText(`STU-SELF-${fixture.runId.slice(0, 8)}-1`, { exact: true }),
+      ).toBeVisible();
+      await expect(page.getByText("Self-service Biology", { exact: true }).first()).toBeVisible();
 
-    await page.getByRole("tab", { name: "Registrations" }).click();
-    await expect(page.getByText("Year 2 · Semester 2", { exact: true })).toBeVisible();
-    await expect(page.getByText("SUBMITTED", { exact: true })).toBeVisible();
+      await page.getByRole("tab", { name: "Registrations" }).click();
+      await expect(page.getByText("Year 2 · Semester 2", { exact: true })).toBeVisible();
+      await expect(page.getByText("SUBMITTED", { exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: "View Semester 2 registration" }).click();
-    const detailsDrawer = page.getByRole("dialog");
-    await expect(detailsDrawer.getByText("Advanced Cell Biology", { exact: true })).toBeVisible();
-    await expect(detailsDrawer.getByText("Plant Ecology", { exact: true })).toBeVisible();
-    await expect(detailsDrawer.getByText(/2 records · Page 1 of 1/)).toBeVisible();
-    const detailsBox = await detailsDrawer.boundingBox();
-    const viewport = page.viewportSize();
-    expect(detailsBox).not.toBeNull();
-    expect(viewport).not.toBeNull();
-    if (detailsBox && viewport && viewport.width >= 640) {
-      expect(detailsBox.x).toBeGreaterThan(viewport.width / 3);
+      await page.getByRole("button", { name: "View Semester 2 registration" }).click();
+      const detailsDrawer = page.getByRole("dialog");
+      await expect(detailsDrawer.getByText("Advanced Cell Biology", { exact: true })).toBeVisible();
+      await expect(detailsDrawer.getByText("Plant Ecology", { exact: true })).toBeVisible();
+      await expect(detailsDrawer.getByText(/2 records · Page 1 of 1/)).toBeVisible();
+      const detailsBox = await detailsDrawer.boundingBox();
+      const viewport = page.viewportSize();
+      expect(detailsBox).not.toBeNull();
+      expect(viewport).not.toBeNull();
+      if (detailsBox && viewport && viewport.width >= 640) {
+        expect(detailsBox.x).toBeGreaterThan(viewport.width / 3);
+      }
+      await detailsDrawer.getByRole("button", { name: "Close" }).last().click();
+
+      await page.getByRole("button", { name: "Start registration" }).first().click();
+      const registrationDrawer = page.getByRole("dialog");
+      await expect(registrationDrawer.getByLabel("Period number")).toHaveCount(0);
+      await registrationDrawer.getByLabel("Year of study").click();
+      await page.getByRole("option", { name: "Year 2", exact: true }).click();
+      await registrationDrawer.getByLabel("Semester").click();
+      await page.getByRole("option", { name: "Semester 2", exact: true }).click();
+      await expect(registrationDrawer.getByText(/Advanced Cell Biology/)).toBeVisible();
+      await expect(registrationDrawer.getByText(/Plant Ecology/)).toBeVisible();
+      const registrationBox = await registrationDrawer.boundingBox();
+      if (registrationBox && viewport && viewport.width >= 640) {
+        expect(registrationBox.x).toBeGreaterThan(viewport.width / 3);
+      }
+      await registrationDrawer.getByRole("button", { name: "Cancel" }).click();
+
+      await page.screenshot({
+        path: testInfo.outputPath("student-self-service.png"),
+        fullPage: true,
+      });
+      expect(consoleErrors).toEqual([]);
+    } finally {
+      cleanupLiveFixture(fixtureManifestPath);
     }
-    await detailsDrawer.getByRole("button", { name: "Close" }).last().click();
-
-    await page.getByRole("button", { name: "Start registration" }).first().click();
-    const registrationDrawer = page.getByRole("dialog");
-    await expect(registrationDrawer.getByLabel("Period number")).toHaveCount(0);
-    await registrationDrawer.getByLabel("Year of study").click();
-    await page.getByRole("option", { name: "Year 2", exact: true }).click();
-    await registrationDrawer.getByLabel("Semester").click();
-    await page.getByRole("option", { name: "Semester 2", exact: true }).click();
-    await expect(registrationDrawer.getByText(/Advanced Cell Biology/)).toBeVisible();
-    await expect(registrationDrawer.getByText(/Plant Ecology/)).toBeVisible();
-    const registrationBox = await registrationDrawer.boundingBox();
-    if (registrationBox && viewport && viewport.width >= 640) {
-      expect(registrationBox.x).toBeGreaterThan(viewport.width / 3);
-    }
-    await registrationDrawer.getByRole("button", { name: "Cancel" }).click();
-
-    await page.screenshot({
-      path: testInfo.outputPath("student-self-service.png"),
-      fullPage: true,
-    });
-    expect(consoleErrors).toEqual([]);
   });
 });

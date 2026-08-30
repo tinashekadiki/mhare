@@ -12,6 +12,7 @@ definePageMeta({ layout: "dashboard" });
 
 const route = useRoute();
 const api = useEmhareApi();
+const academicPeriodContext = useAcademicPeriodContext();
 const loading = ref(true);
 const refreshedAt = ref("");
 const loadingModuleKeys = ref(new Set(operationalDashboardModules.map((module) => module.key)));
@@ -54,13 +55,16 @@ const coveragePercentage = computed(() =>
 );
 
 onMounted(loadDashboard);
+watch(academicPeriodContext.selectedAcademicPeriodId, () => void loadDashboard());
 
 async function loadDashboard() {
   loading.value = true;
   loadingModuleKeys.value = new Set(operationalDashboardModules.map((module) => module.key));
   await Promise.all(
     operationalDashboardModules.map(async (module, index) => {
-      const [loadedModule] = await loadOperationsOverview(api, [module.key]);
+      const [loadedModule] = await loadOperationsOverview(api, [module.key], {
+        academicPeriodId: academicPeriodContext.selectedAcademicPeriodId.value,
+      });
       if (loadedModule) modules.value[index] = loadedModule;
       loadingModuleKeys.value.delete(module.key);
       loadingModuleKeys.value = new Set(loadingModuleKeys.value);

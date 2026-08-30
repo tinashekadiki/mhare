@@ -116,6 +116,40 @@ describe("Operational dashboards", () => {
     });
   });
 
+  it("scopes Student Records registration metrics to the selected academic period", async () => {
+    const request = vi.fn(async (path: string) => {
+      if (path === "/api/student-records/conversions") return [];
+      if (path === "/api/student-records/registrations") {
+        return [
+          {
+            academicPeriodId: "period-current",
+            status: "SUBMITTED",
+            initiatedAt: "2026-08-29T08:00:00Z",
+            modules: [],
+          },
+          {
+            academicPeriodId: "period-retained-fixture",
+            status: "SUBMITTED",
+            initiatedAt: "2026-08-29T09:00:00Z",
+            modules: [],
+          },
+        ];
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+
+    const snapshot = await loadOperationalDashboard({ request }, "student-records", {
+      academicPeriodId: "period-current",
+    });
+
+    expect(snapshot.metrics.find((metric) => metric.label === "Registration records")?.value).toBe(
+      1,
+    );
+    expect(snapshot.actions.find((action) => action.label === "Academic approval")?.value).toBe(1);
+    expect(snapshot.distribution).toEqual([{ label: "Submitted", value: 1 }]);
+    expect(snapshot.trend).toEqual([{ label: "Aug", value: 1 }]);
+  });
+
   it("groups active academic units by the configured unit-type vocabulary", async () => {
     const request = vi.fn(async () => ({
       academicUnitTypes: [

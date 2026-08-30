@@ -25,6 +25,8 @@ vi.mock("@emhare/portal-shell/utils/operational-dashboard", async (importOrigina
 Object.assign(globalThis, { computed, onMounted, reactive, ref, watch });
 vi.stubGlobal("defineOptions", vi.fn());
 vi.stubGlobal("definePageMeta", vi.fn());
+const selectedAcademicPeriodId = ref<string | null>("period-2026-7s1");
+vi.stubGlobal("useAcademicPeriodContext", () => ({ selectedAcademicPeriodId }));
 
 const financeSnapshot: OperationalDashboardSnapshot = {
   key: "finance",
@@ -166,6 +168,7 @@ describe("Main Operations dashboard page", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    selectedAcademicPeriodId.value = "period-2026-7s1";
     route.query = { access: "restricted" };
     vi.stubGlobal("useRoute", () => route);
     vi.stubGlobal("useEmhareApi", () => ({ errorMessage: vi.fn() }));
@@ -262,6 +265,25 @@ describe("Main Operations dashboard page", () => {
     await flushPromises();
     expect(dashboardLoaderMocks.loadOperationsOverview).toHaveBeenCalledTimes(22);
   });
+
+  it("reloads period-scoped metrics when the selected academic period changes", async () => {
+    const DashboardPage = (await import("../../pages/operations/index.vue")).default;
+    const wrapper = mount(DashboardPage, { global: { stubs: commonStubs } });
+    await flushPromises();
+    dashboardLoaderMocks.loadOperationsOverview.mockClear();
+
+    selectedAcademicPeriodId.value = "period-2026-7s2";
+    await nextTick();
+    await flushPromises();
+
+    expect(dashboardLoaderMocks.loadOperationsOverview).toHaveBeenCalled();
+    expect(
+      dashboardLoaderMocks.loadOperationsOverview.mock.calls.every(
+        ([, , scope]) => scope.academicPeriodId === "period-2026-7s2",
+      ),
+    ).toBe(true);
+    wrapper.unmount();
+  });
 });
 
 describe("Operational module dashboard page", () => {
@@ -271,6 +293,7 @@ describe("Operational module dashboard page", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    selectedAcademicPeriodId.value = "period-2026-7s1";
     route = reactive({ params: { module: "finance" } });
     vi.stubGlobal("useRoute", () => route);
     vi.stubGlobal("useEmhareApi", () => ({ errorMessage: apiErrorMessage }));
@@ -291,6 +314,7 @@ describe("Operational module dashboard page", () => {
     expect(dashboardLoaderMocks.loadOperationalDashboard).toHaveBeenCalledWith(
       expect.anything(),
       "finance",
+      { academicPeriodId: "period-2026-7s1" },
     );
     expect(wrapper.text()).toContain("Finance overview");
     expect(wrapper.text()).toContain("Finance dashboard");
@@ -339,6 +363,7 @@ describe("Operational module dashboard page", () => {
     expect(dashboardLoaderMocks.loadOperationalDashboard).toHaveBeenLastCalledWith(
       expect.anything(),
       "documents",
+      { academicPeriodId: "period-2026-7s1" },
     );
 
     route.params.module = "not-a-module";
