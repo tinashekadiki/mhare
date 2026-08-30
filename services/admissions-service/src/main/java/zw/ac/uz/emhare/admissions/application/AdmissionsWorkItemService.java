@@ -261,7 +261,7 @@ public class AdmissionsWorkItemService {
     List<String> blockers = new ArrayList<>();
     if (application.getStatus() == ApplicationStatus.DRAFT)
       blockers.add("Application has not been submitted.");
-    if (application.getApplicationType().getFinanceFeeStructureId() != null
+    if (application.isPaymentRequired()
         && application.getPaymentConfirmedAt() == null
         && application.getPaymentOverrideByUserId() == null) {
       blockers.add("Application fee is not confirmed or waived.");
@@ -396,7 +396,7 @@ public class AdmissionsWorkItemService {
   }
 
   private String paymentState(Application application) {
-    if (application.getApplicationType().getFinanceFeeStructureId() == null) return "NOT_REQUIRED";
+    if (!application.isPaymentRequired()) return "NOT_REQUIRED";
     if (application.getPaymentConfirmedAt() != null) return "PAID";
     if (application.getPaymentOverrideByUserId() != null) return "WAIVED";
     return "PENDING";

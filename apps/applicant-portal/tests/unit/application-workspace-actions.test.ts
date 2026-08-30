@@ -2,6 +2,7 @@
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { defineComponent, ref } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import InlineFormComponent from "@emhare/portal-shell/components/forms/EmhareInlineRecordForm.vue";
 import ApplicationWorkspace from "../../pages/applications/[applicationId].vue";
 import {
   clickButton,
@@ -21,12 +22,7 @@ const FormField = defineComponent({
   template:
     '<label class="field" :data-label="label">{{ label }}<SelectControl v-if="type===\'select\'||type===\'searchable-select\'" :model-value="multiple?modelValue[0]:modelValue" :items="items" :disabled="disabled" @update:model-value="$emit(\'update:modelValue\',multiple?[$event]:$event)"/><ToggleControl v-else-if="type===\'toggle\'" :model-value="modelValue" :disabled="disabled" @update:model-value="$emit(\'update:modelValue\',$event)"/><InputControl v-else :model-value="modelValue" :disabled="disabled" :readonly="readonly" :type="type===\'number\'?\'number\':\'text\'" @update:model-value="$emit(\'update:modelValue\',type===\'number\'?Number($event):$event)"/></label>',
 });
-const InlineForm = defineComponent({
-  props: ["title", "submitDisabled", "showCancel"],
-  emits: ["submit", "cancel"],
-  template:
-    '<section class="inline-form"><h2>{{title}}</h2><slot/><button :disabled="submitDisabled" @click="$emit(\'submit\')">Save record</button><button v-if="showCancel" @click="$emit(\'cancel\')">Cancel edit</button></section>',
-});
+const InlineForm = InlineFormComponent;
 const EvidenceUploader = defineComponent({
   props: ["label", "documentTypeCode", "existingDocumentId", "disabled"],
   emits: ["uploaded", "extraction-ready"],
@@ -51,6 +47,11 @@ const confirmAction = vi.fn(),
   showSuccess = vi.fn(),
   push = vi.fn();
 let workspace: any;
+async function nextSection() {
+  await wrapper.findAll("footer button").at(-1)!.trigger("click");
+  await flushPromises();
+}
+
 const sections = [
   ["PERSONAL_DETAILS", "Applicant details"],
   ["NEXT_OF_KIN", "Next of kin"],
@@ -103,7 +104,13 @@ function fixture() {
       code,
       name,
       required: true,
-      repeatable: false,
+      repeatable: [
+        "NEXT_OF_KIN",
+        "EMPLOYMENT_HISTORY",
+        "REFEREES",
+        "QUALIFICATIONS",
+        "PROGRAMME_CHOICES",
+      ].includes(code!),
       minimumRecords: 1,
       sortOrder: index,
       status: "IN_PROGRESS",
@@ -283,6 +290,215 @@ const recordCases = [
 ];
 
 describe("Applicant workspace public actions", () => {
+  it.each([
+    ["Qualifications", "Upload the qualification document"],
+    ["Programme choices", "Choose at least one programme"],
+    ["Prior UZ study", "Complete the highlighted fields"],
+    ["Professional achievements", "Enter an achievement title"],
+  ])("keeps incomplete %s on screen when Next is selected", async (sectionName, message) => {
+    await render();
+    await section(sectionName);
+    if (sectionName === "Prior UZ study")
+      await setField(wrapper, "I previously studied at UZ", true);
+    await nextSection();
+    expect(wrapper.get("h1").text()).toBe(sectionName);
+    expect(wrapper.text()).toContain(message);
+    expect(context.request.mock.calls.some(([, options]) => options?.method)).toBe(false);
+  });
+  it("asks for required identity documents before saving", async () => {
+    workspace.documents.requirements = [
+      {
+        requirementCode: "NATIONAL_ID",
+        requirementName: "National ID",
+        captureSectionCode: "PERSONAL_DETAILS",
+        state: "MISSING",
+        required: true,
+        documentId: null,
+      },
+    ];
+    await render();
+    await nextSection();
+    expect(wrapper.text()).toContain("Upload the required identity documents first.");
+    expect(wrapper.get("h1").text()).toBe("Applicant details");
+  });
+  it.each(recordCases)(
+    "offers additional $section entries only when repeatable",
+    async (scenario) => {
+      workspace[scenario.collection] = [scenario.record];
+      await render();
+      await section(scenario.section);
+      expect(wrapper.find("#inline-record-editor").exists()).toBe(false);
+      await wrapper
+        .findAll("button")
+        .find((button) => button.text().startsWith("Add another"))!
+        .trigger("click");
+      await flushPromises();
+      for (const [label, value] of Object.entries(scenario.fields))
+        await setField(wrapper, label, value);
+      if (scenario.section === "Next of kin") {
+        await setField(wrapper, "Email", "contact@example.test");
+        await setField(wrapper, "Address", "Harare");
+      }
+      if (scenario.section === "Referees") await setField(wrapper, "Title", "Dr");
+      await clickButton(wrapper, "Save");
+      expect(context.request).toHaveBeenCalledWith(
+        `/api/admissions/applications/application/${scenario.resource}`,
+        expect.objectContaining({ method: "POST" }),
+      );
+    },
+  );
+  it("cancels the pending autosave when profile changes are discarded", async () => {
+    await render();
+    await setField(wrapper, "Phone number", "+263771111111");
+    await clickButton(wrapper, "Cancel");
+    expect(
+      (wrapper.get('[data-label="Phone number"] input').element as HTMLInputElement).value,
+    ).toBe(workspace.profile.primaryPhone);
+    expect(context.request.mock.calls.some(([, options]) => options?.method)).toBe(false);
+    expect(wrapper.text()).not.toContain("Unsaved changes");
+  });
+
+  it("does not overwrite edits made while a profile save is pending", async () => {
+    await render();
+    let finishSave!: (value: any) => void;
+    context.request.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishSave = resolve;
+        }),
+    );
+    await setField(wrapper, "Phone number", "+263771111111");
+    await wrapper
+      .findAll("button")
+      .find((button) => button.text() === "Save")!
+      .trigger("click");
+    await flushPromises();
+    await setField(wrapper, "Phone number", "+263772222222");
+    finishSave({
+      ...workspace,
+      profile: { ...workspace.profile, primaryPhone: "+263771111111", version: 5 },
+    });
+    await flushPromises();
+    expect(
+      (wrapper.get('[data-label="Phone number"] input').element as HTMLInputElement).value,
+    ).toBe("+263772222222");
+    await clickButton(wrapper, "Save");
+    expect(context.request).toHaveBeenLastCalledWith(
+      "/api/admissions/applications/application/profile",
+      expect.objectContaining({
+        body: expect.objectContaining({ primaryPhone: "+263772222222", expectedVersion: 5 }),
+      }),
+    );
+  });
+  it("saves a no-previous-study declaration on Next without an extra save click", async () => {
+    await render();
+    await section("Prior UZ study");
+    await nextSection();
+    expect(context.request).toHaveBeenCalledWith(
+      "/api/admissions/applications/application/prior-uz-declaration",
+      { method: "PUT", body: { previouslyStudiedAtUz: false } },
+    );
+    expect(wrapper.get("h1").text()).toBe("Professional achievements");
+  });
+  it("shows the first achievement form immediately and saves it on Next", async () => {
+    await render();
+    await section("Professional achievements");
+    await setField(wrapper, "Title", "Research award");
+    await nextSection();
+    expect(context.request).toHaveBeenCalledWith(
+      "/api/admissions/applications/application/professional-achievements",
+      expect.objectContaining({
+        body: expect.objectContaining({
+          achievements: [expect.objectContaining({ title: "Research award" })],
+        }),
+      }),
+    );
+    expect(wrapper.get("h1").text()).toBe("Qualifications");
+  });
+  it("keeps invalid contact fields visible and supports cancelling before leaving", async () => {
+    await render();
+    await section("Next of kin");
+    await setField(wrapper, "Full name", "Unsaved person");
+    await section("Qualifications");
+    expect(wrapper.get("h1").text()).toBe("Next of kin");
+    expect(wrapper.text()).toContain("Complete the highlighted fields.");
+    await clickButton(wrapper, "Cancel");
+    await section("Qualifications");
+    expect(wrapper.get("h1").text()).toBe("Qualifications");
+  });
+  it("saves contact edits before returning to the application list", async () => {
+    await render();
+    await section("Next of kin");
+    for (const [label, value] of Object.entries(recordCases[0]!.fields))
+      await setField(wrapper, label, value);
+    await clickButton(wrapper, "Return to applications");
+    expect(context.request).toHaveBeenCalledWith(
+      "/api/admissions/applications/application/next-of-kin",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(push).toHaveBeenCalledWith("/");
+  });
+
+  it.each(recordCases)("saves $section before moving to the next step", async (scenario) => {
+    await render();
+    await section(scenario.section);
+    for (const [label, value] of Object.entries(scenario.fields))
+      await setField(wrapper, label, value);
+    const heading = wrapper.get("h1").text();
+    await wrapper.findAll("footer button").at(-1)!.trigger("click");
+    await flushPromises();
+    expect(context.request).toHaveBeenCalledWith(
+      `/api/admissions/applications/application/${scenario.resource}`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(wrapper.get("h1").text()).not.toBe(heading);
+  });
+  it("keeps unsaved contact details when Next fails", async () => {
+    await render();
+    await section("Next of kin");
+    await setField(wrapper, "Full name", "My parent");
+    await setField(wrapper, "Relationship", "PARENT");
+    await setField(wrapper, "Phone number", "+263771234567");
+    context.request.mockRejectedValueOnce(new Error("Connection lost"));
+    await wrapper.findAll("footer button").at(-1)!.trigger("click");
+    await flushPromises();
+    expect(wrapper.get("h1").text()).toBe("Next of kin");
+    expect((wrapper.get('[data-label="Full name"] input').element as HTMLInputElement).value).toBe(
+      "My parent",
+    );
+    expect(context.notify).not.toHaveBeenCalled();
+  });
+  it("opens an existing single-entry contact for editing without an Add action", async () => {
+    workspace.nextOfKin = [recordCases[0]!.record];
+    workspace.sections.find((item: any) => item.code === "NEXT_OF_KIN").repeatable = false;
+    await render();
+    await section("Next of kin");
+    expect((wrapper.get('[data-label="Full name"] input').element as HTMLInputElement).value).toBe(
+      "Parent",
+    );
+    expect(wrapper.findAll("button").some((button) => /Add another/.test(button.text()))).toBe(
+      false,
+    );
+  });
+  it("saves unsaved programme choices when continuing", async () => {
+    await render();
+    await section("Programme choices");
+    wrapper
+      .findAllComponents(FormField)
+      .find((field) => field.props("label") === "Programme choices")!
+      .vm.$emit("update:modelValue", ["programme"]);
+    await flushPromises();
+    await wrapper.findAll("footer button").at(-1)!.trigger("click");
+    await flushPromises();
+    expect(context.request).toHaveBeenCalledWith(
+      "/api/admissions/applications/application/programme-choices",
+      expect.objectContaining({
+        method: "PUT",
+        body: { choices: [{ programmeId: "programme", entryOptionIds: [] }] },
+      }),
+    );
+  });
+
   it.each(recordCases)(
     "creates $section through the inline form and resets after save",
     async (scenario) => {
@@ -290,18 +506,17 @@ describe("Applicant workspace public actions", () => {
       await section(scenario.section);
       for (const [label, value] of Object.entries(scenario.fields))
         await setField(wrapper, label, value);
-      await clickButton(wrapper, "Save record");
+      await clickButton(wrapper, "Save");
       expect(context.request).toHaveBeenCalledWith(
         `/api/admissions/applications/application/${scenario.resource}`,
         { method: "POST", body: expect.objectContaining({ expectedVersion: 0 }) },
       );
-      expect(context.notify).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Draft saved" }),
-      );
+      expect(context.notify).toHaveBeenCalledWith(expect.objectContaining({ title: "Saved" }));
       expect(
         (
-          wrapper.get(`.inline-form [data-label="${Object.keys(scenario.fields)[0]}"] input`)
-            .element as HTMLInputElement
+          wrapper.get(
+            `#inline-record-editor [data-label="${Object.keys(scenario.fields)[0]}"] input`,
+          ).element as HTMLInputElement
         ).value,
       ).toBe("");
     },
@@ -311,8 +526,8 @@ describe("Applicant workspace public actions", () => {
     await render();
     await section(scenario.section);
     await clickButton(wrapper, "Edit");
-    expect(wrapper.get(".inline-form h2").text()).toContain("Edit");
-    await clickButton(wrapper, "Save record");
+    expect(wrapper.find("#inline-record-editor").exists()).toBe(true);
+    await clickButton(wrapper, "Save");
     expect(context.request).toHaveBeenCalledWith(
       `/api/admissions/applications/application/${scenario.resource}/record`,
       expect.objectContaining({
@@ -321,16 +536,18 @@ describe("Applicant workspace public actions", () => {
       }),
     );
     await clickButton(wrapper, "Edit");
-    await clickButton(wrapper, "Cancel edit");
-    expect(wrapper.get(".inline-form h2").text()).not.toContain("Edit");
+    await clickButton(wrapper, "Cancel");
+    expect(wrapper.find("#inline-record-editor").exists()).toBe(false);
   });
   it.each(recordCases)(
     "keeps failed $section edits visible and reports the backend error",
     async (scenario) => {
       await render();
       await section(scenario.section);
+      for (const [label, value] of Object.entries(scenario.fields))
+        await setField(wrapper, label, value);
       context.request.mockRejectedValueOnce(new Error("Version conflict"));
-      await clickButton(wrapper, "Save record");
+      await clickButton(wrapper, "Save");
       expect(context.showError).toHaveBeenCalledWith(
         "Record could not be saved",
         "Version conflict",
@@ -408,7 +625,7 @@ describe("Applicant workspace public actions", () => {
         await setField(wrapper, "Enrolment started", "2020-01-01");
         await setField(wrapper, "I accepted the previous offer", true);
       }
-      await clickButton(wrapper, "Save declaration");
+      await clickButton(wrapper, "Save");
       expect(context.request).toHaveBeenCalledWith(
         "/api/admissions/applications/application/prior-uz-declaration",
         {
@@ -430,12 +647,11 @@ describe("Applicant workspace public actions", () => {
     await section("Professional achievements");
     if (none) await setField(wrapper, "I have no professional achievements to declare", true);
     else {
-      await clickButton(wrapper, "Add achievement");
       await setField(wrapper, "Title", "Research award");
       await clickButton(wrapper, "Add achievement");
       await clickButton(wrapper, "Remove", 1);
     }
-    await clickButton(wrapper, "Save achievements");
+    await clickButton(wrapper, "Save");
     expect(context.request).toHaveBeenCalledWith(
       "/api/admissions/applications/application/professional-achievements",
       {
@@ -465,14 +681,14 @@ describe("Applicant workspace public actions", () => {
       expect(
         wrapper
           .findAll("button")
-          .find((button) => button.text() === "Save record")!
+          .find((button) => button.text() === "Save")!
           .attributes("disabled"),
       ).toBeDefined();
       await clickButton(wrapper, "Upload Qualification evidence");
       await setField(wrapper, "Qualification title", "Advanced qualification");
       await setField(wrapper, "School or institution", "University");
       await setField(wrapper, "Qualification duration (months)", "24");
-      await clickButton(wrapper, "Save record");
+      await clickButton(wrapper, "Save");
       expect(context.request).toHaveBeenCalledWith(
         "/api/admissions/applications/application/qualification-aggregates",
         {
@@ -495,16 +711,14 @@ describe("Applicant workspace public actions", () => {
       await section("Qualifications");
       await setField(wrapper, "Qualification type", level);
       await clickButton(wrapper, "Upload Qualification evidence");
-      expect(wrapper.findAll('[data-label="Managed subject"]')).toHaveLength(
-        level === "O_LEVEL" ? 8 : 3,
-      );
+      expect(wrapper.findAll('[data-label="Subject"]')).toHaveLength(level === "O_LEVEL" ? 8 : 3);
       while (wrapper.findAll('[aria-label^="Remove subject"]').length)
         await wrapper.find('[aria-label^="Remove subject"]').trigger("click");
       await setField(wrapper, "Exam body", "zimsec");
-      await setField(wrapper, "Managed subject", level === "O_LEVEL" ? "maths" : "physics");
+      await setField(wrapper, "Subject", level === "O_LEVEL" ? "maths" : "physics");
       await setField(wrapper, "Grade", "A");
       if (level === "A_LEVEL") await setField(wrapper, "Principal subject", true);
-      await clickButton(wrapper, "Save record");
+      await clickButton(wrapper, "Save");
       expect(context.request).toHaveBeenCalledWith(
         "/api/admissions/applications/application/qualification-aggregates",
         {
@@ -529,12 +743,10 @@ describe("Applicant workspace public actions", () => {
     await render();
     await section("Qualifications");
     await clickButton(wrapper, "Upload Qualification evidence");
-    await setField(wrapper, "Managed subject", "maths");
-    expect(wrapper.findAll('[data-label="Managed subject"]')[1]!.text()).not.toContain(
-      "Mathematics",
-    );
+    await setField(wrapper, "Subject", "maths");
+    expect(wrapper.findAll('[data-label="Subject"]')[1]!.text()).not.toContain("Mathematics");
     for (let count = 8; count < 20; count++) await clickButton(wrapper, "Add another subject");
-    expect(wrapper.findAll('[data-label="Managed subject"]')).toHaveLength(20);
+    expect(wrapper.findAll('[data-label="Subject"]')).toHaveLength(20);
     expect(
       wrapper.findAll("button").some((button) => button.text() === "Add another subject"),
     ).toBe(false);
@@ -547,10 +759,7 @@ describe("Applicant workspace public actions", () => {
       if (name === "Professional achievements")
         await setField(wrapper, "I have no professional achievements to declare", true);
       context.request.mockRejectedValueOnce(new Error("Invalid evidence"));
-      await clickButton(
-        wrapper,
-        name === "Prior UZ study" ? "Save declaration" : "Save achievements",
-      );
+      await clickButton(wrapper, name === "Prior UZ study" ? "Save" : "Save");
       expect(context.showError).toHaveBeenCalledWith(
         expect.stringContaining("could not be saved"),
         "Invalid evidence",
@@ -601,10 +810,10 @@ describe("Applicant workspace public actions", () => {
     await render();
     for (const scenario of recordCases) {
       await section(scenario.section);
-      expect(wrapper.find(".inline-form").exists()).toBe(false);
+      expect(wrapper.find("#inline-record-editor").exists()).toBe(false);
       expect(wrapper.findAll("button").some((button) => button.text() === "Edit")).toBe(false);
     }
-    expect(wrapper.findAll("button").some((button) => button.text() === "Save draft")).toBe(false);
+    expect(wrapper.findAll("button").some((button) => button.text() === "Save")).toBe(false);
     await clickButton(wrapper, "Return to applications");
     expect(push).toHaveBeenCalledWith("/");
   });
@@ -784,10 +993,10 @@ describe("Applicant payment and profile readiness", () => {
       await section("Application fee");
       expect(wrapper.text()).toContain(
         status === "PAID"
-          ? "No further payment action is required"
+          ? "Your application fee has been paid"
           : status === "UNRATED"
-            ? "never assumes a rate of 1"
-            : "confirmation without uploading a receipt",
+            ? "confirm the exchange rate"
+            : "Confirmation appears here after payment",
       );
       if (status === "PAID")
         expect(
@@ -921,7 +1130,7 @@ describe("Applicant payment and profile readiness", () => {
   it("saves profile changes before continuing and carries the current version", async () => {
     await render();
     await setField(wrapper, "Phone number", "+263771999999");
-    await clickButton(wrapper, "Continue: Next of kin");
+    await nextSection();
     expect(context.request).toHaveBeenCalledWith(
       "/api/admissions/applications/application/profile",
       {
@@ -933,29 +1142,28 @@ describe("Applicant payment and profile readiness", () => {
         }),
       },
     );
-    expect(wrapper.get(".inline-form").text()).toContain("Next of kin details");
-    await clickButton(wrapper, "Save draft");
-    expect(context.notify).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Draft up to date" }),
-    );
-    await clickButton(wrapper, "Back: Applicant details");
+    expect(wrapper.get("h1").text()).toBe("Next of kin");
+    await clickButton(wrapper, "Save");
+    expect(wrapper.text()).toContain("Complete the highlighted fields.");
+    expect(context.notify).not.toHaveBeenCalled();
+    await clickButton(wrapper, "Back");
     expect(wrapper.find('.field[data-label="First name"]').exists()).toBe(true);
   });
   it("keeps an incomplete or failed profile on the same step", async () => {
     await render();
     await setField(wrapper, "Phone number", "");
-    await clickButton(wrapper, "Continue: Next of kin");
-    expect(wrapper.find(".inline-form").exists()).toBe(false);
+    await nextSection();
+    expect(wrapper.find("#inline-record-editor").exists()).toBe(false);
     await setField(wrapper, "Phone number", "+263771999999");
     context.request.mockRejectedValueOnce(new Error("Duplicate identity"));
-    await clickButton(wrapper, "Continue: Next of kin");
+    await nextSection();
     expect(context.showError).toHaveBeenCalledWith(
       "Profile could not be saved",
       "Duplicate identity",
     );
-    expect(wrapper.find(".inline-form").exists()).toBe(false);
-    await clickButton(wrapper, "Save draft");
-    expect(context.notify).toHaveBeenCalledWith(expect.objectContaining({ title: "Draft saved" }));
+    expect(wrapper.find("#inline-record-editor").exists()).toBe(false);
+    await clickButton(wrapper, "Save");
+    expect(context.notify).toHaveBeenCalledWith(expect.objectContaining({ title: "Saved" }));
   });
   it("unlocks identity capture on stored evidence without waiting for OCR", async () => {
     workspace.documents.requirements = [

@@ -1,69 +1,100 @@
 <script setup lang="ts">
 type FieldOption = {
-  label: string
-  value: string | number | boolean
-  description?: string
-}
+  label: string;
+  value: string | number | boolean;
+  description?: string;
+};
 
-type FieldItem = FieldOption | string | number | boolean
+type FieldItem = FieldOption | string | number | boolean;
 
-const props = withDefaults(defineProps<{
-  modelValue?: unknown
-  name?: string
-  label: string
-  description?: string
-  hint?: string
-  placeholder?: string
-  type?: 'text' | 'number' | 'currency' | 'percentage' | 'color' | 'textarea' | 'select' | 'searchable-select' | 'multi-select' | 'radio' | 'checkbox' | 'toggle' | 'date' | 'date-range' | 'time' | 'phone' | 'email' | 'password' | 'file' | 'drop-file' | 'rich-text' | 'address' | 'autocomplete' | 'tags'
-  items?: FieldItem[]
-  options?: FieldItem[]
-  required?: boolean
-  disabled?: boolean
-  readonly?: boolean
-  multiple?: boolean
-  accept?: string
-  min?: number
-  max?: number
-  step?: number
-}>(), {
-  type: 'text',
-  options: () => [],
-  name: undefined,
-  placeholder: undefined,
-  description: undefined,
-  hint: undefined,
-  required: false,
-  disabled: false,
-  readonly: false,
-  multiple: false,
-  accept: undefined,
-  min: undefined,
-  max: undefined,
-  step: undefined
-})
+const props = withDefaults(
+  defineProps<{
+    modelValue?: unknown;
+    name?: string;
+    label: string;
+    error?: string;
+    description?: string;
+    hint?: string;
+    placeholder?: string;
+    type?:
+      | "text"
+      | "number"
+      | "currency"
+      | "percentage"
+      | "color"
+      | "textarea"
+      | "select"
+      | "searchable-select"
+      | "multi-select"
+      | "radio"
+      | "checkbox"
+      | "toggle"
+      | "date"
+      | "date-range"
+      | "time"
+      | "phone"
+      | "email"
+      | "password"
+      | "file"
+      | "drop-file"
+      | "rich-text"
+      | "address"
+      | "autocomplete"
+      | "tags";
+    items?: FieldItem[];
+    options?: FieldItem[];
+    required?: boolean;
+    disabled?: boolean;
+    readonly?: boolean;
+    multiple?: boolean;
+    accept?: string;
+    min?: number;
+    max?: number;
+    step?: number;
+  }>(),
+  {
+    type: "text",
+    options: () => [],
+    name: undefined,
+    placeholder: undefined,
+    error: undefined,
+    description: undefined,
+    hint: undefined,
+    required: false,
+    disabled: false,
+    readonly: false,
+    multiple: false,
+    accept: undefined,
+    min: undefined,
+    max: undefined,
+    step: undefined,
+  },
+);
 
 const emit = defineEmits<{
-  'update:modelValue': [value: unknown]
-}>()
+  "update:modelValue": [value: unknown];
+}>();
 
-const textModel = computed(() => props.modelValue as string | undefined)
-const numberModel = computed(() => props.modelValue as number | undefined)
-const booleanModel = computed(() => props.modelValue as boolean | undefined)
-const singleSelectModel = computed(() => props.modelValue as string | number | boolean | undefined)
-const multiSelectModel = computed(() => props.modelValue as Array<string | number | boolean> | undefined)
-const dateModel = computed<any>(() => props.modelValue)
-const timeModel = computed<any>(() => props.modelValue)
-const fileModel = computed(() => props.modelValue as File | File[] | null | undefined)
-const tagsModel = computed(() => props.modelValue as string[] | undefined)
-const fieldOptions = computed(() => props.items ?? props.options)
+const textModel = computed(() => props.modelValue as string | undefined);
+const numberModel = computed(() => props.modelValue as number | undefined);
+const booleanModel = computed(() => props.modelValue as boolean | undefined);
+const singleSelectModel = computed(() => props.modelValue as string | number | boolean | undefined);
+const multiSelectModel = computed(
+  () => props.modelValue as Array<string | number | boolean> | undefined,
+);
+const dateModel = computed<any>(() => props.modelValue);
+const timeModel = computed<any>(() => props.modelValue);
+const fileModel = computed(() => props.modelValue as File | File[] | null | undefined);
+const tagsModel = computed(() => props.modelValue as string[] | undefined);
+const fieldOptions = computed(() => props.items ?? props.options);
 const selectPlaceholder = computed(() => {
-  const configuredPlaceholder = props.placeholder?.trim()
+  const configuredPlaceholder = props.placeholder?.trim();
 
-  return configuredPlaceholder || `Select ${props.label.toLocaleLowerCase()}`
-})
+  return configuredPlaceholder || `Select ${props.label.toLocaleLowerCase()}`;
+});
 
 function update(value: unknown) {
-  emit('update:modelValue', value)
+  emit("update:modelValue", value);
 }
 </script>
 
@@ -74,16 +105,33 @@ function update(value: unknown) {
     :label="label"
     :description="description"
     :hint="hint"
+    :error="error"
     :required="required"
   >
     <UInput
-      v-if="['text', 'phone', 'email', 'password', 'currency', 'percentage', 'address'].includes(type)"
+      v-if="
+        ['text', 'phone', 'email', 'password', 'currency', 'percentage', 'address'].includes(type)
+      "
       :model-value="textModel"
-      :type="type === 'password' ? 'password' : type === 'email' ? 'email' : type === 'phone' ? 'tel' : 'text'"
+      :type="
+        type === 'password'
+          ? 'password'
+          : type === 'email'
+            ? 'email'
+            : type === 'phone'
+              ? 'tel'
+              : 'text'
+      "
       :placeholder="placeholder"
       :disabled="disabled"
       :readonly="readonly"
-      :icon="type === 'currency' ? 'i-lucide-dollar-sign' : type === 'percentage' ? 'i-lucide-percent' : undefined"
+      :icon="
+        type === 'currency'
+          ? 'i-lucide-dollar-sign'
+          : type === 'percentage'
+            ? 'i-lucide-percent'
+            : undefined
+      "
       class="w-full"
       @update:model-value="update"
     />

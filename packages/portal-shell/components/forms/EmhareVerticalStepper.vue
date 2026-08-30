@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// Author: Tinashe K
 type Step = {
   id: string;
   title: string;
@@ -19,6 +20,26 @@ const emit = defineEmits<{
   "update:currentStep": [stepId: string];
 }>();
 
+const mobileSteps = ref<HTMLOListElement | null>(null);
+function revealCurrentStep() {
+  const list = mobileSteps.value;
+  const current = list?.querySelector<HTMLElement>('[aria-current="step"]');
+  if (!list || !current) return;
+  list.scrollTo({
+    left: current.offsetLeft - list.offsetLeft - (list.clientWidth - current.offsetWidth) / 2,
+    behavior: "instant",
+  });
+}
+watch(
+  () => props.currentStep,
+  () => nextTick(revealCurrentStep),
+);
+onMounted(() => {
+  revealCurrentStep();
+  window.addEventListener("resize", revealCurrentStep);
+});
+onBeforeUnmount(() => window.removeEventListener("resize", revealCurrentStep));
+
 function select(step: Step) {
   if (step.disabled) return;
   emit("update:currentStep", step.id);
@@ -27,12 +48,12 @@ function select(step: Step) {
 
 <template>
   <nav :aria-label="label ?? 'Application steps'">
-    <ol class="scrollbar-thin flex gap-2 overflow-x-auto pb-1 lg:hidden">
+    <ol ref="mobileSteps" class="scrollbar-thin flex gap-2 overflow-x-auto pb-1 lg:hidden">
       <li v-for="step in steps" :key="step.id" class="shrink-0">
         <button
           type="button"
           :disabled="step.disabled"
-          class="flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-uzazure-700"
+          class="flex min-h-11 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-uzazure-700"
           :class="
             step.disabled
               ? 'cursor-default border-slate-200 text-slate-300'

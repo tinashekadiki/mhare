@@ -1,10 +1,25 @@
 <script setup lang="ts">
+// Author: Tinashe K
+withDefaults(
+  defineProps<{
+    navigationItems?: Array<{ label: string; href: string }>;
+  }>(),
+  {
+    navigationItems: () => [
+      { label: "Home", href: "#portal-access" },
+      { label: "Notices", href: "#notices" },
+      { label: "Services", href: "#services" },
+      { label: "Events", href: "#events" },
+      { label: "News", href: "#news" },
+    ],
+  },
+);
 const menuOpen = ref(false);
 const officialUniversityLogoPath = "/images/brand/university-of-zimbabwe-logo.png";
 </script>
 
 <template>
-  <header class="bg-white text-slate-900">
+  <header class="bg-white text-slate-900" @keydown.esc="menuOpen = false">
     <div class="h-1.5 bg-uzazure-700" />
     <div class="mx-auto flex max-w-7xl items-center gap-4 px-5 py-4 sm:px-8">
       <NuxtLink
@@ -35,44 +50,30 @@ const officialUniversityLogoPath = "/images/brand/university-of-zimbabwe-logo.pn
       </button>
     </div>
     <div class="bg-uzazure-700 text-white shadow-sm">
-      <nav
-        class="mx-auto hidden max-w-7xl items-center px-5 text-sm font-bold sm:px-8 md:flex"
-        aria-label="Public gateway"
-      >
-        <a href="#portal-access" class="border-b-4 border-uzorange-500 px-4 py-3.5">Home</a>
-        <a href="#notices" class="px-4 py-3.5 hover:bg-white/10">Notices</a>
-        <a href="#services" class="px-4 py-3.5 hover:bg-white/10">Services</a>
-        <a href="#events" class="px-4 py-3.5 hover:bg-white/10">Events</a>
-        <a href="#news" class="px-4 py-3.5 hover:bg-white/10">News</a>
-      </nav>
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between px-5 sm:px-8">
+        <nav class="hidden items-center text-sm font-bold md:flex" aria-label="Public gateway">
+          <a
+            v-for="(item, index) in navigationItems"
+            :key="item.href"
+            :href="item.href"
+            class="border-b-4 px-4 py-3.5 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white"
+            :class="index === 0 ? 'border-uzorange-500' : 'border-transparent'"
+            >{{ item.label }}</a
+          >
+        </nav>
+        <div v-if="$slots.actions" class="flex min-h-14 flex-wrap items-center gap-2 py-2">
+          <slot name="actions" />
+        </div>
+      </div>
       <nav v-if="menuOpen" class="px-5 py-3 md:hidden" aria-label="Mobile public gateway">
         <div class="mx-auto grid max-w-7xl grid-cols-2 gap-1 text-sm font-semibold">
           <a
-            href="#portal-access"
-            class="rounded-sm bg-white/10 px-3 py-2.5"
-            @click="menuOpen = false"
-            >Home</a
-          >
-          <a
-            href="#notices"
+            v-for="item in navigationItems"
+            :key="item.href"
+            :href="item.href"
             class="rounded-sm px-3 py-2.5 hover:bg-white/10"
             @click="menuOpen = false"
-            >Notices</a
-          >
-          <a
-            href="#services"
-            class="rounded-sm px-3 py-2.5 hover:bg-white/10"
-            @click="menuOpen = false"
-            >Services</a
-          >
-          <a
-            href="#events"
-            class="rounded-sm px-3 py-2.5 hover:bg-white/10"
-            @click="menuOpen = false"
-            >Events</a
-          >
-          <a href="#news" class="rounded-sm px-3 py-2.5 hover:bg-white/10" @click="menuOpen = false"
-            >News</a
+            >{{ item.label }}</a
           >
         </div>
       </nav>

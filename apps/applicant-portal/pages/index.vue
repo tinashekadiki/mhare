@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import Swal from "sweetalert2";
+import EmharePublicGatewayHeader from "../../../packages/portal-shell/components/public/EmharePublicGatewayHeader.vue";
+import EmhareApplicantPublicLanding from "../../../packages/portal-shell/components/public/EmhareApplicantPublicLanding.vue";
 import type {
   AdmissionOfferSummary,
   ApplicationDocumentRegister,
@@ -356,7 +358,7 @@ function applicationSubmissionGuidance(application: AdmissionsApplicationSummary
   ) {
     instructions.push(
       application.paymentClearanceStatus === "UNRATED"
-        ? "Finance must capture an effective exchange rate and rate your payment before submission."
+        ? "Finance must confirm the exchange rate before you can submit."
         : "Pay the application fee and wait for Finance confirmation, or obtain an authorised waiver.",
     );
   }
@@ -426,125 +428,66 @@ function formatDate(value: string) {
 
 <template>
   <div>
-    <header class="border-b border-muted">
+    <EmharePublicGatewayHeader
+      v-if="!auth.authenticated.value"
+      :navigation-items="[
+        { label: 'Admissions', href: '#admissions' },
+        { label: 'Before you apply', href: '#before-you-apply' },
+        { label: 'How to apply', href: '#how-to-apply' },
+        { label: 'Questions', href: '#questions' },
+      ]"
+    >
+      <template #actions>
+        <button
+          type="button"
+          class="min-h-10 rounded-sm px-4 py-2 text-sm font-bold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          @click="auth.login('/')"
+        >
+          Sign in
+        </button>
+        <button
+          type="button"
+          class="min-h-10 rounded-sm bg-uzorange-500 px-4 py-2 text-sm font-bold text-uzazure-950 hover:bg-uzorange-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          @click="auth.signup('/')"
+        >
+          Create account
+        </button>
+      </template>
+    </EmharePublicGatewayHeader>
+    <header v-else class="border-b border-muted">
       <UContainer class="flex h-16 items-center justify-between">
         <EmhareProductBrand label="eMhare" description="Admissions" />
         <div class="flex items-center gap-2">
-          <template v-if="!auth.authenticated.value">
-            <UButton label="Sign in" color="neutral" variant="ghost" @click="auth.login('/')" />
+          <UButton
+            icon="i-lucide-refresh-cw"
+            color="neutral"
+            variant="ghost"
+            aria-label="Refresh"
+            :loading="loadingApplications"
+            @click="refreshPortal"
+          />
+          <UDropdownMenu
+            :items="[
+              [{ label: auth.displayName.value, disabled: true }],
+              [{ label: 'Sign out', icon: 'i-lucide-log-out', onSelect: () => auth.logout() }],
+            ]"
+          >
             <UButton
-              label="Create account"
-              icon="i-lucide-user-plus"
-              color="primary"
-              @click="auth.signup('/')"
-            />
-          </template>
-          <template v-else>
-            <UButton
-              icon="i-lucide-refresh-cw"
+              :label="auth.displayName.value"
+              icon="i-lucide-circle-user-round"
               color="neutral"
               variant="ghost"
-              aria-label="Refresh"
-              :loading="loadingApplications"
-              @click="refreshPortal"
             />
-            <UDropdownMenu
-              :items="[
-                [{ label: auth.displayName.value, disabled: true }],
-                [{ label: 'Sign out', icon: 'i-lucide-log-out', onSelect: () => auth.logout() }],
-              ]"
-            >
-              <UButton
-                :label="auth.displayName.value"
-                icon="i-lucide-circle-user-round"
-                color="neutral"
-                variant="ghost"
-              />
-            </UDropdownMenu>
-          </template>
+          </UDropdownMenu>
         </div>
       </UContainer>
     </header>
 
-    <UContainer v-if="!auth.authenticated.value" class="py-16 sm:py-24">
-      <EmhareMarketingHero
-        eyebrow="University of Zimbabwe · Admissions"
-        description="Create an account or sign in to start, complete, and track an admissions application."
-      >
-        <template #title>
-          University of Zimbabwe
-          <span class="text-primary">admissions</span>
-        </template>
-        <template #actions>
-          <UButton
-            size="lg"
-            label="Create account"
-            icon="i-lucide-user-plus"
-            color="primary"
-            @click="auth.signup('/')"
-          />
-          <UButton
-            size="lg"
-            label="Sign in"
-            icon="i-lucide-log-in"
-            color="neutral"
-            variant="outline"
-            @click="auth.login('/')"
-          />
-        </template>
-      </EmhareMarketingHero>
-
-      <div class="mt-20 border-t border-muted pt-14">
-        <p class="text-xs font-semibold tracking-wide text-muted uppercase">Application process</p>
-        <div class="mt-6">
-          <EmhareStepList
-            :steps="[
-              {
-                label: 'Create your account',
-                description: 'Register or sign in before starting an application.',
-              },
-              {
-                label: 'Choose your programmes',
-                description: 'Select an open admission route and rank Programme choices.',
-              },
-              {
-                label: 'Upload your documents',
-                description:
-                  'Provide required evidence and complete the application fee where applicable.',
-              },
-              {
-                label: 'Track your decision',
-                description: 'Monitor review status and respond to an admission offer.',
-              },
-            ]"
-          />
-        </div>
-      </div>
-
-      <div class="mt-20 grid gap-8 border-t border-muted pt-14 sm:grid-cols-3">
-        <div>
-          <UIcon name="i-lucide-shield-check" class="size-5 text-primary" />
-          <p class="mt-3 text-sm font-semibold text-highlighted">Account access</p>
-          <p class="mt-1 text-sm text-muted">
-            Sign in to manage your applications, documents, and offer responses.
-          </p>
-        </div>
-        <div>
-          <UIcon name="i-lucide-file-check-2" class="size-5 text-primary" />
-          <p class="mt-3 text-sm font-semibold text-highlighted">Application status</p>
-          <p class="mt-1 text-sm text-muted">
-            Review document, payment, and submission requirements for each application.
-          </p>
-        </div>
-        <div>
-          <UIcon name="i-lucide-badge-check" class="size-5 text-primary" />
-          <p class="mt-3 text-sm font-semibold text-highlighted">Offer responses</p>
-          <p class="mt-1 text-sm text-muted">
-            Accept or decline issued admission offers through the portal.
-          </p>
-        </div>
-      </div>
-    </UContainer>
+    <EmhareApplicantPublicLanding
+      v-if="!auth.authenticated.value"
+      @create-account="auth.signup('/')"
+      @sign-in="auth.login('/')"
+    />
 
     <UContainer v-else class="py-8 sm:py-10">
       <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -553,10 +496,6 @@ function formatDate(value: string) {
           <h1 class="mt-1 text-2xl font-bold tracking-tight text-highlighted sm:text-3xl">
             {{ auth.displayName.value }}
           </h1>
-          <p class="mt-2 max-w-2xl text-sm text-muted">
-            Start an application for an open intake, clear any configured fee, and submit it for
-            review.
-          </p>
         </div>
         <UButton
           icon="i-lucide-plus"
@@ -584,7 +523,6 @@ function formatDate(value: string) {
       >
         <div class="flex items-end justify-between gap-3">
           <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-primary">Decision centre</p>
             <h2 id="admission-offers-heading" class="mt-1 text-xl font-semibold text-highlighted">
               Admission offers
             </h2>
@@ -688,7 +626,7 @@ function formatDate(value: string) {
                     variant="soft"
                     icon="i-lucide-loader-circle"
                     title="Student registration in progress"
-                    description="Your accepted offer is being provisioned. Access is activated after Finance and Student Records complete their checks."
+                    description="Your student account is being prepared. Access will appear here when it is ready."
                   />
                 </div>
 
@@ -777,13 +715,10 @@ function formatDate(value: string) {
       <section v-else>
         <div class="mb-3 flex items-end justify-between gap-3">
           <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-primary">
-              Application register
-            </p>
             <h2 class="mt-1 text-xl font-semibold text-highlighted">My applications</h2>
           </div>
           <span class="text-xs text-muted">
-            {{ applications.length }} record{{ applications.length === 1 ? "" : "s" }}
+            {{ applications.length }} application{{ applications.length === 1 ? "" : "s" }}
           </span>
         </div>
 
@@ -1003,7 +938,7 @@ function formatDate(value: string) {
           ? `Application documents · ${selectedDocumentApplication.applicationNumber}`
           : 'Application documents'
       "
-      description="Upload each required item as private evidence. Rejected evidence is replaced without erasing the original audit trail."
+      description="Upload your required documents here."
       submit-label="Upload document"
       submit-icon="i-lucide-upload"
       :busy="uploadingDocument"
@@ -1147,7 +1082,7 @@ function formatDate(value: string) {
               type="drop-file"
               name="applicationDocumentFile"
               label="Document file"
-              description="PDF, JPEG, or PNG. Maximum 10 MB. The file signature and checksum are verified at intake."
+              description="PDF, JPEG or PNG. Maximum 10 MB."
               required
             />
           </template>

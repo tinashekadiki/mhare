@@ -1,7 +1,7 @@
 // Author: Tinashe K
 
 import { mount } from "@vue/test-utils";
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import EmhareJourneyStepper from "../../components/forms/EmhareJourneyStepper.vue";
 import EmhareVerticalStepper from "../../components/forms/EmhareVerticalStepper.vue";
@@ -13,6 +13,9 @@ vi.mock("sweetalert2", () => ({ default: { fire: sweetAlertFire } }));
 vi.stubGlobal("computed", computed);
 vi.stubGlobal("ref", ref);
 vi.stubGlobal("watch", watch);
+vi.stubGlobal("nextTick", nextTick);
+vi.stubGlobal("onMounted", onMounted);
+vi.stubGlobal("onBeforeUnmount", onBeforeUnmount);
 
 const globalComponents = {
   stubs: {

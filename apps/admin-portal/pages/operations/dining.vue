@@ -377,11 +377,13 @@ function openEdit(
 ) {
   drawerMode.value = mode;
   editingId.value = record.id;
-  if (mode === "hall") Object.assign(hallForm, record);
-  if (mode === "meal") Object.assign(mealForm, record);
-  if (mode === "service-time") Object.assign(serviceTimeForm, record);
-  if (mode === "rule") Object.assign(ruleForm, record);
-  if (mode === "attendant") Object.assign(attendantForm, record);
+  if (mode === "hall") Object.assign(hallForm, record, { expectedVersion: record.version });
+  if (mode === "meal") Object.assign(mealForm, record, { expectedVersion: record.version });
+  if (mode === "service-time")
+    Object.assign(serviceTimeForm, record, { expectedVersion: record.version });
+  if (mode === "rule") Object.assign(ruleForm, record, { expectedVersion: record.version });
+  if (mode === "attendant")
+    Object.assign(attendantForm, record, { expectedVersion: record.version });
   drawerOpen.value = true;
 }
 

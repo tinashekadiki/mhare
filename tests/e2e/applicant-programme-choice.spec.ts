@@ -1,4 +1,10 @@
-import { expect, request as playwrightRequest, test, type Page } from "@playwright/test";
+import {
+  expect,
+  request as playwrightRequest,
+  test,
+  type Page,
+  type TestInfo,
+} from "@playwright/test";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -570,12 +576,10 @@ async function selectOption(page: Page, label: string | RegExp, option: string |
 }
 
 async function selectApplicationRoute(page: Page, applicationTypeName: string) {
-  const routeCard = page.getByRole("button", {
-    name: new RegExp(applicationTypeName),
-  });
-  await expect(routeCard).toBeEnabled({ timeout: 30_000 });
-  await routeCard.evaluate((element: HTMLElement) => element.click());
-  await expect(routeCard).toHaveAttribute("aria-pressed", "true");
+  await selectOption(page, "Application type", applicationTypeName);
+  await expect(page.getByRole("combobox", { name: "Application type", exact: true })).toContainText(
+    applicationTypeName,
+  );
 }
 
 async function selectOptionUntilFieldContains(
@@ -593,6 +597,14 @@ async function selectOptionUntilFieldContains(
 }
 
 async function clickVisibleButtonContaining(page: Page, label: string) {
+  if (label.startsWith("Continue:")) {
+    await page.getByRole("button", { name: /^(Save and next|Next)$/ }).click();
+    return;
+  }
+  if (label === "Save") {
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    return;
+  }
   await page.waitForFunction((buttonLabel) => {
     return Array.from(document.querySelectorAll("button")).some(
       (button) =>
@@ -615,14 +627,29 @@ async function clickVisibleButtonContaining(page: Page, label: string) {
   }, label);
 }
 
-async function dismissSuccessDialog(page: Page) {
-  await expect(page.locator(".swal2-icon.swal2-success")).toBeVisible();
-  const confirmation = page.locator(".swal2-confirm").filter({ hasText: "OK" }).last();
-  await confirmation.waitFor({ state: "visible" });
-  await confirmation.evaluate((button: HTMLElement) => button.click());
-  await expect(page.locator(".swal2-container")).toBeHidden({
-    timeout: 15_000,
-  });
+async function checkApplicantFormLayout(page: Page, testInfo: TestInfo) {
+  const initialViewport = page.viewportSize();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const viewport of [
+    { width: 375, height: 812 },
+    { width: 812, height: 375 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect(page.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+    const primaryContactSwitch = await page.getByRole("switch").boundingBox();
+    expect(primaryContactSwitch!.width).toBeGreaterThan(primaryContactSwitch!.height);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      ),
+    ).toBe(false);
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    await page.screenshot({
+      path: testInfo.outputPath(`contact-${viewport.width}.png`),
+      fullPage: true,
+    });
+  }
+  if (initialViewport) await page.setViewportSize(initialViewport);
 }
 
 async function verifyRepeatedApplicantRecordEdits(
@@ -641,7 +668,7 @@ async function verifyRepeatedApplicantRecordEdits(
       (response) =>
         response.url().includes(`/${resource}/`) && response.request().method() === "PUT",
     );
-    await clickVisibleButtonContaining(page, "Save record");
+    await clickVisibleButtonContaining(page, "Save");
     const response = await savedResponse;
     expect(response.ok(), await response.text()).toBeTruthy();
     if (expectedVersion !== null) {
@@ -657,11 +684,7 @@ async function uploadAutomaticEvidence(page: Page, requirementName: string, file
   const evidenceCard = page
     .getByRole("heading", { name: new RegExp(`^${requirementName}(?: \\*)?$`) })
     .locator("xpath=ancestor::section[1]");
-  const fileChooserPromise = page.waitForEvent("filechooser");
-  await evidenceCard
-    .getByRole("button", { name: /Drop (?:the document here|a replacement) or click to choose/ })
-    .click();
-  const fileChooser = await fileChooserPromise;
+  const fileInput = evidenceCard.locator('input[type="file"]');
   const applicationId = new URL(page.url()).pathname.split("/").at(-1);
   const attachmentResponsePromise =
     requirementName === "Qualification evidence"
@@ -678,7 +701,7 @@ async function uploadAutomaticEvidence(page: Page, requirementName: string, file
         new URL(response.url()).pathname === "/api/documents/uploads" &&
         response.request().method() === "POST",
     ),
-    fileChooser.setFiles(filePath),
+    fileInput.setInputFiles(filePath),
     attachmentResponsePromise,
   ]);
   expect(uploadResponse.ok()).toBe(true);
@@ -742,7 +765,7 @@ async function completeSchoolQualification(
   await page.getByLabel("Year written").fill("2024");
   await page.getByLabel("Centre number").fill(centreNumber);
   await page.getByLabel("Candidate number").fill(candidateNumber);
-  await selectOption(page, "Country", /ZW .*Zimbabwe/);
+  await selectOption(page, "Country", "Zimbabwe");
 
   while ((await page.getByRole("button", { name: /Remove subject/ }).count()) > 2) {
     await page
@@ -751,11 +774,11 @@ async function completeSchoolQualification(
       .click();
   }
   await page
-    .getByLabel("Managed subject")
+    .getByLabel("Subject", { exact: true })
     .first()
     .evaluate((element: HTMLElement) => element.click());
   await page
-    .getByRole("option", { name: new RegExp(`ENG_${fixture.codeSuffix}`) })
+    .getByRole("option", { name: new RegExp(`English Language ${fixture.codeSuffix}`) })
     .click({ force: true });
   await page
     .getByLabel("Grade")
@@ -763,11 +786,11 @@ async function completeSchoolQualification(
     .evaluate((element: HTMLElement) => element.click());
   await page.getByRole("option", { name: "A", exact: true }).last().click({ force: true });
   await page
-    .getByLabel("Managed subject")
+    .getByLabel("Subject", { exact: true })
     .nth(1)
     .evaluate((element: HTMLElement) => element.click());
   await page
-    .getByRole("option", { name: new RegExp(`MATH_${fixture.codeSuffix}`) })
+    .getByRole("option", { name: new RegExp(`Mathematics ${fixture.codeSuffix}`) })
     .click({ force: true });
   await page
     .getByLabel("Grade")
@@ -781,7 +804,7 @@ async function completeSchoolQualification(
         response.request().method() === "POST" &&
         response.ok(),
     ),
-    clickVisibleButtonContaining(page, "Save record"),
+    clickVisibleButtonContaining(page, "Save"),
   ]);
   await expect(page.getByText(`English Language ${fixture.codeSuffix}`)).toBeVisible();
   await expect(page.getByText(`Mathematics ${fixture.codeSuffix}`)).toBeVisible();
@@ -1136,7 +1159,7 @@ test.describe("Applicant programme choices", () => {
     });
   }
 
-  test("compares UNDERGRAD, POSTGRAD, MBA, and EDUCATION before creating a draft", async ({
+  test("selects application types in a compact form before creating a draft", async ({
     page,
   }, testInfo) => {
     test.setTimeout(60_000);
@@ -1277,46 +1300,43 @@ test.describe("Applicant programme choices", () => {
       await login(page, fixture);
       await page.getByRole("link", { name: "Start application" }).first().click();
 
-      await expect(page.getByText("No application route is currently open")).toBeVisible();
+      await expect(page.getByText("No applications are currently open")).toBeVisible();
       routesAvailable = true;
       await page
         .getByRole("button", { name: "Check again" })
         .evaluate((element: HTMLElement) => element.click());
       await expect(
-        page.getByRole("heading", {
-          name: "Choose your application route",
-          exact: true,
-        }),
+        page.getByRole("heading", { name: "Application route", exact: true }),
       ).toBeVisible();
+      await expect(page.getByText("Build your application on the right route.")).toHaveCount(0);
+      await expect(page.getByTestId("selected-route-evidence")).toHaveCount(0);
       for (const routeDefinition of routeDefinitions) {
-        const routeCard = page.getByTestId(`application-route-${routeDefinition.code}`);
-        await expect(routeCard).toContainText(routeDefinition.name);
-        await routeCard.evaluate((element: HTMLElement) =>
-          element.scrollIntoView({ block: "center" }),
-        );
-        await expect(routeCard).toBeInViewport();
-        await routeCard.evaluate((element: HTMLElement) => element.click());
-        await expect(routeCard).toHaveAttribute("aria-pressed", "true");
-        const evidenceSummary = page.getByTestId("selected-route-evidence");
-        if (routeDefinition.code === "UNDERGRAD") {
-          await expect(evidenceSummary).toContainText("No confidential references");
+        await selectApplicationRoute(page, routeDefinition.name);
+        const navigation = page.getByRole("navigation", { name: "Application process" });
+        for (const section of routeDefinition.sections) {
+          await expect(
+            navigation.getByRole("button", { name: new RegExp(section.name) }),
+          ).toHaveCount(1);
         }
-        if (routeDefinition.code === "POSTGRAD") {
-          await expect(evidenceSummary).toContainText("2 confidential references");
-        }
-        if (routeDefinition.code === "MBA") {
-          await expect(evidenceSummary).toContainText("Previous UZ study");
-          await expect(evidenceSummary).toContainText("Professional achievements");
-          await expect(evidenceSummary).toContainText("3 confidential references");
-        }
-        if (routeDefinition.code === "EDUCATION") {
-          await expect(evidenceSummary).toContainText("Employment history");
-          await expect(evidenceSummary).toContainText("3 confidential references");
-        }
+        await expect(
+          page.getByText(
+            routeDefinition.feeRequired ? "Application fee required" : "No application fee",
+            { exact: true },
+          ),
+        ).toBeVisible();
       }
+      const fieldWidths = await page
+        .locator('#application-start-journey [role="combobox"]')
+        .evaluateAll((fields) => fields.map((field) => field.getBoundingClientRect().width));
+      expect(fieldWidths).toHaveLength(3);
+      expect(Math.max(...fieldWidths) - Math.min(...fieldWidths)).toBeLessThanOrEqual(1);
+      const horizontalOverflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(horizontalOverflow).toBeLessThanOrEqual(1);
       await expect(page.getByLabel("Intake")).toBeEnabled();
       await page.screenshot({
-        path: testInfo.outputPath("application-route-comparison.png"),
+        path: testInfo.outputPath("application-start-form.png"),
         fullPage: true,
       });
     } finally {
@@ -1379,13 +1399,7 @@ test.describe("Applicant programme choices", () => {
         await expect(refereeStep).toBeEnabled();
         await refereeStep.evaluate((element: HTMLElement) => element.click());
         await expect(page.getByRole("heading", { name: "Referees", exact: true })).toBeVisible();
-        await expect(
-          page
-            .locator("#application-section-editor")
-            .getByText(`0 of ${routeExpectation.referenceCount} required record(s) captured.`, {
-              exact: true,
-            }),
-        ).toBeVisible();
+        await expect(page.getByLabel("Full name", { exact: true })).toBeVisible();
         await expect(page.getByTestId("application-context")).toContainText(
           fixture.applicationTypeName,
         );
@@ -2169,9 +2183,7 @@ test.describe("Applicant programme choices", () => {
       expect(profileSaveRequests).toEqual([]);
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await workspaceNavigator.getByRole("button", { name: /Next of kin/ }).click();
-      await expect(
-        page.getByRole("heading", { name: "Next of kin details", exact: true }),
-      ).toBeVisible();
+      await expect(page.getByLabel("Full name", { exact: true })).toBeVisible();
       await expect(page.getByLabel("Full name")).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await workspaceNavigator
@@ -2191,8 +2203,8 @@ test.describe("Applicant programme choices", () => {
       await page.getByRole("option", { name: new RegExp(fixture.programmeCode) }).click();
       await page.keyboard.press("Escape");
       await expect(page.getByRole("listbox")).toBeHidden();
-      await page.getByRole("button", { name: "Save choices", exact: true }).click();
-      await dismissSuccessDialog(page);
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await expect(page.getByText(/^Saved$/).first()).toBeVisible();
       await expect(
         page
           .getByText(`${fixture.programmeCode} · Browser Verified Programme`, {
@@ -2243,7 +2255,6 @@ test.describe("Applicant programme choices", () => {
       await page.getByRole("link", { name: "Start application" }).first().click();
 
       const form = page.locator("#application-start-journey");
-      await expect(page.getByText(fixture.applicationTypeName, { exact: true })).toBeVisible();
       await selectApplicationRoute(page, fixture.applicationTypeName);
       await selectOption(page, "Intake", fixture.intakeName);
       await Promise.all([
@@ -2276,6 +2287,14 @@ test.describe("Applicant programme choices", () => {
       await expect(page.getByLabel("Last name")).not.toBeEditable();
       await expect(page.getByLabel("Last name")).toHaveValue("Applicant");
       await uploadRequiredPersonalEvidence(page, testInfo, fixture.codeSuffix);
+      const replacementIdentityPath = testInfo.outputPath(
+        `replacement-identity-${fixture.codeSuffix}.pdf`,
+      );
+      writeFileSync(
+        replacementIdentityPath,
+        `%PDF-1.4\n% corrected identity evidence ${fixture.codeSuffix}\n%%EOF\n`,
+      );
+      await uploadAutomaticEvidence(page, "National ID", replacementIdentityPath);
 
       const profileSave = page.waitForResponse(
         (response) =>
@@ -2286,46 +2305,35 @@ test.describe("Applicant programme choices", () => {
       );
       await selectOption(page, "Title", "Mr");
       await page.getByLabel("Date of birth").fill("1999-01-15");
-      await selectOptionUntilFieldContains(page, "Gender", "MALE", "MALE");
-      await selectOptionUntilFieldContains(page, "Marital status", "SINGLE", "SINGLE");
+      await selectOptionUntilFieldContains(page, "Gender", "Male", "Male");
+      await selectOptionUntilFieldContains(page, "Marital status", "Single", "Single");
       await page.getByLabel("National ID number").fill(`99-${fixture.codeSuffix}`);
-      await selectOptionUntilFieldContains(
-        page,
-        "Country of residence",
-        /ZW .*Zimbabwe/,
-        "Zimbabwe",
-      );
-      await selectOptionUntilFieldContains(page, "Nationality", /ZW .*Zimbabwe/, "Zimbabwe");
+      await selectOptionUntilFieldContains(page, "Country of residence", "Zimbabwe", "Zimbabwe");
+      await selectOptionUntilFieldContains(page, "Nationality", "Zimbabwe", "Zimbabwe");
       const activeSection = page.locator("#application-section-editor");
       await activeSection.getByLabel("Phone number").fill("+263772000001");
       await activeSection.getByLabel("Residential address").fill("630 Churchill Avenue, Harare");
       await profileSave;
-      await expect(activeSection.getByText("Applicant details complete.")).toBeVisible();
+      await expect(page.getByText(/^Draft saved/)).toBeVisible();
 
       await clickVisibleButtonContaining(page, "Continue: Next of kin");
       await expect(page.getByRole("heading", { name: "Next of kin", exact: true })).toBeVisible();
-      await expect(
-        page.getByRole("heading", { name: "Next of kin details", exact: true }),
-      ).toBeVisible();
+      await expect(page.getByLabel("Full name", { exact: true })).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(0);
+      await checkApplicantFormLayout(page, testInfo);
       await page.getByLabel("Full name").fill("Tariro Applicant");
-      await selectOption(page, "Relationship", "PARENT");
+      await selectOption(page, "Relationship", "Parent");
       await page.getByLabel("Phone number").fill("+263772000002");
       await page.getByLabel("Email").fill(`kin-${fixture.codeSuffix.toLowerCase()}@example.test`);
       await page.getByLabel("Address").fill("Harare");
-      await clickVisibleButtonContaining(page, "Save record");
+      await clickVisibleButtonContaining(page, "Save");
       await expect(page.getByText("Tariro Applicant")).toBeVisible();
 
       await clickVisibleButtonContaining(page, "Continue: Qualifications");
       await expect(
         page.getByRole("heading", { name: "Qualifications", exact: true }),
       ).toBeVisible();
-      await expect(
-        page.getByRole("heading", {
-          name: "Add qualification",
-          exact: true,
-        }),
-      ).toBeVisible();
+      await expect(page.getByLabel("Qualification type", { exact: true })).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await completeSchoolQualification(
         page,
@@ -2354,8 +2362,8 @@ test.describe("Applicant programme choices", () => {
         .getByRole("option", { name: new RegExp(fixture.programmeCode) })
         .click({ force: true });
       await page.keyboard.press("Escape");
-      await clickVisibleButtonContaining(page, "Save choices");
-      await dismissSuccessDialog(page);
+      await clickVisibleButtonContaining(page, "Save");
+      await expect(page.getByText(/^Saved$/).first()).toBeVisible();
       await expect(
         page
           .getByText(`${fixture.programmeCode} · Browser Verified Programme`, {
@@ -2371,7 +2379,7 @@ test.describe("Applicant programme choices", () => {
         ),
       );
       await expect(
-        activeSection.getByText("Review and accept the applicant declaration.", { exact: true }),
+        activeSection.getByRole("button", { name: "Accept declaration", exact: true }),
       ).toBeVisible();
       await expect(
         activeSection.getByRole("heading", {
@@ -2560,16 +2568,11 @@ test.describe("Applicant programme choices", () => {
         );
         await selectOption(page, "Title", "Mr");
         await page.getByLabel("Date of birth").fill("1994-04-12");
-        await selectOptionUntilFieldContains(page, "Gender", "MALE", "MALE");
-        await selectOptionUntilFieldContains(page, "Marital status", "SINGLE", "SINGLE");
+        await selectOptionUntilFieldContains(page, "Gender", "Male", "Male");
+        await selectOptionUntilFieldContains(page, "Marital status", "Single", "Single");
         await page.getByLabel("National ID number").fill(`94-${fixture.codeSuffix}`);
-        await selectOptionUntilFieldContains(
-          page,
-          "Country of residence",
-          /ZW .*Zimbabwe/,
-          "Zimbabwe",
-        );
-        await selectOptionUntilFieldContains(page, "Nationality", /ZW .*Zimbabwe/, "Zimbabwe");
+        await selectOptionUntilFieldContains(page, "Country of residence", "Zimbabwe", "Zimbabwe");
+        await selectOptionUntilFieldContains(page, "Nationality", "Zimbabwe", "Zimbabwe");
         const activeSection = page.locator("#application-section-editor");
         await activeSection.getByLabel("Phone number").fill("+263772100001");
         await activeSection.getByLabel("Residential address").fill("630 Churchill Avenue, Harare");
@@ -2577,7 +2580,7 @@ test.describe("Applicant programme choices", () => {
 
         await clickVisibleButtonContaining(page, "Continue: Next of kin");
         await page.getByLabel("Full name").fill("Tariro Applicant");
-        await selectOption(page, "Relationship", "PARENT");
+        await selectOption(page, "Relationship", "Parent");
         await page.getByLabel("Phone number").fill("+263772100002");
         await page.getByLabel("Email").fill(`kin-${fixture.codeSuffix.toLowerCase()}@example.test`);
         await page.getByLabel("Address").fill("Harare");
@@ -2588,7 +2591,7 @@ test.describe("Applicant programme choices", () => {
               response.request().method() === "POST" &&
               response.ok(),
           ),
-          clickVisibleButtonContaining(page, "Save record"),
+          clickVisibleButtonContaining(page, "Save"),
         ]);
         await expect(page.getByText("Tariro Applicant")).toBeVisible();
 
@@ -2628,7 +2631,7 @@ test.describe("Applicant programme choices", () => {
               response.request().method() === "POST" &&
               response.ok(),
           ),
-          clickVisibleButtonContaining(page, "Save record"),
+          clickVisibleButtonContaining(page, "Save"),
         ]);
         await expect(page.getByText("Operations Manager · UZ Business School")).toBeVisible();
 
@@ -2650,15 +2653,15 @@ test.describe("Applicant programme choices", () => {
               exact: true,
             }),
           ).toBeVisible();
-          await clickVisibleButtonContaining(page, "Save declaration");
-          await dismissSuccessDialog(page);
+          await clickVisibleButtonContaining(page, "Save");
+          await expect(page.getByText(/^Saved$/).first()).toBeVisible();
 
           await clickVisibleButtonContaining(page, "Continue: Professional achievements");
           await page
             .getByLabel("I have no professional achievements to declare")
             .evaluate((element: HTMLElement) => element.click());
-          await clickVisibleButtonContaining(page, "Save achievements");
-          await dismissSuccessDialog(page);
+          await clickVisibleButtonContaining(page, "Save");
+          await expect(page.getByText(/^Saved$/).first()).toBeVisible();
         }
 
         await clickVisibleButtonContaining(page, "Continue: Referees");
@@ -2680,7 +2683,7 @@ test.describe("Applicant programme choices", () => {
               response.request().method() === "POST" &&
               response.ok(),
           ),
-          clickVisibleButtonContaining(page, "Save record"),
+          clickVisibleButtonContaining(page, "Save"),
         ]);
         await expect(page.getByText("Tariro Dube")).toBeVisible();
         await expect(page.getByText("Invitation sent").first()).toBeVisible();
@@ -2702,7 +2705,7 @@ test.describe("Applicant programme choices", () => {
               response.request().method() === "POST" &&
               response.ok(),
           ),
-          clickVisibleButtonContaining(page, "Save record"),
+          clickVisibleButtonContaining(page, "Save"),
         ]);
         await expect(page.getByText("Rutendo Moyo")).toBeVisible();
 
@@ -2724,7 +2727,7 @@ test.describe("Applicant programme choices", () => {
                 response.request().method() === "POST" &&
                 response.ok(),
             ),
-            clickVisibleButtonContaining(page, "Save record"),
+            clickVisibleButtonContaining(page, "Save"),
           ]);
           await expect(page.getByText("Nyasha Sibanda")).toBeVisible();
         }
@@ -2779,8 +2782,8 @@ test.describe("Applicant programme choices", () => {
           .getByRole("option", { name: new RegExp(fixture.programmeCode) })
           .click({ force: true });
         await page.keyboard.press("Escape");
-        await clickVisibleButtonContaining(page, "Save choices");
-        await dismissSuccessDialog(page);
+        await clickVisibleButtonContaining(page, "Save");
+        await expect(page.getByText(/^Saved$/).first()).toBeVisible();
         await expect(
           page
             .getByText(`${fixture.programmeCode} · ${routeScenario.programmeName}`, { exact: true })

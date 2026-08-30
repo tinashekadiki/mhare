@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// Author: Tinashe K
 import type {
   DocumentOcrExtractionSummary,
   UploadedDocumentSummary,
@@ -35,7 +36,15 @@ const api = useEmhareApi();
 const { showError } = useEmhareConfirm();
 const selectedFile = ref<File | null>(null);
 const uploadState = ref<
-  "idle" | "uploading" | "scanning" | "queued" | "processing" | "completed" | "failed"
+  | "idle"
+  | "uploading"
+  | "scanning"
+  | "attaching"
+  | "queued"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "deferred"
 >("idle");
 const uploadedDocument = ref<UploadedDocumentSummary | null>(null);
 const uploadError = ref("");
@@ -45,8 +54,10 @@ const acceptedContentTypes = new Set(["application/pdf", "image/jpeg", "image/pn
 
 const statusLabel = computed(() => {
   if (uploadState.value === "uploading") return "Uploading securely";
+  if (uploadState.value === "attaching") return "Attaching document";
   if (uploadState.value === "scanning") return "Malware scan and storage";
-  if (uploadState.value === "queued") return "Waiting for OCR";
+  if (uploadState.value === "deferred") return "Uploaded — enter details below";
+  if (uploadState.value === "queued") return "Reading document";
   if (uploadState.value === "processing") return "Reading document";
   if (uploadState.value === "completed") return "Ready to review";
   if (uploadState.value === "failed" && failureStage.value === "upload") return "Upload failed";
@@ -66,7 +77,7 @@ function handleSelectedFile(value: File | File[] | null | undefined) {
 }
 
 async function startUpload(file: File) {
-  if (uploadState.value === "uploading" || uploadState.value === "scanning") return;
+  if (props.disabled || ["uploading", "scanning", "attaching"].includes(uploadState.value)) return;
   if (!acceptedContentTypes.has(file.type)) {
     selectedFile.value = null;
     await showError("Unsupported file type", "Choose a PDF, JPEG, or PNG document.");
@@ -77,6 +88,7 @@ async function startUpload(file: File) {
     await showError("File is too large", "Choose a PDF, JPEG, or PNG no larger than 10 MB.");
     return;
   }
+  pollingGeneration++;
   uploadError.value = "";
   failureStage.value = null;
   uploadState.value = "uploading";
@@ -103,6 +115,13 @@ async function startUpload(file: File) {
     await showError("Document could not be uploaded", uploadError.value);
     return;
   }
+  await attachUploadedDocument(uploaded);
+}
+
+async function attachUploadedDocument(uploaded: UploadedDocumentSummary) {
+  uploadState.value = "attaching";
+  uploadError.value = "";
+  failureStage.value = null;
   try {
     if (props.linkToRequirement) {
       await api.request(`/api/admissions/applications/${props.applicationId}/documents`, {
@@ -123,13 +142,49 @@ async function startUpload(file: File) {
   void pollExtraction(uploaded.id);
 }
 
+async function retryAttachment() {
+  if (props.disabled || !uploadedDocument.value || uploadState.value === "attaching") return;
+  await attachUploadedDocument(uploadedDocument.value);
+}
+
+onMounted(async () => {
+  if (!props.linkToRequirement || !props.existingDocumentId || props.disabled) return;
+  try {
+    const stored = await api.request<UploadedDocumentSummary[]>(
+      `/api/documents/uploads?ownerType=APPLICATION&ownerId=${encodeURIComponent(props.applicationId)}`,
+    );
+    const replacement = stored
+      .filter(
+        (document) =>
+          document.replacesDocumentId === props.existingDocumentId &&
+          document.documentTypeCode === props.documentTypeCode &&
+          document.verificationStatus === "PENDING",
+      )
+      .sort((left, right) => Date.parse(right.uploadedAt) - Date.parse(left.uploadedAt))[0];
+    if (!replacement || uploadState.value !== "idle") return;
+    uploadedDocument.value = replacement;
+    failureStage.value = "attachment";
+    uploadState.value = "failed";
+  } catch {
+    // A failed recovery lookup must not prevent choosing a new file.
+  }
+});
+
 async function pollExtraction(documentId: string) {
   const generation = ++pollingGeneration;
-  for (let attempt = 0; attempt < 40 && generation === pollingGeneration; attempt++) {
+  const deadline = Date.now() + 15000;
+  uploadState.value = "queued";
+  for (
+    let attempt = 0;
+    attempt < 10 && generation === pollingGeneration && Date.now() < deadline;
+    attempt++
+  ) {
     try {
       const extraction = await api.request<DocumentOcrExtractionSummary>(
         `/api/documents/uploads/${documentId}/ocr-extraction`,
+        { timeout: Math.min(5000, deadline - Date.now()), retry: 0 },
       );
+      if (generation !== pollingGeneration) return;
       uploadState.value = extraction.status.toLowerCase() as typeof uploadState.value;
       if (["COMPLETED", "FAILED", "UNSUPPORTED"].includes(extraction.status)) {
         if (["FAILED", "UNSUPPORTED"].includes(extraction.status)) {
@@ -142,9 +197,22 @@ async function pollExtraction(documentId: string) {
     } catch {
       // The upload remains valid. A later retry or manual entry is still available.
     }
-    await new Promise((resolve) => window.setTimeout(resolve, 1500));
+    if (generation !== pollingGeneration) return;
+    await new Promise((resolve) =>
+      window.setTimeout(resolve, Math.min(1500, Math.max(0, deadline - Date.now()))),
+    );
   }
+  if (generation === pollingGeneration) uploadState.value = "deferred";
 }
+
+function checkExtraction() {
+  const documentId = uploadedDocument.value?.id ?? props.existingDocumentId;
+  if (documentId) void pollExtraction(documentId);
+}
+
+onBeforeUnmount(() => {
+  pollingGeneration++;
+});
 
 async function retryOcr() {
   const documentId = uploadedDocument.value?.id ?? props.existingDocumentId;
@@ -195,7 +263,7 @@ async function retryOcr() {
         @update:model-value="handleSelectedFile"
         accept="application/pdf,image/jpeg,image/png"
         variant="area"
-        :disabled="disabled || ['uploading', 'scanning'].includes(uploadState)"
+        :disabled="disabled || ['uploading', 'scanning', 'attaching'].includes(uploadState)"
         :label="
           existingDocumentId
             ? 'Drop a replacement or click to choose'
@@ -205,9 +273,20 @@ async function retryOcr() {
         class="w-full"
       />
       <UProgress
-        v-if="['uploading', 'scanning', 'queued', 'processing'].includes(uploadState)"
+        v-if="['uploading', 'scanning', 'attaching', 'queued', 'processing'].includes(uploadState)"
         animation="carousel"
         color="primary"
+      />
+      <UAlert
+        v-if="uploadState === 'deferred'"
+        color="info"
+        variant="subtle"
+        icon="i-lucide-info"
+        title="Document reading is taking longer than expected"
+        description="You can continue entering your details. Your document is saved."
+        :actions="[
+          { label: 'Check again', color: 'neutral', variant: 'outline', onClick: checkExtraction },
+        ]"
       />
       <UAlert
         v-if="uploadState === 'failed'"
@@ -223,15 +302,25 @@ async function retryOcr() {
         "
         :description="
           failureStage === 'attachment'
-            ? 'Choose the file again to retry replacing the current application evidence.'
+            ? `${uploadedDocument?.originalFileName || 'Your file'} is already uploaded. Retry attachment without uploading it again.`
             : failureStage === 'ocr'
               ? 'You can enter the details manually now or retry document reading.'
               : 'Choose the file again to retry the secure upload.'
         "
         :actions="
-          failureStage === 'ocr'
-            ? [{ label: 'Retry OCR', color: 'warning', variant: 'outline', onClick: retryOcr }]
-            : []
+          failureStage === 'attachment'
+            ? [
+                {
+                  label: 'Retry attachment',
+                  color: 'warning',
+                  variant: 'outline',
+                  onClick: retryAttachment,
+                  disabled,
+                },
+              ]
+            : failureStage === 'ocr'
+              ? [{ label: 'Retry OCR', color: 'warning', variant: 'outline', onClick: retryOcr }]
+              : []
         "
       />
       <p v-if="uploadError" class="text-sm text-error">{{ uploadError }}</p>

@@ -1,35 +1,34 @@
 // Author: Tinashe K
 
-import vue from '@vitejs/plugin-vue'
-import { defineConfig } from 'vitest/config'
+import vue from "@vitejs/plugin-vue";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [vue()],
   test: {
-    environment: 'happy-dom',
+    environment: "happy-dom",
+    // Keep Vue workers and formatter subprocesses within the shared development host's capacity.
+    maxWorkers: 4,
     include: [
-      'apps/**/tests/unit/**/*.{test,spec}.ts',
-      'packages/**/tests/unit/**/*.{test,spec}.ts',
-      'tests/unit/**/*.{test,spec}.ts'
+      "apps/**/tests/unit/**/*.{test,spec}.ts",
+      "packages/**/tests/unit/**/*.{test,spec}.ts",
+      "tests/unit/**/*.{test,spec}.ts",
     ],
     passWithNoTests: true,
     coverage: {
-      provider: 'v8',
-      reportsDirectory: 'coverage/frontend',
-      reporter: ['text-summary', 'html', 'lcov'],
-      include: [
-        'apps/**/*.{ts,vue}',
-        'packages/**/*.{ts,vue}'
-      ],
+      provider: "v8",
+      reportsDirectory: "coverage/frontend",
+      reporter: ["text-summary", "html", "lcov"],
+      include: ["apps/**/*.{ts,vue}", "packages/**/*.{ts,vue}"],
       exclude: [
-        '**/.nuxt/**',
-        '**/.output/**',
-        '**/coverage/**',
-        '**/dist/**',
-        '**/node_modules/**',
-        '**/*.{test,spec}.ts',
-        '**/*.d.ts'
-      ]
-    }
-  }
-})
+        "**/.nuxt/**",
+        "**/.output/**",
+        "**/coverage/**",
+        "**/dist/**",
+        "**/node_modules/**",
+        "**/*.{test,spec}.ts",
+        "**/*.d.ts",
+      ],
+    },
+  },
+});

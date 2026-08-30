@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// Author: Tinashe K
 import Swal from "sweetalert2";
 import type {
   ApplicantApplicationWorkspace,
@@ -78,6 +79,10 @@ const editingId = ref<string | null>(null);
 const selectedSittingId = ref<string | null>(null);
 const profileSaveState = ref<"saved" | "saving" | "dirty" | "error">("saved");
 const lastSavedAt = ref("");
+const sectionDraftBaseline = ref("");
+const sectionError = ref("");
+const fieldErrors = ref<Record<string, string>>({});
+const savingSection = ref(false);
 const selectedReviewDocument = ref<ApplicationDocumentRequirementState | null>(null);
 const reviewDocumentDownload = ref<UploadedDocumentDownload | null>(null);
 const loadingReviewDocumentId = ref<string | null>(null);
@@ -96,6 +101,7 @@ let pendingPaymentReconciliationChecked = false;
 const hydratedIdentityDocumentIds = new Set<string>();
 let profileSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let applyingWorkspace = false;
+let workspaceDisposed = false;
 
 const profileForm = reactive({
   applicantCategoryCode: "LOCAL",
@@ -256,7 +262,7 @@ const preDraftJourneySteps = computed(() => [
   {
     id: "APPLICATION_ROUTE",
     title: "Application route",
-    description: workspace.value?.application.applicationTypeName ?? "Application type and intake",
+
     icon: "i-lucide-map",
     required: true,
     disabled: true,
@@ -275,8 +281,7 @@ const applicationJourneySections = computed(() => [
   ...workspaceSections.value.map((section) => ({
     id: section.code,
     title: displaySectionName(section),
-    description:
-      section.completionSummary ?? (section.required ? "Required before submission" : "Optional"),
+
     icon:
       section.code === "PERSONAL_DETAILS"
         ? "i-lucide-contact-round"
@@ -348,12 +353,12 @@ const programmeItems = computed(() =>
   eligibleProgrammes.value.map((programme) => ({
     label: `${programme.code} · ${programme.name}`,
     value: programme.id,
-    description: `${programme.owningAcademicUnitName} · Curriculum ${programme.programmeVersionCode}`,
+    description: programme.owningAcademicUnitName,
   })),
 );
 const countryItems = computed(() =>
   countries.value.map((country) => ({
-    label: `${country.iso2Code} · ${country.name}`,
+    label: country.name,
     value: country.id,
   })),
 );
@@ -373,9 +378,8 @@ const subjectItems = computed(() => {
         : qualificationReferences.value?.otherSubjects;
   return (
     source?.map((item) => ({
-      label: `${item.code} · ${item.name}`,
+      label: item.name,
       value: item.id,
-      description: item.scienceSubject ? "Science subject" : undefined,
     })) ?? []
   );
 });
@@ -404,7 +408,9 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  workspaceDisposed = true;
   window.removeEventListener("message", handlePaymentCheckoutMessage);
+  if (profileSaveTimer) clearTimeout(profileSaveTimer);
 });
 
 watch(
@@ -986,66 +992,219 @@ function displaySectionName(
   return section.code === "PROGRAMME_CHOICES" ? "Programme choices" : section.name;
 }
 
-function activateSection(sectionCode: string) {
-  if (!workspaceSections.value.some((section) => section.code === sectionCode)) return;
+function sectionDraftSnapshot() {
+  if (activeSectionCode.value === "PERSONAL_DETAILS") return JSON.stringify(profileRequestBody());
+  if (activeSectionCode.value === "PRIOR_UZ_STUDY") return JSON.stringify(priorUzForm);
+  if (activeSectionCode.value === "PROFESSIONAL_ACHIEVEMENTS")
+    return JSON.stringify([achievementsDeclaredNone.value, achievementForms.value]);
+  if (activeSectionCode.value === "PROGRAMME_CHOICES")
+    return JSON.stringify([programmeIds.value, entryOptionIdsByProgramme]);
+  const values = {
+    kin: kinForm,
+    employment: employmentForm,
+    referee: refereeForm,
+    qualification: [qualificationForm, resultForms.value],
+    result: resultForms.value,
+    document: null,
+  };
+  return JSON.stringify(inlineEditor.value ? values[inlineEditor.value] : null);
+}
+const sectionHasChanges = computed(() => sectionDraftSnapshot() !== sectionDraftBaseline.value);
+const sectionCanSave = computed(
+  () =>
+    isDraft.value &&
+    ([
+      "PERSONAL_DETAILS",
+      "PRIOR_UZ_STUDY",
+      "PROFESSIONAL_ACHIEVEMENTS",
+      "PROGRAMME_CHOICES",
+    ].includes(activeSectionCode.value) ||
+      ["kin", "employment", "referee", "qualification", "result"].includes(
+        inlineEditor.value ?? "",
+      )),
+);
+const sectionSaveDisabled = computed(
+  () =>
+    (inlineEditor.value === "qualification" && !qualificationAggregateReady.value) ||
+    (inlineEditor.value === "result" && !resultBatchReady.value) ||
+    (activeSectionCode.value === "PROGRAMME_CHOICES" && !programmeIds.value.length),
+);
+const sectionBusy = computed(
+  () => working.value || savingSection.value || profileSaveState.value === "saving",
+);
+
+function rememberSectionDraft() {
+  sectionDraftBaseline.value = sectionDraftSnapshot();
+  sectionError.value = "";
+  fieldErrors.value = {};
+}
+
+async function activateSection(sectionCode: string) {
+  if (
+    sectionCode === activeSectionCode.value ||
+    !workspaceSections.value.some((section) => section.code === sectionCode)
+  )
+    return;
+  if (sectionBusy.value) return;
+  if (sectionHasChanges.value && !(await saveActiveSectionBeforeLeaving())) return;
   activeSectionCode.value = sectionCode;
   prepareInlineEditorForSection(sectionCode);
   nextTick(() => {
-    document
-      .getElementById("application-section-editor")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const editor = document.getElementById("application-section-editor");
+    editor?.scrollIntoView({ behavior: "instant", block: "start" });
+    editor?.querySelector<HTMLElement>("h1")?.focus({ preventScroll: true });
   });
 }
 
 function prepareInlineEditorForSection(sectionCode: string) {
-  if (!isDraft.value) {
-    inlineEditor.value = null;
-    return;
+  inlineEditor.value = null;
+  editingId.value = null;
+  if (isDraft.value) {
+    const singleEntry = activeSection.value?.repeatable === false;
+    if (
+      sectionCode === "NEXT_OF_KIN" &&
+      (singleEntry ||
+        (workspace.value?.nextOfKin.length ?? 0) <
+          Math.max(1, activeSection.value?.minimumRecords ?? 1))
+    )
+      openKin(singleEntry ? workspace.value?.nextOfKin[0] : undefined);
+    else if (
+      sectionCode === "EMPLOYMENT_HISTORY" &&
+      (singleEntry ||
+        (workspace.value?.employmentHistory.length ?? 0) <
+          Math.max(1, activeSection.value?.minimumRecords ?? 1))
+    )
+      openEmployment(singleEntry ? workspace.value?.employmentHistory[0] : undefined);
+    else if (
+      sectionCode === "REFEREES" &&
+      (singleEntry ||
+        (workspace.value?.referees.length ?? 0) <
+          Math.max(1, activeSection.value?.minimumRecords ?? 1))
+    )
+      openReferee(singleEntry ? workspace.value?.referees[0] : undefined);
+    else if (
+      sectionCode === "QUALIFICATIONS" &&
+      (singleEntry ||
+        (workspace.value?.qualifications.length ?? 0) <
+          Math.max(1, activeSection.value?.minimumRecords ?? 1))
+    )
+      openQualification(singleEntry ? workspace.value?.qualifications[0] : undefined);
+    else if (
+      sectionCode === "PROFESSIONAL_ACHIEVEMENTS" &&
+      !achievementsDeclaredNone.value &&
+      !achievementForms.value.length
+    )
+      addAchievement();
   }
-  if (sectionCode === "NEXT_OF_KIN") openKin();
-  else if (sectionCode === "EMPLOYMENT_HISTORY") openEmployment();
-  else if (sectionCode === "REFEREES") openReferee();
-  else if (sectionCode === "QUALIFICATIONS") openQualification();
-  else if (sectionCode === "DOCUMENTS" && uploadableRequirements.value.length) openDocumentUpload();
-  else inlineEditor.value = null;
+  rememberSectionDraft();
 }
 
-function activatePreviousSection() {
-  if (previousWorkspaceSection.value) activateSection(previousWorkspaceSection.value.code);
+async function activatePreviousSection() {
+  if (previousWorkspaceSection.value) await activateSection(previousWorkspaceSection.value.code);
 }
 
-async function saveActiveSectionBeforeLeaving(): Promise<boolean> {
-  if (activeSectionCode.value !== "PERSONAL_DETAILS" || !isDraft.value) return true;
-  if (!profileReadyForAutosave.value) {
-    profileSaveState.value = "dirty";
-    return false;
+function validateRequiredFields(fields: Record<string, unknown>) {
+  fieldErrors.value = Object.fromEntries(
+    Object.entries(fields)
+      .filter(([, value]) => value == null || String(value).trim() === "")
+      .map(([label]) => [label, `${label} is required.`]),
+  );
+  if (!Object.keys(fieldErrors.value).length) return true;
+  sectionError.value = "Complete the highlighted fields.";
+  nextTick(() =>
+    document
+      .querySelector<HTMLElement>('#application-section-editor [aria-invalid="true"]')
+      ?.focus(),
+  );
+  return false;
+}
+
+async function saveActiveSectionBeforeLeaving(force = false): Promise<boolean> {
+  if (!isDraft.value) return true;
+  if (sectionBusy.value) return false;
+  sectionError.value = "";
+  savingSection.value = true;
+  try {
+    if (activeSectionCode.value === "PERSONAL_DETAILS") {
+      if (!personalEvidenceReady.value) {
+        sectionError.value = "Upload the required identity documents first.";
+        return false;
+      }
+      if (!profileReadyForAutosave.value) {
+        validateRequiredFields({
+          "Applicant category": profileForm.applicantCategoryCode,
+          "First name": profileForm.firstName,
+          "Last name": profileForm.lastName,
+          "Date of birth": localDate(profileForm.dateOfBirth),
+          Gender: profileForm.genderCode,
+          [profileForm.applicantCategoryCode === "LOCAL"
+            ? "National ID number"
+            : "Passport number"]:
+            profileForm.applicantCategoryCode === "LOCAL"
+              ? profileForm.nationalIdNumber
+              : profileForm.passportNumber,
+          "Country of residence": profileForm.countryId,
+          Nationality: profileForm.nationalityCountryId,
+          Email: profileForm.primaryEmail,
+          "Phone number": profileForm.primaryPhone,
+          "Residential address": profileForm.residentialAddress,
+        });
+        profileSaveState.value = "dirty";
+        return false;
+      }
+      if (profileSaveTimer) {
+        clearTimeout(profileSaveTimer);
+        profileSaveTimer = null;
+      }
+      if (profileSaveState.value !== "saved") await saveProfile();
+      return profileSaveState.value === "saved";
+    }
+    if (!force && !sectionHasChanges.value) return true;
+    if (
+      ["kin", "employment", "referee", "qualification", "result"].includes(inlineEditor.value ?? "")
+    )
+      return await saveInlineRecord();
+    if (activeSectionCode.value === "PROGRAMME_CHOICES") return await saveProgrammeChoices();
+    if (activeSectionCode.value === "PRIOR_UZ_STUDY") return await savePriorUzDeclaration();
+    if (activeSectionCode.value === "PROFESSIONAL_ACHIEVEMENTS")
+      return await saveProfessionalAchievements();
+    return true;
+  } finally {
+    savingSection.value = false;
   }
-  if (profileSaveTimer) {
-    clearTimeout(profileSaveTimer);
-    profileSaveTimer = null;
-  }
-  if (profileSaveState.value !== "saved") await saveProfile();
-  return profileSaveState.value === "saved";
 }
 
 async function activateNextSection() {
-  if (!(await saveActiveSectionBeforeLeaving())) return;
-  if (nextWorkspaceSection.value) activateSection(nextWorkspaceSection.value.code);
+  const next = nextWorkspaceSection.value;
+  if (!(await saveActiveSectionBeforeLeaving(sectionCanSave.value))) return;
+  if (next) await activateSection(next.code);
 }
 
 async function saveProfile() {
   if (!isDraft.value || profileSaveState.value === "saving") return;
   profileSaveState.value = "saving";
+  const submittedProfile = profileRequestBody();
   try {
     const updated = await api.request<ApplicantApplicationWorkspace>(
       `/api/admissions/applications/${applicationId.value}/profile`,
       {
         method: "PUT",
-        body: profileRequestBody(),
+        body: submittedProfile,
       },
     );
+    if (workspaceDisposed) return;
+    const changedDuringSave =
+      JSON.stringify(profileRequestBody()) !== JSON.stringify(submittedProfile);
+    const latestProfile = { ...profileForm };
     applyWorkspace(updated);
-    profileSaveState.value = "saved";
+    if (changedDuringSave) {
+      Object.assign(profileForm, latestProfile, { expectedVersion: updated.profile.version });
+      profileSaveState.value = "dirty";
+      if (profileReadyForAutosave.value) profileSaveTimer = setTimeout(saveProfile, 900);
+    } else {
+      profileSaveState.value = "saved";
+      rememberSectionDraft();
+    }
     lastSavedAt.value = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   } catch (error) {
     profileSaveState.value = "error";
@@ -1054,18 +1213,23 @@ async function saveProfile() {
 }
 
 async function saveDraft() {
-  if (!isDraft.value) return;
-  if (activeSectionCode.value === "PERSONAL_DETAILS") {
-    const saved = await saveActiveSectionBeforeLeaving();
-    if (saved) toast.add({ title: "Draft saved", color: "success", icon: "i-lucide-check" });
-    return;
+  const saved = await saveActiveSectionBeforeLeaving(true);
+  if (saved) toast.add({ title: "Saved", color: "success", icon: "i-lucide-check" });
+}
+
+function cancelSectionChanges() {
+  if (profileSaveTimer) {
+    clearTimeout(profileSaveTimer);
+    profileSaveTimer = null;
   }
-  toast.add({
-    title: "Draft up to date",
-    description: "Changes in this section save automatically as you go.",
-    color: "success",
-    icon: "i-lucide-check",
-  });
+  if (workspace.value) applyWorkspace(workspace.value);
+  profileSaveState.value = "saved";
+  prepareInlineEditorForSection(activeSectionCode.value);
+}
+
+async function returnToApplications() {
+  if (sectionHasChanges.value && !(await saveActiveSectionBeforeLeaving())) return;
+  await router.push("/");
 }
 
 function nullableBody<T extends Record<string, unknown>>(value: T) {
@@ -1140,6 +1304,7 @@ function openKin(record?: ApplicantNextOfKin) {
         },
   );
   inlineEditor.value = "kin";
+  rememberSectionDraft();
   focusInlineEditor(record != null);
 }
 
@@ -1165,6 +1330,7 @@ function openEmployment(record?: ApplicantEmploymentHistory) {
         },
   );
   inlineEditor.value = "employment";
+  rememberSectionDraft();
   focusInlineEditor(record != null);
 }
 
@@ -1193,6 +1359,7 @@ function openReferee(record?: ApplicantReferee) {
         },
   );
   inlineEditor.value = "referee";
+  rememberSectionDraft();
   focusInlineEditor(record != null);
 }
 
@@ -1239,6 +1406,7 @@ function openQualification(record?: ApplicantQualificationSitting) {
         createResultDraft(),
       );
   inlineEditor.value = "qualification";
+  nextTick(rememberSectionDraft);
   focusInlineEditor(record != null);
 }
 
@@ -1253,6 +1421,7 @@ function openResult(sitting: ApplicantQualificationSitting, record?: ApplicantQu
     resultForms.value[0]!.grade = "";
   }
   inlineEditor.value = "result";
+  rememberSectionDraft();
   focusInlineEditor(true);
 }
 
@@ -1547,7 +1716,39 @@ function gradeItemsForQualificationLevel(level: string | null | undefined): stri
   return level === "O_LEVEL" ? oLevelGradeItems : aLevelGradeItems;
 }
 
-async function saveInlineRecord() {
+async function saveInlineRecord(): Promise<boolean> {
+  const required =
+    inlineEditor.value === "kin"
+      ? {
+          "Full name": kinForm.fullName,
+          Relationship: kinForm.relationshipCode,
+          "Phone number": kinForm.phoneNumber,
+        }
+      : inlineEditor.value === "employment"
+        ? {
+            Employer: employmentForm.employerName,
+            Position: employmentForm.positionTitle,
+            "Started on": localDate(employmentForm.startedOn),
+          }
+        : inlineEditor.value === "referee"
+          ? {
+              "Full name": refereeForm.fullName,
+              Organisation: refereeForm.organisation,
+              Email: refereeForm.email,
+              Position: refereeForm.positionTitle,
+              "Relationship to applicant": refereeForm.relationshipToApplicant,
+              "Area of expertise": refereeForm.expertise,
+            }
+          : {};
+  if (!validateRequiredFields(required)) return false;
+  if (inlineEditor.value === "qualification" && !qualificationAggregateReady.value) {
+    sectionError.value = "Upload the qualification document and complete its details and subjects.";
+    return false;
+  }
+  if (inlineEditor.value === "result" && !resultBatchReady.value) {
+    sectionError.value = "Choose a subject and grade for every row.";
+    return false;
+  }
   working.value = true;
   try {
     let path = "";
@@ -1604,7 +1805,7 @@ async function saveInlineRecord() {
           })),
         };
       }
-    } else return;
+    } else return false;
     const updated = await api.request<ApplicantApplicationWorkspace>(path, {
       method: editingId.value ? "PUT" : "POST",
       body,
@@ -1619,9 +1820,11 @@ async function saveInlineRecord() {
     } else {
       prepareInlineEditorForSection(activeSectionCode.value);
     }
-    toast.add({ title: "Draft saved", color: "success", icon: "i-lucide-check" });
+    rememberSectionDraft();
+    return true;
   } catch (error) {
     await showError("Record could not be saved", api.errorMessage(error));
+    return false;
   } finally {
     working.value = false;
   }
@@ -1655,7 +1858,7 @@ async function removeRecord(
 ) {
   const confirmed = await confirmAction({
     title: "Remove this draft record?",
-    text: "The record will remain in the audit history.",
+    text: "This entry will be removed from your application.",
     confirmButtonText: "Remove",
     destructive: true,
   });
@@ -1672,8 +1875,11 @@ async function removeRecord(
   }
 }
 
-async function saveProgrammeChoices() {
-  if (!programmeIds.value.length) return;
+async function saveProgrammeChoices(): Promise<boolean> {
+  if (!programmeIds.value.length) {
+    sectionError.value = "Choose at least one programme.";
+    return false;
+  }
   working.value = true;
   try {
     applyWorkspace(
@@ -1690,15 +1896,25 @@ async function saveProgrammeChoices() {
         },
       ),
     );
-    await showSuccess("Programme choices saved", "The displayed order is your preference ranking.");
+    rememberSectionDraft();
+    return true;
   } catch (error) {
     await showError("Programme choices could not be saved", api.errorMessage(error));
+    return false;
   } finally {
     working.value = false;
   }
 }
 
-async function savePriorUzDeclaration() {
+async function savePriorUzDeclaration(): Promise<boolean> {
+  if (
+    priorUzForm.previouslyStudiedAtUz &&
+    !validateRequiredFields({
+      "Previous registration number": priorUzForm.registrationNumber,
+      "Enrolment started": localDate(priorUzForm.enrolmentStartedOn),
+    })
+  )
+    return false;
   working.value = true;
   try {
     applyWorkspace(
@@ -1712,12 +1928,11 @@ async function savePriorUzDeclaration() {
         },
       ),
     );
-    await showSuccess(
-      "Prior UZ declaration saved",
-      "Your declaration is included in this application only.",
-    );
+    rememberSectionDraft();
+    return true;
   } catch (error) {
     await showError("Prior UZ declaration could not be saved", api.errorMessage(error));
+    return false;
   } finally {
     working.value = false;
   }
@@ -1734,7 +1949,15 @@ function addAchievement() {
   });
 }
 
-async function saveProfessionalAchievements() {
+async function saveProfessionalAchievements(): Promise<boolean> {
+  if (
+    !achievementsDeclaredNone.value &&
+    (!achievementForms.value.length ||
+      achievementForms.value.some((achievement) => !achievement.title.trim()))
+  ) {
+    sectionError.value = "Enter an achievement title, or select that you have none to declare.";
+    return false;
+  }
   working.value = true;
   try {
     applyWorkspace(
@@ -1751,12 +1974,11 @@ async function saveProfessionalAchievements() {
         },
       ),
     );
-    await showSuccess(
-      "Professional achievements saved",
-      "The declaration is included in this application only.",
-    );
+    rememberSectionDraft();
+    return true;
   } catch (error) {
     await showError("Professional achievements could not be saved", api.errorMessage(error));
+    return false;
   } finally {
     working.value = false;
   }
@@ -1831,7 +2053,7 @@ async function submitApplication() {
   if (!workspace.value?.readyForSubmission) return;
   const confirmed = await confirmAction({
     title: "Submit this application?",
-    text: "Your draft will be locked and sent to Admissions for independent verification. Corrections after submission require an audited staff action.",
+    text: "You cannot edit your application after submission. Check that your details and documents are correct.",
     confirmButtonText: "Submit application",
   });
   if (!confirmed) return;
@@ -1924,16 +2146,16 @@ function formatStatus(value: string) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div class="applicant-workspace min-h-screen bg-muted/30">
     <EmhareTopNav
       :breadcrumbs="[
         { label: 'Applications', to: '/' },
-        { label: workspace?.application.applicationNumber ?? 'Application workspace' },
+        { label: workspace?.application.applicationNumber ?? 'Application' },
       ]"
     >
       <template #meta>
         <EmhareDraftSaveIndicator
-          v-if="isDraft"
+          v-if="isDraft && activeSectionCode === 'PERSONAL_DETAILS'"
           :state="profileSaveState"
           :saved-at="lastSavedAt"
         />
@@ -1963,25 +2185,20 @@ function formatStatus(value: string) {
           @click="openOfferLetter(applicationOffer, 'attachment')"
         />
         <UButton
-          v-if="isDraft"
-          label="Save draft"
-          icon="i-lucide-save"
-          color="neutral"
-          variant="outline"
-          @click="saveDraft"
-        />
-        <UButton
           label="Return to applications"
+          aria-label="Return to applications"
+          :ui="{ label: 'hidden sm:inline' }"
+          class="min-h-11"
           icon="i-lucide-arrow-left"
           color="neutral"
           variant="ghost"
-          @click="router.push('/')"
+          @click="returnToApplications"
         />
       </template>
     </EmhareTopNav>
 
     <main class="mx-auto max-w-[80rem] px-4 py-8 sm:px-6 sm:py-10">
-      <EmhareFeedbackState v-if="loading" state="loading" title="Loading application workspace" />
+      <EmhareFeedbackState v-if="loading" state="loading" title="Loading application" />
       <EmhareFeedbackState
         v-else-if="loadError"
         state="error"
@@ -2017,7 +2234,7 @@ function formatStatus(value: string) {
 
         <section
           id="application-section-editor"
-          class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+          class="min-w-0 overflow-hidden rounded-lg border border-default bg-default"
         >
           <div
             class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-6 py-5 sm:px-8"
@@ -2032,7 +2249,7 @@ function formatStatus(value: string) {
                 {{ workspace.application.intakeCode }}
               </p>
               <div class="flex items-center gap-2">
-                <h1 class="text-lg font-semibold text-slate-900">
+                <h1 tabindex="-1" class="text-xl font-semibold text-highlighted outline-none">
                   {{ displaySectionName(activeSection) }}
                 </h1>
                 <EmhareStatusPill
@@ -2041,26 +2258,27 @@ function formatStatus(value: string) {
                   :tone="sectionTone(activeSection.status)"
                 />
               </div>
-              <p class="mt-1 text-sm text-slate-500">
-                {{
-                  activeSection?.completionSummary ??
-                  "Complete the required information for this section."
-                }}
-              </p>
             </div>
           </div>
 
           <div class="p-6 sm:p-8">
+            <UAlert
+              v-if="sectionError"
+              class="mb-5"
+              color="error"
+              variant="soft"
+              :title="sectionError"
+              role="alert"
+            />
             <div v-if="activeSectionCode === 'PERSONAL_DETAILS'" class="space-y-8">
               <section v-if="personalEvidenceRequirements.length" class="space-y-4">
                 <div>
-                  <h2 class="text-base font-semibold text-slate-900">Identity evidence</h2>
+                  <h2 class="text-base font-semibold text-highlighted">Identity documents</h2>
                   <p class="mt-1 text-sm text-slate-500">
-                    Upload the applicable identity documents first. Each upload starts immediately;
-                    review or correct any extracted details below.
+                    Upload your documents, then check your details.
                   </p>
                 </div>
-                <div class="grid gap-4 lg:grid-cols-2">
+                <div class="grid gap-4">
                   <div
                     v-for="requirement in personalEvidenceRequirements"
                     :key="requirement.requirementCode"
@@ -2100,31 +2318,16 @@ function formatStatus(value: string) {
                 variant="soft"
                 icon="i-lucide-lock-keyhole"
                 title="Upload the required identity evidence to continue"
-                description="Personal data entry opens as soon as all applicable files are stored. OCR completion is not required."
-              />
-
-              <UAlert
-                color="primary"
-                variant="soft"
-                icon="i-lucide-save"
-                title="Changes save automatically"
-                :description="
-                  profileReadyForAutosave
-                    ? 'Registered names are locked and identity duplicates are validated by the server.'
-                    : 'Complete the required fields before these applicant details can be saved.'
-                "
               />
 
               <div
+                v-show="personalEvidenceReady || !isDraft"
                 :inert="personalFieldsDisabled"
                 :aria-disabled="personalFieldsDisabled"
                 :class="personalFieldsDisabled ? 'pointer-events-none opacity-60' : ''"
                 class="space-y-8"
               >
-                <EmhareFormSection
-                  title="Identity"
-                  description="Names and identifying details as they will appear on official documents."
-                >
+                <EmhareFormSection title="Identity">
                   <EmhareFormField
                     v-model="profileForm.applicantCategoryCode"
                     type="select"
@@ -2137,6 +2340,7 @@ function formatStatus(value: string) {
                     ]"
                     required
                     disabled
+                    :error="fieldErrors['Applicant category']"
                   />
                   <EmhareFormField
                     v-model="profileForm.titleCode"
@@ -2144,25 +2348,27 @@ function formatStatus(value: string) {
                     label="Title"
                     :items="['Mr', 'Mrs', 'Ms', 'Miss', 'Dr', 'Prof']"
                     :disabled="!isDraft"
+                    :error="fieldErrors['Title']"
                   />
                   <EmhareFormField
                     v-model="profileForm.firstName"
                     label="First name"
-                    description="Taken from your registered account."
                     required
                     readonly
+                    :error="fieldErrors['First name']"
                   />
                   <EmhareFormField
                     v-model="profileForm.lastName"
                     label="Last name"
-                    description="Taken from your registered account."
                     required
                     readonly
+                    :error="fieldErrors['Last name']"
                   />
                   <EmhareFormField
                     v-model="profileForm.middleNames"
                     label="Middle names"
                     :disabled="!isDraft"
+                    :error="fieldErrors['Middle names']"
                   />
                   <EmhareFormField
                     v-model="profileForm.dateOfBirth"
@@ -2170,29 +2376,42 @@ function formatStatus(value: string) {
                     label="Date of birth"
                     required
                     :disabled="!isDraft"
+                    :error="fieldErrors['Date of birth']"
                   />
                   <EmhareFormField
                     v-model="profileForm.genderCode"
                     type="select"
                     label="Gender"
-                    :items="['FEMALE', 'MALE', 'OTHER', 'PREFER_NOT_TO_SAY']"
+                    :items="[
+                      { label: 'Female', value: 'FEMALE' },
+                      { label: 'Male', value: 'MALE' },
+                      { label: 'Other', value: 'OTHER' },
+                      { label: 'Prefer not to say', value: 'PREFER_NOT_TO_SAY' },
+                    ]"
                     required
                     :disabled="!isDraft"
+                    :error="fieldErrors['Gender']"
                   />
                   <EmhareFormField
                     v-model="profileForm.maritalStatusCode"
                     type="select"
                     label="Marital status"
-                    :items="['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED']"
+                    :items="
+                      ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED'].map((value) => ({
+                        label: formatStatus(value),
+                        value,
+                      }))
+                    "
                     :disabled="!isDraft"
+                    :error="fieldErrors['Marital status']"
                   />
                   <EmhareFormField
                     v-if="profileForm.applicantCategoryCode === 'LOCAL'"
                     v-model="profileForm.nationalIdNumber"
                     label="National ID number"
-                    description="Checked for duplicate applications in this intake."
                     required
                     :disabled="!isDraft"
+                    :error="fieldErrors['National ID number']"
                   />
                   <EmhareFormField
                     v-else
@@ -2200,13 +2419,11 @@ function formatStatus(value: string) {
                     label="Passport number"
                     required
                     :disabled="!isDraft"
+                    :error="fieldErrors['Passport number']"
                   />
                 </EmhareFormSection>
 
-                <EmhareFormSection
-                  title="Residency and contact"
-                  description="Where the applicant lives and how Admissions can reach them."
-                >
+                <EmhareFormSection title="Residency and contact">
                   <EmhareFormField
                     v-model="profileForm.countryId"
                     type="searchable-select"
@@ -2214,6 +2431,7 @@ function formatStatus(value: string) {
                     :items="countryItems"
                     required
                     :disabled="!isDraft"
+                    :error="fieldErrors['Country of residence']"
                   />
                   <EmhareFormField
                     v-model="profileForm.nationalityCountryId"
@@ -2222,6 +2440,7 @@ function formatStatus(value: string) {
                     :items="countryItems"
                     required
                     :disabled="!isDraft"
+                    :error="fieldErrors['Nationality']"
                   />
                   <EmhareFormField
                     v-model="profileForm.primaryEmail"
@@ -2229,6 +2448,7 @@ function formatStatus(value: string) {
                     label="Email"
                     required
                     :disabled="!isDraft"
+                    :error="fieldErrors['Email']"
                   />
                   <EmhareFormField
                     v-model="profileForm.primaryPhone"
@@ -2236,26 +2456,28 @@ function formatStatus(value: string) {
                     label="Phone number"
                     required
                     :disabled="!isDraft"
+                    :error="fieldErrors['Phone number']"
                   />
                   <EmhareFormField
                     v-model="profileForm.residentialAddress"
+                    class="md:col-span-2"
                     type="textarea"
                     label="Residential address"
                     required
                     :disabled="!isDraft"
+                    :error="fieldErrors['Residential address']"
                   />
                   <EmhareFormField
                     v-model="profileForm.postalAddress"
+                    class="md:col-span-2"
                     type="textarea"
                     label="Postal address"
                     :disabled="!isDraft"
+                    :error="fieldErrors['Postal address']"
                   />
                 </EmhareFormSection>
 
-                <EmhareFormSection
-                  title="Additional information"
-                  description="Only needed where it applies to the applicant."
-                >
+                <EmhareFormSection title="Additional information">
                   <EmhareFormField
                     v-model="profileForm.disabilityStatusCode"
                     type="select"
@@ -2265,60 +2487,98 @@ function formatStatus(value: string) {
                       { label: 'Declared', value: 'DECLARED' },
                     ]"
                     :disabled="!isDraft"
+                    :error="fieldErrors['Disability status']"
                   />
                   <EmhareFormField
                     v-if="profileForm.disabilityStatusCode === 'DECLARED'"
                     v-model="profileForm.specialNeeds"
+                    class="md:col-span-2"
                     type="textarea"
                     label="Support requirements"
                     :disabled="!isDraft"
+                    :error="fieldErrors['Support requirements']"
                   />
                 </EmhareFormSection>
               </div>
             </div>
 
             <div v-else-if="activeSectionCode === 'NEXT_OF_KIN'" class="space-y-4">
+              <UButton
+                v-if="isDraft && !inlineEditor && activeSection?.repeatable"
+                label="Add another contact"
+                icon="i-lucide-plus"
+                color="neutral"
+                variant="outline"
+                class="min-h-11"
+                @click="openKin()"
+              />
               <EmhareInlineRecordForm
+                embedded
                 v-if="isDraft && inlineEditor === 'kin'"
                 :title="editingId ? 'Edit next of kin' : 'Next of kin details'"
-                description="Capture the person Admissions should contact when necessary."
                 :show-cancel="Boolean(editingId)"
                 :busy="working"
                 @cancel="openKin()"
                 @submit="saveInlineRecord"
               >
                 <div class="grid gap-4 md:grid-cols-2">
-                  <EmhareFormField v-model="kinForm.fullName" label="Full name" required />
+                  <EmhareFormField
+                    v-model="kinForm.fullName"
+                    class="md:col-span-2"
+                    label="Full name"
+                    required
+                    :error="fieldErrors['Full name']"
+                  />
                   <EmhareFormField
                     v-model="kinForm.relationshipCode"
                     type="select"
                     label="Relationship"
-                    :items="['PARENT', 'SPOUSE', 'SIBLING', 'GUARDIAN', 'RELATIVE', 'OTHER']"
+                    :items="
+                      ['PARENT', 'SPOUSE', 'SIBLING', 'GUARDIAN', 'RELATIVE', 'OTHER'].map(
+                        (value) => ({ label: formatStatus(value), value }),
+                      )
+                    "
                     required
+                    :error="fieldErrors['Relationship']"
                   />
                   <EmhareFormField
                     v-model="kinForm.phoneNumber"
                     type="phone"
                     label="Phone number"
                     required
+                    :error="fieldErrors['Phone number']"
                   />
-                  <EmhareFormField v-model="kinForm.email" type="email" label="Email" />
-                  <EmhareFormField v-model="kinForm.address" type="textarea" label="Address" />
+                  <EmhareFormField
+                    v-model="kinForm.email"
+                    type="email"
+                    label="Email"
+                    :error="fieldErrors['Email']"
+                  />
+                  <EmhareFormField
+                    v-model="kinForm.address"
+                    class="md:col-span-2"
+                    type="textarea"
+                    label="Address"
+                    :error="fieldErrors['Address']"
+                  />
                   <EmhareFormField
                     v-model="kinForm.primary"
                     type="toggle"
                     label="Primary contact"
+                    :error="fieldErrors['Primary contact']"
                   />
                 </div>
               </EmhareInlineRecordForm>
               <h2
-                v-if="workspace.nextOfKin.length"
+                v-if="workspace.nextOfKin.length && (!isDraft || activeSection?.repeatable)"
                 class="pt-2 text-base font-semibold text-highlighted"
               >
                 Saved next of kin
               </h2>
               <EmharePaginatedCollection
+                v-if="workspace.nextOfKin.length && (!isDraft || activeSection?.repeatable)"
                 :items="workspace.nextOfKin"
+                :show-pagination="workspace.nextOfKin.length > 5"
                 :initial-page-size="5"
                 v-slot="{ items }"
               >
@@ -2363,10 +2623,19 @@ function formatStatus(value: string) {
             </div>
 
             <div v-else-if="activeSectionCode === 'EMPLOYMENT_HISTORY'" class="space-y-4">
+              <UButton
+                v-if="isDraft && !inlineEditor && activeSection?.repeatable"
+                label="Add another employment"
+                icon="i-lucide-plus"
+                color="neutral"
+                variant="outline"
+                class="min-h-11"
+                @click="openEmployment()"
+              />
               <EmhareInlineRecordForm
+                embedded
                 v-if="isDraft && inlineEditor === 'employment'"
                 :title="editingId ? 'Edit employment' : 'Employment details'"
-                description="Capture one employment record at a time."
                 :show-cancel="Boolean(editingId)"
                 :busy="working"
                 @cancel="openEmployment()"
@@ -2377,46 +2646,54 @@ function formatStatus(value: string) {
                     v-model="employmentForm.employerName"
                     label="Employer"
                     required
+                    :error="fieldErrors['Employer']"
                   />
                   <EmhareFormField
                     v-model="employmentForm.positionTitle"
                     label="Position"
                     required
+                    :error="fieldErrors['Position']"
                   />
                   <EmhareFormField
                     v-model="employmentForm.startedOn"
                     type="date"
                     label="Started on"
                     required
+                    :error="fieldErrors['Started on']"
                   />
                   <EmhareFormField
                     v-model="employmentForm.current"
                     type="toggle"
                     label="Current employment"
+                    :error="fieldErrors['Current employment']"
                   />
                   <EmhareFormField
                     v-if="!employmentForm.current"
                     v-model="employmentForm.endedOn"
                     type="date"
                     label="Ended on"
+                    :error="fieldErrors['Ended on']"
                   />
                   <div class="md:col-span-2">
                     <EmhareFormField
                       v-model="employmentForm.responsibilities"
                       type="textarea"
                       label="Responsibilities"
+                      :error="fieldErrors['Responsibilities']"
                     />
                   </div>
                 </div>
               </EmhareInlineRecordForm>
               <h2
-                v-if="workspace.employmentHistory.length"
+                v-if="workspace.employmentHistory.length && (!isDraft || activeSection?.repeatable)"
                 class="pt-2 text-base font-semibold text-highlighted"
               >
                 Saved employment history
               </h2>
               <EmharePaginatedCollection
+                v-if="workspace.employmentHistory.length && (!isDraft || activeSection?.repeatable)"
                 :items="workspace.employmentHistory"
+                :show-pagination="workspace.employmentHistory.length > 5"
                 :initial-page-size="5"
                 v-slot="{ items }"
                 ><div class="space-y-3">
@@ -2446,28 +2723,56 @@ function formatStatus(value: string) {
             </div>
 
             <div v-else-if="activeSectionCode === 'REFEREES'" class="space-y-4">
+              <UButton
+                v-if="isDraft && !inlineEditor && activeSection?.repeatable"
+                label="Add another referee"
+                icon="i-lucide-plus"
+                color="neutral"
+                variant="outline"
+                class="min-h-11"
+                @click="openReferee()"
+              />
               <EmhareInlineRecordForm
+                embedded
                 v-if="isDraft && inlineEditor === 'referee'"
                 :title="editingId ? 'Edit referee' : 'Referee details'"
-                description="Capture a referee. A secure reference request is emailed when the record is saved."
+                description="Saving sends a reference request to this email address."
                 :show-cancel="Boolean(editingId)"
                 :busy="working"
                 @cancel="openReferee()"
                 @submit="saveInlineRecord"
               >
                 <div class="grid gap-4 md:grid-cols-2">
-                  <EmhareFormField v-model="refereeForm.title" label="Title" />
-                  <EmhareFormField v-model="refereeForm.fullName" label="Full name" required />
+                  <EmhareFormField
+                    v-model="refereeForm.title"
+                    label="Title"
+                    :error="fieldErrors['Title']"
+                  />
+                  <EmhareFormField
+                    v-model="refereeForm.fullName"
+                    class="md:col-span-2"
+                    label="Full name"
+                    required
+                    :error="fieldErrors['Full name']"
+                  />
                   <EmhareFormField
                     v-model="refereeForm.organisation"
+                    class="md:col-span-2"
                     label="Organisation"
                     required
+                    :error="fieldErrors['Organisation']"
                   />
-                  <EmhareFormField v-model="refereeForm.positionTitle" label="Position" required />
+                  <EmhareFormField
+                    v-model="refereeForm.positionTitle"
+                    label="Position"
+                    required
+                    :error="fieldErrors['Position']"
+                  />
                   <EmhareFormField
                     v-model="refereeForm.relationshipToApplicant"
                     label="Relationship to applicant"
                     required
+                    :error="fieldErrors['Relationship to applicant']"
                   />
                   <div class="md:col-span-2">
                     <EmhareFormField
@@ -2475,6 +2780,7 @@ function formatStatus(value: string) {
                       type="textarea"
                       label="Area of expertise"
                       required
+                      :error="fieldErrors['Area of expertise']"
                     />
                   </div>
                   <EmhareFormField
@@ -2482,22 +2788,26 @@ function formatStatus(value: string) {
                     type="email"
                     label="Email"
                     required
+                    :error="fieldErrors['Email']"
                   />
                   <EmhareFormField
                     v-model="refereeForm.phoneNumber"
                     type="phone"
                     label="Phone number"
+                    :error="fieldErrors['Phone number']"
                   />
                 </div>
               </EmhareInlineRecordForm>
               <h2
-                v-if="workspace.referees.length"
+                v-if="workspace.referees.length && (!isDraft || activeSection?.repeatable)"
                 class="pt-2 text-base font-semibold text-highlighted"
               >
                 Saved referees
               </h2>
               <EmharePaginatedCollection
+                v-if="workspace.referees.length && (!isDraft || activeSection?.repeatable)"
                 :items="workspace.referees"
+                :show-pagination="workspace.referees.length > 5"
                 :initial-page-size="5"
                 v-slot="{ items }"
               >
@@ -2563,18 +2873,12 @@ function formatStatus(value: string) {
             </div>
 
             <div v-else-if="activeSectionCode === 'PRIOR_UZ_STUDY'" class="space-y-5">
-              <UAlert
-                color="primary"
-                variant="soft"
-                icon="i-lucide-landmark"
-                title="Previous University of Zimbabwe study"
-                description="This declaration is required even when you have not studied at UZ before."
-              />
               <EmhareFormField
                 v-model="priorUzForm.previouslyStudiedAtUz"
                 type="toggle"
                 label="I previously studied at UZ"
                 :disabled="!isDraft"
+                :error="fieldErrors['I previously studied at UZ']"
               />
               <div v-if="priorUzForm.previouslyStudiedAtUz" class="grid gap-4 md:grid-cols-2">
                 <EmhareFormField
@@ -2582,6 +2886,7 @@ function formatStatus(value: string) {
                   label="Previous registration number"
                   required
                   :disabled="!isDraft"
+                  :error="fieldErrors['Previous registration number']"
                 />
                 <EmhareFormField
                   v-model="priorUzForm.enrolmentStartedOn"
@@ -2589,50 +2894,39 @@ function formatStatus(value: string) {
                   label="Enrolment started"
                   required
                   :disabled="!isDraft"
+                  :error="fieldErrors['Enrolment started']"
                 />
                 <EmhareFormField
                   v-model="priorUzForm.enrolmentEndedOn"
                   type="date"
                   label="Enrolment ended"
                   :disabled="!isDraft"
+                  :error="fieldErrors['Enrolment ended']"
                 />
                 <EmhareFormField
                   v-model="priorUzForm.previouslyAcceptedOffer"
                   type="toggle"
                   label="I accepted the previous offer"
                   :disabled="!isDraft"
+                  :error="fieldErrors['I accepted the previous offer']"
                 />
                 <EmhareFormField
                   v-model="priorUzForm.previouslyTookUpPlace"
                   type="toggle"
                   label="I took up the previous place"
                   :disabled="!isDraft"
-                />
-              </div>
-              <div class="flex justify-end">
-                <UButton
-                  v-if="isDraft"
-                  label="Save declaration"
-                  icon="i-lucide-save"
-                  :loading="working"
-                  @click="savePriorUzDeclaration"
+                  :error="fieldErrors['I took up the previous place']"
                 />
               </div>
             </div>
 
             <div v-else-if="activeSectionCode === 'PROFESSIONAL_ACHIEVEMENTS'" class="space-y-5">
-              <UAlert
-                color="primary"
-                variant="soft"
-                icon="i-lucide-award"
-                title="Professional achievements"
-                description="Add awards, memberships, publications or presentations, or explicitly declare that you have none."
-              />
               <EmhareFormField
                 v-model="achievementsDeclaredNone"
                 type="toggle"
                 label="I have no professional achievements to declare"
                 :disabled="!isDraft"
+                :error="fieldErrors['I have no professional achievements to declare']"
               />
               <div v-if="!achievementsDeclaredNone" class="space-y-4">
                 <article
@@ -2654,23 +2948,27 @@ function formatStatus(value: string) {
                       ]"
                       required
                       :disabled="!isDraft"
+                      :error="fieldErrors['Achievement type']"
                     />
                     <EmhareFormField
                       v-model="achievement.title"
                       label="Title"
                       required
                       :disabled="!isDraft"
+                      :error="fieldErrors['Title']"
                     />
                     <EmhareFormField
                       v-model="achievement.organisation"
                       label="Organisation"
                       :disabled="!isDraft"
+                      :error="fieldErrors['Organisation']"
                     />
                     <EmhareFormField
                       v-model="achievement.achievedOn"
                       type="date"
                       label="Date"
                       :disabled="!isDraft"
+                      :error="fieldErrors['Date']"
                     />
                     <div class="md:col-span-2">
                       <EmhareFormField
@@ -2678,6 +2976,7 @@ function formatStatus(value: string) {
                         type="textarea"
                         label="Description"
                         :disabled="!isDraft"
+                        :error="fieldErrors['Description']"
                       />
                     </div>
                   </div>
@@ -2700,23 +2999,22 @@ function formatStatus(value: string) {
                   @click="addAchievement"
                 />
               </div>
-              <div class="flex justify-end">
-                <UButton
-                  v-if="isDraft"
-                  label="Save achievements"
-                  icon="i-lucide-save"
-                  :loading="working"
-                  :disabled="!achievementsDeclaredNone && !achievementForms.length"
-                  @click="saveProfessionalAchievements"
-                />
-              </div>
             </div>
 
             <div v-else-if="activeSectionCode === 'QUALIFICATIONS'" class="space-y-5">
+              <UButton
+                v-if="isDraft && !inlineEditor && activeSection?.repeatable"
+                label="Add another qualification"
+                icon="i-lucide-plus"
+                color="neutral"
+                variant="outline"
+                class="min-h-11"
+                @click="openQualification()"
+              />
               <EmhareInlineRecordForm
+                embedded
                 v-if="isDraft && inlineEditor === 'qualification'"
                 :title="editingId ? 'Edit qualification' : 'Add qualification'"
-                description="Upload the evidence first, review the extracted details, then save the qualification and all subjects together."
                 :show-cancel="Boolean(editingId)"
                 :busy="working"
                 :submit-disabled="!qualificationAggregateReady"
@@ -2740,12 +3038,12 @@ function formatStatus(value: string) {
                     ]"
                     required
                     :disabled="Boolean(editingId)"
+                    :error="fieldErrors['Qualification type']"
                   />
                   <EmhareEvidenceUploader
                     :application-id="applicationId"
                     :document-type-code="qualificationEvidenceTypeCode()"
                     label="Qualification evidence"
-                    description="Upload the result slip, certificate, or transcript for this qualification."
                     :existing-document-id="qualificationForm.documentId || null"
                     :existing-state="qualificationForm.documentId ? 'PENDING' : 'MISSING'"
                     @uploaded="handleQualificationEvidenceUploaded"
@@ -2758,7 +3056,6 @@ function formatStatus(value: string) {
                     variant="soft"
                     icon="i-lucide-lock-keyhole"
                     title="Upload evidence to continue"
-                    description="The editable qualification form opens as soon as the file is stored. OCR is optional and never blocks manual entry."
                   />
 
                   <div v-else class="grid gap-4 md:grid-cols-2">
@@ -2769,16 +3066,19 @@ function formatStatus(value: string) {
                       label="Exam body"
                       :items="examBodyItems"
                       required
+                      :error="fieldErrors['Exam body']"
                     />
                     <EmhareFormField
                       v-else
                       v-model="qualificationForm.qualificationName"
                       label="Qualification title"
                       required
+                      :error="fieldErrors['Qualification title']"
                     />
                     <EmhareFormField
                       v-model="qualificationForm.institutionName"
                       label="School or institution"
+                      :error="fieldErrors['School or institution']"
                     />
                     <EmhareFormField
                       v-model="qualificationForm.yearWritten"
@@ -2787,6 +3087,7 @@ function formatStatus(value: string) {
                       :min="1900"
                       :max="2200"
                       required
+                      :error="fieldErrors['Year written']"
                     />
                     <EmhareFormField
                       v-if="!schoolQualification"
@@ -2795,20 +3096,24 @@ function formatStatus(value: string) {
                       label="Qualification duration (months)"
                       :min="1"
                       required
+                      :error="fieldErrors['Qualification duration (months)']"
                     />
                     <EmhareFormField
                       v-model="qualificationForm.centreNumber"
                       label="Centre number"
+                      :error="fieldErrors['Centre number']"
                     />
                     <EmhareFormField
                       v-model="qualificationForm.candidateNumber"
                       label="Candidate number"
+                      :error="fieldErrors['Candidate number']"
                     />
                     <EmhareFormField
                       v-model="qualificationForm.countryId"
                       type="searchable-select"
                       label="Country"
                       :items="countryItems"
+                      :error="fieldErrors['Country']"
                     />
                   </div>
 
@@ -2816,10 +3121,6 @@ function formatStatus(value: string) {
                     <div class="flex items-center justify-between gap-3">
                       <div>
                         <h3 class="font-semibold text-highlighted">Subject results</h3>
-                        <p class="text-sm text-muted">
-                          {{ qualificationForm.kind === "O_LEVEL" ? "Eight" : "Three" }} rows are
-                          ready by default. Add or remove rows to match the evidence.
-                        </p>
                       </div>
                       <UBadge
                         :label="`${resultForms.length}/20`"
@@ -2847,9 +3148,10 @@ function formatStatus(value: string) {
                         <EmhareFormField
                           v-model="result.subjectId"
                           type="searchable-select"
-                          label="Managed subject"
+                          label="Subject"
                           :items="subjectItemsForResultDraft(resultIndex)"
                           required
+                          :error="fieldErrors['Subject']"
                         />
                         <EmhareFormField
                           v-model="result.grade"
@@ -2857,12 +3159,14 @@ function formatStatus(value: string) {
                           label="Grade"
                           :items="resultGradeItems"
                           required
+                          :error="fieldErrors['Grade']"
                         />
                         <EmhareFormField
                           v-if="qualificationForm.kind === 'A_LEVEL'"
                           v-model="result.principalSubject"
                           type="toggle"
                           label="Principal subject"
+                          :error="fieldErrors['Principal subject']"
                         />
                       </div>
                     </div>
@@ -2874,24 +3178,20 @@ function formatStatus(value: string) {
                       variant="outline"
                       @click="addResultDraft"
                     />
-                    <UAlert
-                      color="info"
-                      variant="soft"
-                      title="Managed subjects and grades"
-                      description="Exact OCR matches are selected automatically. Ambiguous subjects stay blank until you confirm them. A Level points are calculated by Admissions."
-                    />
                   </div>
                 </div>
               </EmhareInlineRecordForm>
 
               <h2
-                v-if="workspace.qualifications.length"
+                v-if="workspace.qualifications.length && (!isDraft || activeSection?.repeatable)"
                 class="pt-2 text-base font-semibold text-highlighted"
               >
                 Saved qualifications and results
               </h2>
               <EmharePaginatedCollection
+                v-if="workspace.qualifications.length && (!isDraft || activeSection?.repeatable)"
                 :items="workspace.qualifications"
+                :show-pagination="workspace.qualifications.length > 5"
                 :initial-page-size="5"
                 v-slot="{ items }"
               >
@@ -2960,13 +3260,7 @@ function formatStatus(value: string) {
             </div>
 
             <div v-else-if="activeSectionCode === 'PROGRAMME_CHOICES'" class="space-y-5">
-              <UAlert
-                color="primary"
-                variant="soft"
-                icon="i-lucide-list-ordered"
-                title="Preference order matters"
-                description="Select Programmes in first-to-last preference order. The server validates intake eligibility and maximum choices."
-              />
+              <p class="text-sm text-muted">Choose programmes in order of preference.</p>
               <EmhareFormField
                 v-model="programmeIds"
                 type="multi-select"
@@ -2974,7 +3268,8 @@ function formatStatus(value: string) {
                 :items="programmeItems"
                 required
                 :disabled="!isDraft"
-                placeholder="Search Programmes"
+                placeholder="Search programmes"
+                :error="fieldErrors['Programme choices']"
               />
               <ol class="space-y-3">
                 <li
@@ -3019,6 +3314,7 @@ function formatStatus(value: string) {
                         )
                       "
                       :disabled="!isDraft"
+                      :error="fieldErrors['Specialization or entry preferences']"
                     />
                     <p class="mt-1 text-xs text-muted">
                       Select between
@@ -3036,28 +3332,11 @@ function formatStatus(value: string) {
                   </div>
                 </li>
               </ol>
-              <div class="flex justify-end">
-                <UButton
-                  v-if="isDraft"
-                  label="Save choices"
-                  icon="i-lucide-save"
-                  :loading="working"
-                  :disabled="!programmeIds.length"
-                  @click="saveProgrammeChoices"
-                />
-              </div>
             </div>
 
             <div v-else-if="activeSectionCode === 'DOCUMENTS'" class="space-y-4">
               <template v-if="supportingDocumentRequirements.length">
-                <UAlert
-                  color="primary"
-                  variant="soft"
-                  icon="i-lucide-folder-check"
-                  title="General supporting evidence"
-                  description="Choose or drop a file on its requirement card. Uploading and document reading start automatically."
-                />
-                <div class="grid gap-4 lg:grid-cols-2">
+                <div class="grid gap-4">
                   <EmhareEvidenceUploader
                     v-for="requirement in supportingDocumentRequirements"
                     :key="requirement.requirementCode"
@@ -3077,8 +3356,8 @@ function formatStatus(value: string) {
               <EmhareFeedbackState
                 v-else
                 state="empty"
-                title="Document requirements are not configured"
-                description="Admissions must configure required document evidence for this application type before the application can be submitted."
+                title="Document requirements unavailable"
+                description="Document requirements are unavailable. Please contact Admissions."
               />
             </div>
 
@@ -3091,9 +3370,7 @@ function formatStatus(value: string) {
                 title="No application fee required"
               />
               <template v-else>
-                <section
-                  class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-                >
+                <section class="overflow-hidden rounded-lg border border-default bg-default">
                   <div
                     class="grid gap-5 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-6"
                   >
@@ -3140,7 +3417,7 @@ function formatStatus(value: string) {
                   variant="soft"
                   icon="i-lucide-badge-dollar-sign"
                   title="Awaiting an effective exchange rate"
-                  description="The transaction remains unrated until Finance supplies a valid effective rate. The system never assumes a rate of 1."
+                  description="Finance must confirm the exchange rate for this payment before you can submit."
                 />
 
                 <UAlert
@@ -3149,7 +3426,7 @@ function formatStatus(value: string) {
                   variant="soft"
                   icon="i-lucide-circle-check"
                   title="Application fee confirmed"
-                  description="Finance has reconciled this payment. No further payment action is required."
+                  description="Your application fee has been paid."
                 />
 
                 <template v-else>
@@ -3210,7 +3487,7 @@ function formatStatus(value: string) {
 
                   <section
                     v-else
-                    class="overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-white to-white shadow-sm"
+                    class="overflow-hidden rounded-lg border border-default bg-default"
                   >
                     <div
                       class="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
@@ -3223,29 +3500,11 @@ function formatStatus(value: string) {
                             <UIcon name="i-lucide-credit-card" class="size-5" />
                           </span>
                           <div>
-                            <p class="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-                              Recommended
-                            </p>
                             <h2 class="mt-1 text-lg font-semibold text-slate-950">Pay online</h2>
                             <p class="mt-1 max-w-xl text-sm leading-6 text-slate-600">
-                              Complete a secure card payment inside your application and receive
-                              confirmation without uploading a receipt.
+                              Pay by card. Confirmation appears here after payment.
                             </p>
                           </div>
-                        </div>
-                        <div class="mt-5 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
-                          <span class="flex items-center gap-2"
-                            ><UIcon name="i-lucide-shield-check" class="size-4 text-primary" />
-                            Secure checkout</span
-                          >
-                          <span class="flex items-center gap-2"
-                            ><UIcon name="i-lucide-lock-keyhole" class="size-4 text-primary" /> Card
-                            details stay private</span
-                          >
-                          <span class="flex items-center gap-2"
-                            ><UIcon name="i-lucide-monitor-check" class="size-4 text-primary" /> No
-                            site redirect</span
-                          >
                         </div>
                       </div>
                       <div class="lg:min-w-48">
@@ -3331,6 +3590,7 @@ function formatStatus(value: string) {
                           description="PDF, PNG, or JPEG · upload starts immediately"
                           accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
                           required
+                          :error="fieldErrors['Proof of payment']"
                         />
                       </div>
                     </div>
@@ -3413,9 +3673,6 @@ function formatStatus(value: string) {
                   <UIcon name="i-lucide-file-text" class="size-5 text-primary" />
                   <div>
                     <h2 class="font-semibold text-highlighted">Application overview</h2>
-                    <p class="text-sm text-muted">
-                      The application record that will be submitted to Admissions.
-                    </p>
                   </div>
                 </header>
                 <dl class="grid gap-x-6 gap-y-5 p-5 md:grid-cols-2">
@@ -3450,7 +3707,6 @@ function formatStatus(value: string) {
                   <UIcon name="i-lucide-contact-round" class="size-5 text-primary" />
                   <div>
                     <h2 class="font-semibold text-highlighted">Applicant details</h2>
-                    <p class="text-sm text-muted">Identity, residency, and contact information.</p>
                   </div>
                 </header>
                 <dl class="grid gap-x-6 gap-y-5 p-5 md:grid-cols-2">
@@ -3575,7 +3831,7 @@ function formatStatus(value: string) {
               </section>
 
               <section
-                v-if="workspace.employmentHistory.length"
+                v-if="workspace.employmentHistory.length && (!isDraft || activeSection?.repeatable)"
                 class="overflow-hidden rounded-xl border border-muted"
               >
                 <header
@@ -3626,9 +3882,6 @@ function formatStatus(value: string) {
                   <UIcon name="i-lucide-landmark" class="size-5 text-primary" />
                   <div>
                     <h2 class="font-semibold text-highlighted">Previous UZ study</h2>
-                    <p class="text-sm text-muted">
-                      The application-specific prior-study declaration.
-                    </p>
                   </div>
                 </header>
                 <dl
@@ -3676,10 +3929,6 @@ function formatStatus(value: string) {
                   <UIcon name="i-lucide-award" class="size-5 text-primary" />
                   <div>
                     <h2 class="font-semibold text-highlighted">Professional achievements</h2>
-                    <p class="text-sm text-muted">
-                      Awards, memberships, publications, presentations and other declared
-                      achievements.
-                    </p>
                   </div>
                 </header>
                 <div v-if="workspace.professionalAchievements.length" class="divide-y divide-muted">
@@ -3710,7 +3959,7 @@ function formatStatus(value: string) {
               </section>
 
               <section
-                v-if="workspace.referees.length"
+                v-if="workspace.referees.length && (!isDraft || activeSection?.repeatable)"
                 class="overflow-hidden rounded-xl border border-muted"
               >
                 <header
@@ -3751,9 +4000,6 @@ function formatStatus(value: string) {
                   <UIcon name="i-lucide-graduation-cap" class="size-5 text-primary" />
                   <div>
                     <h2 class="font-semibold text-highlighted">Qualifications and results</h2>
-                    <p class="text-sm text-muted">
-                      Every sitting and managed subject result captured for evaluation.
-                    </p>
                   </div>
                 </header>
                 <div class="divide-y divide-muted">
@@ -3840,9 +4086,6 @@ function formatStatus(value: string) {
                   <UIcon name="i-lucide-list-ordered" class="size-5 text-primary" />
                   <div>
                     <h2 class="font-semibold text-highlighted">Programme choices</h2>
-                    <p class="text-sm text-muted">
-                      Choices are shown in submitted preference order.
-                    </p>
                   </div>
                 </header>
                 <ol class="divide-y divide-muted">
@@ -3928,7 +4171,7 @@ function formatStatus(value: string) {
                     </div>
                   </div>
                   <p v-if="!workspace.documents.requirements.length" class="p-5 text-sm text-muted">
-                    No document requirements configured.
+                    No documents listed.
                   </p>
                 </div>
 
@@ -4010,10 +4253,6 @@ function formatStatus(value: string) {
                   <UIcon name="i-lucide-receipt-text" class="size-5 text-primary" />
                   <div>
                     <h2 class="font-semibold text-highlighted">Application fee</h2>
-                    <p class="text-sm text-muted">
-                      Payment evidence permits submission; Finance clearance is required before
-                      Admissions review.
-                    </p>
                   </div>
                 </header>
                 <dl class="grid gap-x-6 gap-y-5 p-5 md:grid-cols-2">
@@ -4141,39 +4380,87 @@ function formatStatus(value: string) {
             <EmhareFeedbackState
               v-else
               state="empty"
-              title="Section not configured"
-              description="Admissions has not attached an editor to this section definition."
+              title="Section unavailable"
+              description="This section is unavailable. Please contact Admissions."
             />
           </div>
 
           <footer
-            class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:px-8"
+            class="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-default bg-default px-6 py-4 sm:px-8"
           >
             <UButton
               v-if="previousWorkspaceSection"
-              :label="`Back: ${displaySectionName(previousWorkspaceSection)}`"
+              label="Back"
               icon="i-lucide-arrow-left"
               color="neutral"
-              variant="outline"
+              variant="ghost"
+              class="min-h-11"
+              :disabled="sectionBusy"
               @click="activatePreviousSection"
             />
-            <p class="text-sm text-slate-500" :class="{ 'mr-auto': !previousWorkspaceSection }">
-              Step {{ activeJourneyStepIndex + 1 }} of {{ applicationJourneySections.length }}
-            </p>
+            <span class="mr-auto text-sm text-muted" role="status">{{
+              sectionHasChanges && isDraft ? "Unsaved changes" : ""
+            }}</span>
             <UButton
-              v-if="nextWorkspaceSection"
-              :label="`Continue: ${displaySectionName(nextWorkspaceSection)}`"
-              color="primary"
-              variant="solid"
-              trailing-icon="i-lucide-arrow-right"
-              @click="activateNextSection"
+              v-if="isDraft && (sectionHasChanges || editingId)"
+              label="Cancel"
+              color="neutral"
+              variant="ghost"
+              class="min-h-11"
+              :disabled="sectionBusy"
+              @click="cancelSectionChanges"
             />
-            <p v-else class="text-sm font-medium text-uzazure-800">
-              Review the declaration and submit when every requirement is complete.
-            </p>
+            <div class="ml-auto flex items-center gap-2">
+              <UButton
+                v-if="sectionCanSave"
+                label="Save"
+                icon="i-lucide-save"
+                color="neutral"
+                variant="outline"
+                class="min-h-11"
+                :loading="sectionBusy"
+                :disabled="sectionSaveDisabled"
+                @click="saveDraft"
+              />
+              <UButton
+                v-if="nextWorkspaceSection"
+                :label="sectionCanSave && sectionHasChanges ? 'Save and next' : 'Next'"
+                color="primary"
+                variant="solid"
+                trailing-icon="i-lucide-arrow-right"
+                class="min-h-11"
+                :disabled="sectionBusy"
+                @click="activateNextSection"
+              />
+            </div>
           </footer>
         </section>
       </div>
     </main>
   </div>
 </template>
+
+<style scoped>
+.applicant-workspace :deep(button[role="switch"]) {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  margin-block: 0.75rem;
+}
+.applicant-workspace :deep(button[role="switch"]::after) {
+  content: "";
+  position: absolute;
+  inset: -0.75rem -0.25rem;
+}
+.applicant-workspace :deep(input:not([type="checkbox"]):not([type="file"])),
+.applicant-workspace :deep(button[role="combobox"]),
+.applicant-workspace :deep(button[aria-haspopup="listbox"]) {
+  min-height: 2.75rem;
+}
+@media (max-width: 639px) {
+  .applicant-workspace :deep(input),
+  .applicant-workspace :deep(textarea) {
+    font-size: 1rem;
+  }
+}
+</style>

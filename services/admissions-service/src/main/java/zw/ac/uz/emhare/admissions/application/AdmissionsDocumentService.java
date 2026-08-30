@@ -158,25 +158,28 @@ public class AdmissionsDocumentService {
     assertDocumentIntakeOpen(application);
     String normalizedCode = normalizeCode(requirementCode);
     DocumentRule requirement = documentRule(application, normalizedCode);
-    UploadedDocumentSnapshot document = documentsReportingClient.getUploadedDocument(documentId);
-    validateUploadedDocument(application, requirement, document);
-
     ApplicationDocument current =
         documentRepository
             .findByApplicationIdAndRequirementCodeAndCurrentTrueAndDeletedAtIsNull(
                 applicationId, normalizedCode)
             .orElse(null);
+    if (current != null && current.getDocumentId().equals(documentId)) {
+      return register(application);
+    }
+    UploadedDocumentSnapshot document = documentsReportingClient.getUploadedDocument(documentId);
+    validateUploadedDocument(application, requirement, document);
     if (current == null && document.replacesDocumentId() != null) {
       throw new IllegalArgumentException(
-          "Replacement document has no current rejected application document.");
+          "Replacement document has no current application document.");
     }
     if (current != null) {
       if (!current.getDocumentId().equals(document.replacesDocumentId())) {
         throw new IllegalArgumentException(
-            "Replacement must identify the current rejected document.");
+            "Replacement must identify the current document. Refresh the application and try again.");
       }
       current.supersede(application.getStatus() == ApplicationStatus.DRAFT);
-      documentRepository.save(current);
+      // Release the unique current-requirement slot before Hibernate inserts its replacement.
+      documentRepository.saveAndFlush(current);
       identityNameCorrectionRepository
           .findByApplicationIdAndDocumentIdAndDeletedAtIsNull(
               applicationId, current.getDocumentId())

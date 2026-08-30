@@ -15,8 +15,7 @@ import type {
 
 definePageMeta({ layout: "dashboard" });
 
-type DrawerMode =
-  "premise" | "room-type" | "residence-hall" | "room" | "application-period";
+type DrawerMode = "premise" | "room-type" | "residence-hall" | "room" | "application-period";
 
 const api = useEmhareApi();
 const toast = useToast();
@@ -127,16 +126,15 @@ const roomColumns: TableColumn<AccommodationRoomSummary>[] = [
   { accessorKey: "accessibilityReady", header: "Accessible" },
   { accessorKey: "actions", header: "" },
 ];
-const applicationPeriodColumns: TableColumn<AccommodationApplicationPeriodSummary>[] =
-  [
-    { accessorKey: "code", header: "Code" },
-    { accessorKey: "name", header: "Application period" },
-    { accessorKey: "academicPeriodCode", header: "Academic period" },
-    { accessorKey: "applicationsOpenAt", header: "Applications" },
-    { accessorKey: "occupancyStartsOn", header: "Occupancy" },
-    { accessorKey: "status", header: "Control state" },
-    { accessorKey: "actions", header: "" },
-  ];
+const applicationPeriodColumns: TableColumn<AccommodationApplicationPeriodSummary>[] = [
+  { accessorKey: "code", header: "Code" },
+  { accessorKey: "name", header: "Application period" },
+  { accessorKey: "academicPeriodCode", header: "Academic period" },
+  { accessorKey: "applicationsOpenAt", header: "Applications" },
+  { accessorKey: "occupancyStartsOn", header: "Occupancy" },
+  { accessorKey: "status", header: "Control state" },
+  { accessorKey: "actions", header: "" },
+];
 
 const datasets = computed(() => [
   {
@@ -198,9 +196,10 @@ const genderPolicyItems = ["ANY", "FEMALE", "MALE"].map((value) => ({
   label: title(value),
   value,
 }));
-const conditionItems = ["AVAILABLE", "MAINTENANCE", "OUT_OF_SERVICE"].map(
-  (value) => ({ label: title(value), value }),
-);
+const conditionItems = ["AVAILABLE", "MAINTENANCE", "OUT_OF_SERVICE"].map((value) => ({
+  label: title(value),
+  value,
+}));
 const totalBedCapacity = computed(() =>
   register.value.rooms
     .filter((item) => item.active)
@@ -214,9 +213,7 @@ const availableBedCapacity = computed(() =>
 const drawerTitle = computed(
   () => `${editingId.value ? "Update" : "Create"} ${title(drawerMode.value)}`,
 );
-const nextPeriodStatus = (
-  status: AccommodationPeriodStatus,
-): AccommodationPeriodStatus | null =>
+const nextPeriodStatus = (status: AccommodationPeriodStatus): AccommodationPeriodStatus | null =>
   ({
     DRAFT: "APPLICATION_OPEN",
     APPLICATION_OPEN: "APPLICATION_CLOSED",
@@ -226,18 +223,13 @@ const nextPeriodStatus = (
   })[status] as AccommodationPeriodStatus | null;
 
 onMounted(async () => {
-  await Promise.all([
-    loadRegister(),
-    academicSetup.ensureOverview().catch(() => undefined),
-  ]);
+  await Promise.all([loadRegister(), academicSetup.ensureOverview().catch(() => undefined)]);
 });
 
 watch(
   () => applicationPeriodForm.academicPeriodId,
   (academicPeriodId) => {
-    const selected = academicPeriodItems.value.find(
-      (item) => item.value === academicPeriodId,
-    );
+    const selected = academicPeriodItems.value.find((item) => item.value === academicPeriodId);
     if (!selected) return;
     applicationPeriodForm.academicPeriodCode = selected.code;
     if (!editingId.value) {
@@ -253,14 +245,9 @@ async function loadRegister() {
   loading.value = true;
   loadError.value = "";
   try {
-    register.value = await api.request<AccommodationSetupRegister>(
-      "/api/accommodation/setup",
-    );
+    register.value = await api.request<AccommodationSetupRegister>("/api/accommodation/setup");
   } catch (error) {
-    loadError.value = api.errorMessage(
-      error,
-      "Accommodation setup could not be loaded.",
-    );
+    loadError.value = api.errorMessage(error, "Accommodation setup could not be loaded.");
   } finally {
     loading.value = false;
   }
@@ -284,10 +271,12 @@ function openEdit(
 ) {
   drawerMode.value = mode;
   editingId.value = record.id;
-  if (mode === "premise") Object.assign(premiseForm, record);
-  if (mode === "room-type") Object.assign(roomTypeForm, record);
-  if (mode === "residence-hall") Object.assign(residenceHallForm, record);
-  if (mode === "room") Object.assign(roomForm, record);
+  if (mode === "premise") Object.assign(premiseForm, record, { expectedVersion: record.version });
+  if (mode === "room-type")
+    Object.assign(roomTypeForm, record, { expectedVersion: record.version });
+  if (mode === "residence-hall")
+    Object.assign(residenceHallForm, record, { expectedVersion: record.version });
+  if (mode === "room") Object.assign(roomForm, record, { expectedVersion: record.version });
   if (mode === "application-period") {
     const period = record as AccommodationApplicationPeriodSummary;
     Object.assign(applicationPeriodForm, {
@@ -385,15 +374,9 @@ async function saveRecord() {
       drawerMode.value === "application-period"
         ? {
             ...form,
-            applicationsOpenAt: new Date(
-              applicationPeriodForm.applicationsOpenAt,
-            ).toISOString(),
-            applicationsCloseAt: new Date(
-              applicationPeriodForm.applicationsCloseAt,
-            ).toISOString(),
-            allocationCutoffAt: new Date(
-              applicationPeriodForm.allocationCutoffAt,
-            ).toISOString(),
+            applicationsOpenAt: new Date(applicationPeriodForm.applicationsOpenAt).toISOString(),
+            applicationsCloseAt: new Date(applicationPeriodForm.applicationsCloseAt).toISOString(),
+            allocationCutoffAt: new Date(applicationPeriodForm.allocationCutoffAt).toISOString(),
           }
         : drawerMode.value === "room"
           ? {
@@ -417,10 +400,7 @@ async function saveRecord() {
       icon: "i-lucide-check-circle-2",
     });
   } catch (error) {
-    await showError(
-      `${title(drawerMode.value)} could not be saved`,
-      api.errorMessage(error),
-    );
+    await showError(`${title(drawerMode.value)} could not be saved`, api.errorMessage(error));
   } finally {
     saving.value = false;
   }
@@ -434,29 +414,24 @@ async function transitionPeriod(period: AccommodationApplicationPeriodSummary) {
     text: "This is a controlled maker-checker transition. The approving operator must differ from the preparer.",
     input: "textarea",
     inputLabel: "Approval evidence",
-    inputPlaceholder:
-      "Record the capacity, calendar, rate, and policy checks performed.",
+    inputPlaceholder: "Record the capacity, calendar, rate, and policy checks performed.",
     icon: "question",
     showCancelButton: true,
     confirmButtonText: `Move to ${title(targetStatus)}`,
     confirmButtonColor: "#006633",
-    inputValidator: (value) =>
-      value.trim() ? undefined : "Approval evidence is required.",
+    inputValidator: (value) => (value.trim() ? undefined : "Approval evidence is required."),
   });
   if (!result.isConfirmed || !result.value?.trim()) return;
   actionRecordId.value = period.id;
   try {
-    await api.request(
-      `/api/accommodation/setup/application-periods/${period.id}/transition`,
-      {
-        method: "POST",
-        body: {
-          targetStatus,
-          reason: result.value.trim(),
-          expectedVersion: period.version,
-        },
+    await api.request(`/api/accommodation/setup/application-periods/${period.id}/transition`, {
+      method: "POST",
+      body: {
+        targetStatus,
+        reason: result.value.trim(),
+        expectedVersion: period.version,
       },
-    );
+    });
     await loadRegister();
     toast.add({
       title: `Application period moved to ${title(targetStatus)}`,
@@ -464,10 +439,7 @@ async function transitionPeriod(period: AccommodationApplicationPeriodSummary) {
       icon: "i-lucide-stamp",
     });
   } catch (error) {
-    await showError(
-      "Application period could not be progressed",
-      api.errorMessage(error),
-    );
+    await showError("Application period could not be progressed", api.errorMessage(error));
   } finally {
     actionRecordId.value = null;
   }
@@ -484,18 +456,12 @@ function localDateTime(value: string) {
   return value ? value.slice(0, 16) : "";
 }
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-ZW", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
+  return new Intl.DateTimeFormat("en-ZW", { dateStyle: "medium" }).format(new Date(value));
 }
 function statusTone(value: string) {
-  return value === "AVAILABLE" ||
-    value === "APPLICATION_OPEN" ||
-    value === "ALLOCATION_ACTIVE"
+  return value === "AVAILABLE" || value === "APPLICATION_OPEN" || value === "ALLOCATION_ACTIVE"
     ? "success"
-    : value === "MAINTENANCE" ||
-        value === "DRAFT" ||
-        value === "APPLICATION_CLOSED"
+    : value === "MAINTENANCE" || value === "DRAFT" || value === "APPLICATION_CLOSED"
       ? "warning"
       : value === "OUT_OF_SERVICE"
         ? "error"
@@ -531,9 +497,7 @@ function statusTone(value: string) {
           />
           <EmhareKpiCard
             label="Residence halls"
-            :value="
-              register.residenceHalls.filter((item) => item.active).length
-            "
+            :value="register.residenceHalls.filter((item) => item.active).length"
             icon="i-lucide-building-2"
             tone="success"
           />
@@ -581,10 +545,7 @@ function statusTone(value: string) {
           :record-count="register.premises.length"
         >
           <template #actions
-            ><UButton
-              label="Create premise"
-              icon="i-lucide-plus"
-              @click="openCreate('premise')"
+            ><UButton label="Create premise" icon="i-lucide-plus" @click="openCreate('premise')"
           /></template>
           <EmharePaginatedTable
             :data="register.premises"
@@ -653,7 +614,11 @@ function statusTone(value: string) {
               label="Create residence hall"
               icon="i-lucide-plus"
               guidance-title="Residence hall setup required"
-              :guidance-instructions="premiseItems.length ? [] : ['Create an active accommodation premise before creating a residence hall.']"
+              :guidance-instructions="
+                premiseItems.length
+                  ? []
+                  : ['Create an active accommodation premise before creating a residence hall.']
+              "
               @click="openCreate('residence-hall')"
           /></template>
           <EmharePaginatedTable
@@ -662,9 +627,7 @@ function statusTone(value: string) {
             :loading="loading"
           >
             <template #residentGenderPolicy-cell="{ row }"
-              ><EmhareStatusPill
-                :label="title(row.original.residentGenderPolicy)"
-                tone="primary"
+              ><EmhareStatusPill :label="title(row.original.residentGenderPolicy)" tone="primary"
             /></template>
             <template #active-cell="{ row }"
               ><EmhareStatusPill
@@ -694,14 +657,13 @@ function statusTone(value: string) {
               label="Create room"
               icon="i-lucide-plus"
               guidance-title="Room setup required"
-              :guidance-instructions="[...(!residenceHallItems.length ? ['Create an active residence hall.'] : []), ...(!roomTypeItems.length ? ['Create an active room type.'] : [])]"
+              :guidance-instructions="[
+                ...(!residenceHallItems.length ? ['Create an active residence hall.'] : []),
+                ...(!roomTypeItems.length ? ['Create an active room type.'] : []),
+              ]"
               @click="openCreate('room')"
           /></template>
-          <EmharePaginatedTable
-            :data="register.rooms"
-            :columns="roomColumns"
-            :loading="loading"
-          >
+          <EmharePaginatedTable :data="register.rooms" :columns="roomColumns" :loading="loading">
             <template #conditionStatus-cell="{ row }"
               ><EmhareStatusPill
                 :label="title(row.original.conditionStatus)"
@@ -735,7 +697,13 @@ function statusTone(value: string) {
               label="Create application period"
               icon="i-lucide-plus"
               guidance-title="Accommodation application period setup required"
-              :guidance-instructions="academicPeriodItems.length ? [] : ['Create an academic period in the Academic calendar before opening accommodation applications.']"
+              :guidance-instructions="
+                academicPeriodItems.length
+                  ? []
+                  : [
+                      'Create an academic period in the Academic calendar before opening accommodation applications.',
+                    ]
+              "
               guidance-action-label="Open Academic calendar"
               @guidance-action="navigateTo('/operations/academic-calendar')"
               @click="openCreate('application-period')"
@@ -800,10 +768,7 @@ function statusTone(value: string) {
   >
     <div v-if="drawerMode === 'premise'" class="grid gap-4 sm:grid-cols-2">
       <UFormField label="Code" required
-        ><UInput
-          v-model="premiseForm.code"
-          class="w-full"
-          placeholder="MP-CAMPUS"
+        ><UInput v-model="premiseForm.code" class="w-full" placeholder="MP-CAMPUS"
       /></UFormField>
       <UFormField label="Name" required
         ><UInput v-model="premiseForm.name" class="w-full"
@@ -811,9 +776,7 @@ function statusTone(value: string) {
       <UFormField label="Address" required class="sm:col-span-2"
         ><UInput v-model="premiseForm.addressLine" class="w-full"
       /></UFormField>
-      <UFormField label="Suburb"
-        ><UInput v-model="premiseForm.suburb" class="w-full"
-      /></UFormField>
+      <UFormField label="Suburb"><UInput v-model="premiseForm.suburb" class="w-full" /></UFormField>
       <UFormField label="Landlord"
         ><UInput v-model="premiseForm.landlordName" class="w-full"
       /></UFormField>
@@ -823,19 +786,12 @@ function statusTone(value: string) {
       <USwitch v-if="editingId" v-model="premiseForm.active" label="Active" />
     </div>
 
-    <div
-      v-else-if="drawerMode === 'room-type'"
-      class="grid gap-4 sm:grid-cols-2"
-    >
+    <div v-else-if="drawerMode === 'room-type'" class="grid gap-4 sm:grid-cols-2">
       <UFormField label="Code" required
         ><UInput v-model="roomTypeForm.code" class="w-full"
       /></UFormField>
       <UFormField label="Default capacity" required
-        ><UInput
-          v-model.number="roomTypeForm.defaultCapacity"
-          type="number"
-          min="1"
-          class="w-full"
+        ><UInput v-model.number="roomTypeForm.defaultCapacity" type="number" min="1" class="w-full"
       /></UFormField>
       <UFormField label="Name" required class="sm:col-span-2"
         ><UInput v-model="roomTypeForm.name" class="w-full"
@@ -846,10 +802,7 @@ function statusTone(value: string) {
       <USwitch v-if="editingId" v-model="roomTypeForm.active" label="Active" />
     </div>
 
-    <div
-      v-else-if="drawerMode === 'residence-hall'"
-      class="grid gap-4 sm:grid-cols-2"
-    >
+    <div v-else-if="drawerMode === 'residence-hall'" class="grid gap-4 sm:grid-cols-2">
       <UFormField label="Premise" required class="sm:col-span-2"
         ><USelect
           v-model="residenceHallForm.premiseId"
@@ -876,11 +829,7 @@ function statusTone(value: string) {
       <UFormField label="Warden contact" class="sm:col-span-2"
         ><UInput v-model="residenceHallForm.wardenContact" class="w-full"
       /></UFormField>
-      <USwitch
-        v-if="editingId"
-        v-model="residenceHallForm.active"
-        label="Active"
-      />
+      <USwitch v-if="editingId" v-model="residenceHallForm.active" label="Active" />
     </div>
 
     <div v-else-if="drawerMode === 'room'" class="grid gap-4 sm:grid-cols-2">
@@ -901,15 +850,9 @@ function statusTone(value: string) {
       <UFormField label="Room code" required
         ><UInput v-model="roomForm.code" class="w-full"
       /></UFormField>
-      <UFormField label="Floor"
-        ><UInput v-model="roomForm.floorLabel" class="w-full"
-      /></UFormField>
+      <UFormField label="Floor"><UInput v-model="roomForm.floorLabel" class="w-full" /></UFormField>
       <UFormField label="Bed capacity" required
-        ><UInput
-          v-model.number="roomForm.capacity"
-          type="number"
-          min="1"
-          class="w-full"
+        ><UInput v-model.number="roomForm.capacity" type="number" min="1" class="w-full"
       /></UFormField>
       <UFormField label="Condition" required
         ><USelect
@@ -921,10 +864,7 @@ function statusTone(value: string) {
       <UFormField label="Condition notes" class="sm:col-span-2"
         ><UTextarea v-model="roomForm.conditionNotes" class="w-full"
       /></UFormField>
-      <USwitch
-        v-model="roomForm.accessibilityReady"
-        label="Accessibility ready"
-      />
+      <USwitch v-model="roomForm.accessibilityReady" label="Accessibility ready" />
       <USwitch v-if="editingId" v-model="roomForm.active" label="Active" />
     </div>
 
@@ -963,16 +903,10 @@ function statusTone(value: string) {
           class="w-full"
       /></UFormField>
       <UFormField label="Occupancy starts" required
-        ><UInput
-          v-model="applicationPeriodForm.occupancyStartsOn"
-          type="date"
-          class="w-full"
+        ><UInput v-model="applicationPeriodForm.occupancyStartsOn" type="date" class="w-full"
       /></UFormField>
       <UFormField label="Occupancy ends" required
-        ><UInput
-          v-model="applicationPeriodForm.occupancyEndsOn"
-          type="date"
-          class="w-full"
+        ><UInput v-model="applicationPeriodForm.occupancyEndsOn" type="date" class="w-full"
       /></UFormField>
       <UFormField label="Allocation cutoff" required class="sm:col-span-2"
         ><UInput
