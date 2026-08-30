@@ -27,6 +27,7 @@
     "test:unit": "vitest run",
     "test:unit:coverage": "vitest run --coverage",
     "coverage:changed": "node scripts/changed-coverage.mjs",
+    "coverage:overall": "node scripts/overall-coverage.mjs",
     "e2e": "playwright test",
     "e2e:admin": "playwright test tests/e2e/admin-core.spec.ts",
     "e2e:workbench": "playwright test tests/e2e/ui-workbench.spec.ts",
@@ -34,7 +35,7 @@
     "frontend:typecheck": "nx run-many -t typecheck -p admin-portal applicant-portal student-portal ui-workbench",
     "format:check": "node scripts/check-formatting.mjs",
     "format:changed": "node scripts/check-formatting.mjs --write",
-    "quality": "mvn verify && npm run format:check && npm run test:unit:coverage && npm run frontend:typecheck && npm run frontend:build && npm run coverage:changed && npm run e2e"
+    "quality": "mvn verify && npm run format:check && npm run test:unit:coverage && npm run frontend:typecheck && npm run frontend:build && npm run coverage:changed && npm run coverage:overall && npm run e2e"
   },
   "devDependencies": {
     "@nx/nuxt": "^23.1.1",

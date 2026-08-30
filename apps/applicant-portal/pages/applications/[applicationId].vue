@@ -1123,7 +1123,12 @@ function openKin(record?: ApplicantNextOfKin) {
   Object.assign(
     kinForm,
     record
-      ? { ...record, email: record.email ?? "", address: record.address ?? "" }
+      ? {
+          ...record,
+          email: record.email ?? "",
+          address: record.address ?? "",
+          expectedVersion: record.version,
+        }
       : {
           fullName: "",
           relationshipCode: "",
@@ -1147,6 +1152,7 @@ function openEmployment(record?: ApplicantEmploymentHistory) {
           ...record,
           endedOn: record.endedOn ?? "",
           responsibilities: record.responsibilities ?? "",
+          expectedVersion: record.version,
         }
       : {
           employerName: "",

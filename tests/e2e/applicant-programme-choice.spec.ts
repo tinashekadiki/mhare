@@ -625,6 +625,34 @@ async function dismissSuccessDialog(page: Page) {
   });
 }
 
+async function verifyRepeatedApplicantRecordEdits(
+  page: Page,
+  resource: "next-of-kin" | "employment-history",
+  collection: "nextOfKin" | "employmentHistory",
+  fieldLabel: string,
+  updatedValues: string[],
+) {
+  let expectedVersion: number | null = null;
+  const activeSection = page.locator("#application-section-editor");
+  for (const updatedValue of updatedValues) {
+    await activeSection.getByRole("button", { name: "Edit", exact: true }).first().click();
+    await activeSection.getByLabel(fieldLabel, { exact: true }).fill(updatedValue);
+    const savedResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/${resource}/`) && response.request().method() === "PUT",
+    );
+    await clickVisibleButtonContaining(page, "Save record");
+    const response = await savedResponse;
+    expect(response.ok(), await response.text()).toBeTruthy();
+    if (expectedVersion !== null) {
+      expect(response.request().postDataJSON().expectedVersion).toBe(expectedVersion);
+    }
+    const updatedWorkspace = await response.json();
+    expectedVersion = updatedWorkspace[collection][0].version;
+    expect(expectedVersion).toBeGreaterThan(0);
+  }
+}
+
 async function uploadAutomaticEvidence(page: Page, requirementName: string, filePath: string) {
   const evidenceCard = page
     .getByRole("heading", { name: new RegExp(`^${requirementName}(?: \\*)?$`) })
@@ -634,18 +662,50 @@ async function uploadAutomaticEvidence(page: Page, requirementName: string, file
     .getByRole("button", { name: /Drop (?:the document here|a replacement) or click to choose/ })
     .click();
   const fileChooser = await fileChooserPromise;
-  await Promise.all([
+  const applicationId = new URL(page.url()).pathname.split("/").at(-1);
+  const attachmentResponsePromise =
+    requirementName === "Qualification evidence"
+      ? Promise.resolve(null)
+      : page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname ===
+              `/api/admissions/applications/${applicationId}/documents` &&
+            response.request().method() === "POST",
+        );
+  const [uploadResponse, , attachmentResponse] = await Promise.all([
     page.waitForResponse(
       (response) =>
-        response.url().includes("/api/documents/uploads") &&
-        response.request().method() === "POST" &&
-        response.ok(),
+        new URL(response.url()).pathname === "/api/documents/uploads" &&
+        response.request().method() === "POST",
     ),
     fileChooser.setFiles(filePath),
+    attachmentResponsePromise,
   ]);
-  await expect(evidenceCard.getByText(/Ready to review|Uploaded/).first()).toBeVisible({
-    timeout: 20_000,
-  });
+  expect(uploadResponse.ok()).toBe(true);
+  const uploadedDocument = (await uploadResponse.json()) as { id: string };
+  expect(uploadedDocument.id).toEqual(expect.any(String));
+  expect(uploadedDocument.id).not.toBe("");
+  if (attachmentResponse) {
+    expect(attachmentResponse.ok()).toBe(true);
+    const attachment = (await attachmentResponse.json()) as {
+      requirements: Array<{ documentId: string | null; state: string }>;
+    };
+    expect(attachment.requirements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ documentId: uploadedDocument.id, state: "PENDING" }),
+      ]),
+    );
+    await expect(evidenceCard.locator("..")).toHaveAttribute(
+      "data-evidence-document-id",
+      uploadedDocument.id,
+    );
+  }
+  // Storage/linking unlock manual entry; OCR completion is a separate acceptance contract.
+  await expect(
+    evidenceCard.getByRole("button", {
+      name: /Drop a replacement or click to choose/,
+    }),
+  ).toBeVisible();
 }
 
 async function uploadRequiredPersonalEvidence(
@@ -787,22 +847,29 @@ async function submitConfidentialReference(page: Page, responseUrl: string, rela
 }
 
 test.describe("Applicant programme choices", () => {
-  for (const evidenceScenario of [
-    {
-      categoryCode: "LOCAL",
-      label: "Local",
-      requirements: [
-        ["NATIONAL_ID", "National ID"],
-        ["BIRTH_CERTIFICATE", "Birth Certificate"],
-      ],
-    },
-    {
-      categoryCode: "INTERNATIONAL",
-      label: "International",
-      requirements: [["PASSPORT", "Passport"]],
-    },
-  ] as const) {
-    test(`${evidenceScenario.label} personal details unlock only after applicable evidence auto-uploads`, async ({
+  for (const evidenceScenario of (
+    [
+      {
+        categoryCode: "LOCAL",
+        label: "Local",
+        requirements: [
+          ["NATIONAL_ID", "National ID"],
+          ["BIRTH_CERTIFICATE", "Birth Certificate"],
+        ],
+      },
+      {
+        categoryCode: "INTERNATIONAL",
+        label: "International",
+        requirements: [["PASSPORT", "Passport"]],
+      },
+    ] as const
+  ).flatMap((scenario) =>
+    (["COMPLETED", "QUEUED", "FAILED"] as const).map((extractionStatus) => ({
+      ...scenario,
+      extractionStatus,
+    })),
+  )) {
+    test(`${evidenceScenario.label} personal details unlock only after applicable evidence auto-uploads (${evidenceScenario.extractionStatus} OCR)`, async ({
       page,
     }, testInfo) => {
       test.setTimeout(90_000);
@@ -971,7 +1038,7 @@ test.describe("Applicant programme choices", () => {
           await route.fulfill({
             json: {
               id: documentId,
-              extractionStatus: "COMPLETED",
+              extractionStatus: evidenceScenario.extractionStatus,
               verificationStatus: "PENDING",
             },
           });
@@ -981,14 +1048,14 @@ test.describe("Applicant programme choices", () => {
           async (route) => {
             const body = route.request().postDataJSON() as { requirementCode: string };
             uploadedRequirementCodes.add(body.requirementCode);
-            await route.fulfill({ json: {} });
+            await route.fulfill({ status: 201, json: workspace().documents });
           },
         );
         await page.route("**/api/documents/uploads/*/ocr-extraction", (route) =>
           route.fulfill({
             json: {
               documentId: route.request().url().split("/").at(-2),
-              status: "COMPLETED",
+              status: evidenceScenario.extractionStatus,
               warningsJson: "[]",
             },
           }),
@@ -998,13 +1065,16 @@ test.describe("Applicant programme choices", () => {
           (route) =>
             route.fulfill({
               json: {
-                personalFields: {
-                  dateOfBirth: "15/01/1999",
-                  genderCode: "F",
-                  ...(evidenceScenario.categoryCode === "INTERNATIONAL"
-                    ? { passportNumber: "ab123456" }
-                    : { nationalIdNumber: "12-345678-a-90" }),
-                },
+                personalFields:
+                  evidenceScenario.extractionStatus === "COMPLETED"
+                    ? {
+                        dateOfBirth: "15/01/1999",
+                        genderCode: "F",
+                        ...(evidenceScenario.categoryCode === "INTERNATIONAL"
+                          ? { passportNumber: "ab123456" }
+                          : { nationalIdNumber: "12-345678-a-90" }),
+                      }
+                    : {},
                 qualificationResults: [],
                 warnings: [],
                 manualEntryAllowed: true,
@@ -1032,34 +1102,33 @@ test.describe("Applicant programme choices", () => {
           const evidenceCard = page
             .getByRole("heading", { name: new RegExp(`^${requirementName}`) })
             .locator("xpath=ancestor::section[1]");
-          const fileChooserPromise = page.waitForEvent("filechooser");
-          await evidenceCard
-            .getByRole("button", { name: /Drop the document here or click to choose/ })
-            .click();
-          const fileChooser = await fileChooserPromise;
-          await Promise.all([
-            page.waitForResponse(
-              (response) =>
-                response.url().includes("/api/documents/uploads") &&
-                response.request().method() === "POST",
-            ),
-            fileChooser.setFiles(evidencePath),
-          ]);
-          await expect(evidenceCard.getByText("Ready to review", { exact: true })).toBeVisible();
+          await uploadAutomaticEvidence(page, requirementName, evidencePath);
+          const expectedStatus = {
+            COMPLETED: "Ready to review",
+            QUEUED: "Waiting for OCR",
+            FAILED: "Uploaded — enter details manually",
+          }[evidenceScenario.extractionStatus];
+          await expect(evidenceCard.getByText(expectedStatus, { exact: true })).toBeVisible();
         }
 
         await expect(
           page.getByText("Upload the required identity evidence to continue", { exact: true }),
         ).toHaveCount(0);
         await expect(page.getByLabel("Date of birth")).toBeEditable();
-        await expect(page.getByLabel("Date of birth")).toHaveValue("1999-01-15");
+        await expect(page.getByLabel("Date of birth")).toHaveValue(
+          evidenceScenario.extractionStatus === "COMPLETED" ? "1999-01-15" : "",
+        );
         await expect(page.getByLabel("First name")).not.toBeEditable();
         await expect(page.getByLabel("Last name")).not.toBeEditable();
         await expect(page.getByLabel("Applicant category")).not.toBeEditable();
         if (evidenceScenario.categoryCode === "INTERNATIONAL") {
-          await expect(page.getByLabel("Passport number")).toHaveValue("AB123456");
+          await expect(page.getByLabel("Passport number")).toHaveValue(
+            evidenceScenario.extractionStatus === "COMPLETED" ? "AB123456" : "",
+          );
         } else {
-          await expect(page.getByLabel("National ID number")).toHaveValue("12-345678-A-90");
+          await expect(page.getByLabel("National ID number")).toHaveValue(
+            evidenceScenario.extractionStatus === "COMPLETED" ? "12-345678-A-90" : "",
+          );
         }
       } finally {
         await cleanupApplicantLoginFixture(fixture);
@@ -1083,70 +1152,72 @@ test.describe("Applicant programme choices", () => {
         endsOn: "2027-07-31",
         maximumProgrammeChoices: 3,
       };
-      const routeDefinitions = [
-        {
-          code: "UNDERGRAD",
-          name: "Undergraduate",
-          feeRequired: true,
-          sections: [
-            ["PERSONAL_DETAILS", "Applicant details", 0],
-            ["NEXT_OF_KIN", "Next of kin", 1],
-            ["QUALIFICATIONS", "Qualifications", 1],
-            ["PROGRAMME_CHOICES", "Programme choices", 1],
-            ["DOCUMENTS", "Supporting documents", 0],
-            ["PAYMENT", "Application fee", 0],
-            ["REVIEW_DECLARATION", "Review and declaration", 0],
-          ],
-        },
-        {
-          code: "POSTGRAD",
-          name: "Postgraduate",
-          feeRequired: false,
-          sections: [
-            ["PERSONAL_DETAILS", "Applicant details", 0],
-            ["NEXT_OF_KIN", "Next of kin", 1],
-            ["QUALIFICATIONS", "Qualifications", 1],
-            ["EMPLOYMENT_HISTORY", "Employment history", 1],
-            ["REFEREES", "Referees", 2],
-            ["PROGRAMME_CHOICES", "Programme choices", 1],
-            ["DOCUMENTS", "Supporting documents", 0],
-            ["REVIEW_DECLARATION", "Review and declaration", 0],
-          ],
-        },
-        {
-          code: "MBA",
-          name: "Master of Business Administration",
-          feeRequired: true,
-          sections: [
-            ["PERSONAL_DETAILS", "Applicant details", 0],
-            ["NEXT_OF_KIN", "Next of kin", 1],
-            ["QUALIFICATIONS", "Qualifications", 1],
-            ["PRIOR_UZ_STUDY", "Previous UZ study", 1],
-            ["PROFESSIONAL_ACHIEVEMENTS", "Professional achievements", 1],
-            ["EMPLOYMENT_HISTORY", "Employment history", 1],
-            ["REFEREES", "Referees", 3],
-            ["PROGRAMME_CHOICES", "Programme choices", 1],
-            ["DOCUMENTS", "Supporting documents", 0],
-            ["PAYMENT", "Application fee", 0],
-            ["REVIEW_DECLARATION", "Review and declaration", 0],
-          ],
-        },
-        {
-          code: "EDUCATION",
-          name: "Education",
-          feeRequired: false,
-          sections: [
-            ["PERSONAL_DETAILS", "Applicant details", 0],
-            ["NEXT_OF_KIN", "Next of kin", 1],
-            ["QUALIFICATIONS", "Qualifications", 1],
-            ["EMPLOYMENT_HISTORY", "Employment history", 1],
-            ["REFEREES", "Referees", 3],
-            ["PROGRAMME_CHOICES", "Programme choices", 1],
-            ["DOCUMENTS", "Supporting documents", 0],
-            ["REVIEW_DECLARATION", "Review and declaration", 0],
-          ],
-        },
-      ].map((definition, routeIndex) => ({
+      const routeDefinitions = (
+        [
+          {
+            code: "UNDERGRAD",
+            name: "Undergraduate",
+            feeRequired: true,
+            sections: [
+              ["PERSONAL_DETAILS", "Applicant details", 0],
+              ["NEXT_OF_KIN", "Next of kin", 1],
+              ["QUALIFICATIONS", "Qualifications", 1],
+              ["PROGRAMME_CHOICES", "Programme choices", 1],
+              ["DOCUMENTS", "Supporting documents", 0],
+              ["PAYMENT", "Application fee", 0],
+              ["REVIEW_DECLARATION", "Review and declaration", 0],
+            ],
+          },
+          {
+            code: "POSTGRAD",
+            name: "Postgraduate",
+            feeRequired: false,
+            sections: [
+              ["PERSONAL_DETAILS", "Applicant details", 0],
+              ["NEXT_OF_KIN", "Next of kin", 1],
+              ["QUALIFICATIONS", "Qualifications", 1],
+              ["EMPLOYMENT_HISTORY", "Employment history", 1],
+              ["REFEREES", "Referees", 2],
+              ["PROGRAMME_CHOICES", "Programme choices", 1],
+              ["DOCUMENTS", "Supporting documents", 0],
+              ["REVIEW_DECLARATION", "Review and declaration", 0],
+            ],
+          },
+          {
+            code: "MBA",
+            name: "Master of Business Administration",
+            feeRequired: true,
+            sections: [
+              ["PERSONAL_DETAILS", "Applicant details", 0],
+              ["NEXT_OF_KIN", "Next of kin", 1],
+              ["QUALIFICATIONS", "Qualifications", 1],
+              ["PRIOR_UZ_STUDY", "Previous UZ study", 1],
+              ["PROFESSIONAL_ACHIEVEMENTS", "Professional achievements", 1],
+              ["EMPLOYMENT_HISTORY", "Employment history", 1],
+              ["REFEREES", "Referees", 3],
+              ["PROGRAMME_CHOICES", "Programme choices", 1],
+              ["DOCUMENTS", "Supporting documents", 0],
+              ["PAYMENT", "Application fee", 0],
+              ["REVIEW_DECLARATION", "Review and declaration", 0],
+            ],
+          },
+          {
+            code: "EDUCATION",
+            name: "Education",
+            feeRequired: false,
+            sections: [
+              ["PERSONAL_DETAILS", "Applicant details", 0],
+              ["NEXT_OF_KIN", "Next of kin", 1],
+              ["QUALIFICATIONS", "Qualifications", 1],
+              ["EMPLOYMENT_HISTORY", "Employment history", 1],
+              ["REFEREES", "Referees", 3],
+              ["PROGRAMME_CHOICES", "Programme choices", 1],
+              ["DOCUMENTS", "Supporting documents", 0],
+              ["REVIEW_DECLARATION", "Review and declaration", 0],
+            ],
+          },
+        ] as const
+      ).map((definition, routeIndex) => ({
         ...definition,
         id: randomUUID(),
         routeIndex,
@@ -2521,6 +2592,11 @@ test.describe("Applicant programme choices", () => {
         ]);
         await expect(page.getByText("Tariro Applicant")).toBeVisible();
 
+        await verifyRepeatedApplicantRecordEdits(page, "next-of-kin", "nextOfKin", "Address", [
+          "Harare, first correction",
+          "Harare, verified contact address",
+        ]);
+
         await clickVisibleButtonContaining(page, "Continue: Qualifications");
         await completeSchoolQualification(
           page,
@@ -2555,6 +2631,17 @@ test.describe("Applicant programme choices", () => {
           clickVisibleButtonContaining(page, "Save record"),
         ]);
         await expect(page.getByText("Operations Manager · UZ Business School")).toBeVisible();
+
+        await verifyRepeatedApplicantRecordEdits(
+          page,
+          "employment-history",
+          "employmentHistory",
+          "Responsibilities",
+          [
+            "Leading operational planning and people management.",
+            "Leading operational planning, people management, and service improvement.",
+          ],
+        );
 
         if (routeScenario.requiresMbaDeclarations) {
           await clickVisibleButtonContaining(page, "Continue: Previous UZ study");
